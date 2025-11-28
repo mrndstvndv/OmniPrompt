@@ -33,6 +33,7 @@ class SettingsProvider(
         "Battery Saver" to Settings.ACTION_BATTERY_SAVER_SETTINGS,
         "Biometric Enrollment" to Settings.ACTION_BIOMETRIC_ENROLL,
         "Bluetooth" to Settings.ACTION_BLUETOOTH_SETTINGS,
+        "Charging Control" to "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS",
         "Captioning" to Settings.ACTION_CAPTIONING_SETTINGS,
         "Cast" to Settings.ACTION_CAST_SETTINGS,
         "Data Roaming" to Settings.ACTION_DATA_ROAMING_SETTINGS,
@@ -113,6 +114,14 @@ class SettingsProvider(
                             val intent = Intent(action)
                             if (intent.resolveActivity(activity.packageManager) != null) {
                                 activity.startActivity(intent)
+                            } else {
+                                // Fallback for Charging Control to Battery Saver settings
+                                if (action == "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS") {
+                                    val fallbackIntent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                                    if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
+                                        activity.startActivity(fallbackIntent)
+                                    }
+                                }
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
