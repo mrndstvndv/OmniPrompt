@@ -73,7 +73,6 @@ class SettingsProvider(
         "Privacy" to Settings.ACTION_PRIVACY_SETTINGS,
         "Quick Access Wallet" to Settings.ACTION_QUICK_ACCESS_WALLET_SETTINGS,
         "Quick Launch" to Settings.ACTION_QUICK_LAUNCH_SETTINGS,
-        "Ignore Battery Optimizations" to Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
         "Autofill Service" to Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE,
         "Search" to Settings.ACTION_SEARCH_SETTINGS,
         "Security" to Settings.ACTION_SECURITY_SETTINGS,
