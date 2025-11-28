@@ -2,19 +2,23 @@ package com.mrndstvndv.search.provider.system
 
 import android.content.Intent
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Settings
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class SettingsProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository
+    private val settingsRepository: ProviderSettingsRepository,
+    private val developerSettingsManager: DeveloperSettingsManager
 ) : Provider {
 
     override val id: String = "system-settings"
@@ -89,6 +93,12 @@ class SettingsProvider(
         "Do Not Disturb" to Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS
     )
 
+    // Keywords that trigger the developer toggle result
+    private val developerToggleKeywords = listOf(
+        "developer", "dev mode", "developer mode", "dev options", 
+        "toggle developer", "enable developer", "disable developer"
+    )
+
     override fun canHandle(query: Query): Boolean = true
 
     override suspend fun query(query: Query): List<ProviderResult> {
@@ -99,37 +109,135 @@ class SettingsProvider(
         
         if (normalized.isBlank()) return emptyList()
 
-        return settingsActions.filter { (title, _) ->
-            title.contains(normalized, ignoreCase = true)
-        }.map { (title, action) ->
-            ProviderResult(
-                id = "$id:$action",
-                title = title,
-                subtitle = "System Settings",
-                defaultVectorIcon = Icons.Outlined.Settings,
-                providerId = id,
-                onSelect = {
-                    withContext(Dispatchers.Main) {
-                        try {
-                            val intent = Intent(action)
-                            if (intent.resolveActivity(activity.packageManager) != null) {
-                                activity.startActivity(intent)
-                            } else {
-                                // Fallback for Charging Control to Battery Saver settings
-                                if (action == "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS") {
-                                    val fallbackIntent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
-                                    if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
-                                        activity.startActivity(fallbackIntent)
+        val results = mutableListOf<ProviderResult>()
+
+        // Add developer toggle result if feature is enabled and query matches
+        val systemSettings = settingsRepository.systemSettingsSettings.value
+        if (systemSettings.developerToggleEnabled) {
+            val matchesDeveloperToggle = developerToggleKeywords.any { keyword ->
+                keyword.contains(normalized, ignoreCase = true) || 
+                normalized.contains(keyword, ignoreCase = true)
+            }
+            
+            if (matchesDeveloperToggle) {
+                val permissionStatus = developerSettingsManager.permissionStatus.value
+                val isCurrentlyEnabled = developerSettingsManager.isDeveloperSettingsEnabled()
+                val toggleResult = buildDeveloperToggleResult(isCurrentlyEnabled, permissionStatus.isReady, normalized)
+                if (toggleResult != null) {
+                    results.add(toggleResult)
+                }
+            }
+        }
+
+        // Add regular settings results with fuzzy matching
+        results.addAll(
+            settingsActions.mapNotNull { (title, action) ->
+                val matchResult = FuzzyMatcher.match(normalized, title)
+                if (matchResult != null) {
+                    Triple(title, action, matchResult)
+                } else {
+                    null
+                }
+            }.sortedByDescending { it.third.score }
+            .map { (title, action, matchResult) ->
+                ProviderResult(
+                    id = "$id:$action",
+                    title = title,
+                    subtitle = "System Settings",
+                    defaultVectorIcon = Icons.Outlined.Settings,
+                    providerId = id,
+                    onSelect = {
+                        withContext(Dispatchers.Main) {
+                            try {
+                                val intent = Intent(action)
+                                if (intent.resolveActivity(activity.packageManager) != null) {
+                                    activity.startActivity(intent)
+                                } else {
+                                    // Fallback for Charging Control to Battery Saver settings
+                                    if (action == "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS") {
+                                        val fallbackIntent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                                        if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
+                                            activity.startActivity(fallbackIntent)
+                                        }
                                     }
                                 }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                        }
+                    },
+                    keepOverlayUntilExit = true,
+                    matchedTitleIndices = matchResult.matchedIndices
+                )
+            }
+        )
+
+        return results
+    }
+
+    private fun buildDeveloperToggleResult(isCurrentlyEnabled: Boolean, isReady: Boolean, query: String): ProviderResult? {
+        val title = if (isCurrentlyEnabled) "Disable Developer Options" else "Enable Developer Options"
+        val permissionStatus = developerSettingsManager.permissionStatus.value
+        val subtitle = when {
+            !isReady && permissionStatus.isShizukuAvailable && !permissionStatus.hasShizukuPermission -> 
+                "Tap to grant Shizuku permission"
+            !isReady -> 
+                "No permission - run: adb shell pm grant ${activity.packageName} android.permission.WRITE_SECURE_SETTINGS"
+            isCurrentlyEnabled -> "Turn off developer mode"
+            else -> "Turn on developer mode"
+        }
+        
+        // Get match indices for highlighting
+        val titleMatch = FuzzyMatcher.match(query, title)
+        val subtitleMatch = FuzzyMatcher.match(query, subtitle)
+        
+        return ProviderResult(
+            id = "$id:developer-toggle",
+            title = title,
+            subtitle = subtitle,
+            defaultVectorIcon = Icons.Outlined.DeveloperMode,
+            providerId = id,
+            onSelect = {
+                val currentStatus = developerSettingsManager.permissionStatus.value
+                when {
+                    currentStatus.isReady -> {
+                        withContext(Dispatchers.IO) {
+                            val newState = !isCurrentlyEnabled
+                            val success = developerSettingsManager.setDeveloperSettingsEnabled(newState)
+                            withContext(Dispatchers.Main) {
+                                if (success) {
+                                    val message = if (newState) "Developer options enabled" else "Developer options disabled"
+                                    Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+                                    activity.finish()
+                                } else {
+                                    Toast.makeText(activity, "Failed to toggle developer options", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         }
                     }
-                },
-                keepOverlayUntilExit = true
-            )
-        }
+                    currentStatus.isShizukuAvailable && !currentStatus.hasShizukuPermission -> {
+                        // Request Shizuku permission
+                        withContext(Dispatchers.Main) {
+                            val requested = developerSettingsManager.requestShizukuPermission()
+                            if (!requested) {
+                                Toast.makeText(activity, "Could not request Shizuku permission", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    else -> {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                activity,
+                                "Grant permission via ADB: adb shell pm grant ${activity.packageName} android.permission.WRITE_SECURE_SETTINGS",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                }
+            },
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = titleMatch?.matchedIndices ?: emptyList(),
+            matchedSubtitleIndices = subtitleMatch?.matchedIndices ?: emptyList()
+        )
     }
 }

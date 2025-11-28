@@ -54,6 +54,7 @@ import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.apps.AppListProvider
 import com.mrndstvndv.search.provider.system.SettingsProvider
+import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.calculator.CalculatorProvider
 import com.mrndstvndv.search.provider.files.FileSearchProvider
 import com.mrndstvndv.search.provider.files.FileSearchRepository
@@ -113,12 +114,13 @@ class MainActivity : ComponentActivity() {
             val fileSearchRepository = remember(this@MainActivity) { FileSearchRepository.getInstance(this@MainActivity) }
             val fileThumbnailRepository = remember(this@MainActivity) { FileThumbnailRepository.getInstance(this@MainActivity) }
             val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
+            val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val providers = remember(this@MainActivity) {
                 buildList {
                     add(AppListProvider(this@MainActivity, settingsRepository, defaultAppIconSize))
-                    add(SettingsProvider(this@MainActivity, settingsRepository))
+                    add(SettingsProvider(this@MainActivity, settingsRepository, developerSettingsManager))
                     add(CalculatorProvider(this@MainActivity))
                     add(TextUtilitiesProvider(this@MainActivity, settingsRepository))
                     add(FileSearchProvider(this@MainActivity, settingsRepository, fileSearchRepository, fileThumbnailRepository))
@@ -135,6 +137,16 @@ class MainActivity : ComponentActivity() {
 
             // Sync-on-open: trigger incremental file sync if enabled and enough time has passed
             val fileSearchSettings by settingsRepository.fileSearchSettings.collectAsState()
+            val systemSettingsSettings by settingsRepository.systemSettingsSettings.collectAsState()
+            
+            // Initialize developer settings manager if feature is enabled
+            LaunchedEffect(systemSettingsSettings.developerToggleEnabled) {
+                if (systemSettingsSettings.developerToggleEnabled) {
+                    developerSettingsManager.registerListeners()
+                    developerSettingsManager.refreshStatus()
+                }
+            }
+            
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
                     val settings = settingsRepository.fileSearchSettings.value

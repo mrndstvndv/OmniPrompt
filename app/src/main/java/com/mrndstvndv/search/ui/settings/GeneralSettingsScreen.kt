@@ -161,6 +161,7 @@ fun ProvidersSettingsScreen(
     onOpenFileSearchSettings: () -> Unit,
     onOpenTextUtilitiesSettings: () -> Unit,
     onOpenAppSearchSettings: () -> Unit,
+    onOpenSystemSettingsSettings: () -> Unit,
     onBack: () -> Unit
 ) {
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()
@@ -218,7 +219,8 @@ fun ProvidersSettingsScreen(
                     name = "System Settings",
                     description = "Search for system settings",
                     enabled = enabledProviders["system-settings"] ?: true,
-                    onToggle = { settingsRepository.setProviderEnabled("system-settings", it) }
+                    onToggle = { settingsRepository.setProviderEnabled("system-settings", it) },
+                    onClick = onOpenSystemSettingsSettings
                 )
                 SettingsDivider()
                 ProviderRow(

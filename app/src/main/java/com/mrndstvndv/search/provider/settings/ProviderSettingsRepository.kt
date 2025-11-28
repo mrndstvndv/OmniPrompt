@@ -35,6 +35,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         private const val KEY_TEXT_UTILITIES = "text_utilities"
         private const val KEY_FILE_SEARCH = "file_search"
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
+        private const val KEY_SYSTEM_SETTINGS = "system_settings"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -81,6 +82,9 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
     private val _enabledProviders = MutableStateFlow(emptyMap<String, Boolean>())
     val enabledProviders: StateFlow<Map<String, Boolean>> = _enabledProviders
 
+    private val _systemSettingsSettings = MutableStateFlow(SystemSettingsSettings.default())
+    val systemSettingsSettings: StateFlow<SystemSettingsSettings> = _systemSettingsSettings
+
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
         // Load persisted settings off the main thread if scope provided
@@ -96,6 +100,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
                 _textUtilitiesSettings.value = loadTextUtilitiesSettings()
                 _fileSearchSettings.value = loadFileSearchSettings()
                 _enabledProviders.value = loadEnabledProviders()
+                _systemSettingsSettings.value = loadSystemSettingsSettings()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
@@ -109,6 +114,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
             _textUtilitiesSettings.value = loadTextUtilitiesSettings()
             _fileSearchSettings.value = loadFileSearchSettings()
             _enabledProviders.value = loadEnabledProviders()
+            _systemSettingsSettings.value = loadSystemSettingsSettings()
         }
     }
 
@@ -347,6 +353,27 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         }
         preferences.edit { putString(KEY_ENABLED_PROVIDERS, jsonObject.toString()) }
         _enabledProviders.value = providers
+    }
+
+    private fun loadSystemSettingsSettings(): SystemSettingsSettings {
+        val json = preferences.getString(KEY_SYSTEM_SETTINGS, null)
+        return try {
+            val parsed = json?.let { JSONObject(it) }
+            SystemSettingsSettings.fromJson(parsed) ?: SystemSettingsSettings.default()
+        } catch (ignored: JSONException) {
+            SystemSettingsSettings.default()
+        }
+    }
+
+    fun saveSystemSettingsSettings(settings: SystemSettingsSettings) {
+        preferences.edit { putString(KEY_SYSTEM_SETTINGS, settings.toJsonString()) }
+        _systemSettingsSettings.value = settings
+    }
+
+    fun setDeveloperToggleEnabled(enabled: Boolean) {
+        val current = _systemSettingsSettings.value
+        if (current.developerToggleEnabled == enabled) return
+        saveSystemSettingsSettings(current.copy(developerToggleEnabled = enabled))
     }
 }
 
@@ -736,6 +763,29 @@ data class AppSearchSettings(
     fun toJson(): JSONObject {
         return JSONObject().apply {
             put("includePackageName", includePackageName)
+        }
+    }
+
+    fun toJsonString(): String = toJson().toString()
+}
+
+data class SystemSettingsSettings(
+    val developerToggleEnabled: Boolean
+) {
+    companion object {
+        fun default(): SystemSettingsSettings = SystemSettingsSettings(developerToggleEnabled = false)
+
+        fun fromJson(json: JSONObject?): SystemSettingsSettings? {
+            if (json == null) return null
+            return SystemSettingsSettings(
+                developerToggleEnabled = json.optBoolean("developerToggleEnabled", false)
+            )
+        }
+    }
+
+    fun toJson(): JSONObject {
+        return JSONObject().apply {
+            put("developerToggleEnabled", developerToggleEnabled)
         }
     }
 

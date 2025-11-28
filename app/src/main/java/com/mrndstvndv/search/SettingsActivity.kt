@@ -36,7 +36,9 @@ import com.mrndstvndv.search.ui.settings.FileSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.TextUtilitiesSettingsScreen
 import com.mrndstvndv.search.ui.settings.ProviderListScreen
 import com.mrndstvndv.search.ui.settings.AppSearchSettingsScreen
+import com.mrndstvndv.search.ui.settings.SystemSettingsScreen
 import com.mrndstvndv.search.ui.theme.SearchTheme
+import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,7 +61,8 @@ class SettingsActivity : ComponentActivity() {
         FileSearch,
         TextUtilities,
         AppSearch,
-        ProviderList
+        ProviderList,
+        SystemSettings
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +76,7 @@ class SettingsActivity : ComponentActivity() {
             val settingsRepository = remember { ProviderSettingsRepository(this@SettingsActivity, coroutineScope) }
             val fileSearchRepository = remember { FileSearchRepository.getInstance(this@SettingsActivity) }
             val rankingRepository = remember { ProviderRankingRepository.getInstance(this@SettingsActivity, coroutineScope) }
+            val developerSettingsManager = remember { DeveloperSettingsManager.getInstance(this@SettingsActivity) }
             val isDefaultAssistant by defaultAssistantState
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val webSearchSettings by settingsRepository.webSearchSettings.collectAsState()
@@ -140,6 +144,7 @@ class SettingsActivity : ComponentActivity() {
                             onOpenFileSearchSettings = { currentScreen = Screen.FileSearch },
                             onOpenTextUtilitiesSettings = { currentScreen = Screen.TextUtilities },
                             onOpenAppSearchSettings = { currentScreen = Screen.AppSearch },
+                            onOpenSystemSettingsSettings = { currentScreen = Screen.SystemSettings },
                             onBack = {
                                 if (initialScreen == Screen.Providers) {
                                     finish()
@@ -227,6 +232,14 @@ class SettingsActivity : ComponentActivity() {
                             onOpenWebSearchSettings = { currentScreen = Screen.WebSearch },
                             onOpenFileSearchSettings = { currentScreen = Screen.FileSearch },
                             onOpenTextUtilitiesSettings = { currentScreen = Screen.TextUtilities }
+                        )
+                    }
+                    Screen.SystemSettings -> {
+                        BackHandler { currentScreen = Screen.Providers }
+                        SystemSettingsScreen(
+                            settingsRepository = settingsRepository,
+                            developerSettingsManager = developerSettingsManager,
+                            onBack = { currentScreen = Screen.Providers }
                         )
                     }
                 }
