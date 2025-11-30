@@ -28,12 +28,9 @@ class SettingsProvider(
     private val settingsActions = listOf(
         "Settings" to Settings.ACTION_SETTINGS,
         "Accessibility" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
-        "Airplane mode" to Settings.ACTION_AIRPLANE_MODE_SETTINGS,
         "Access Point Names" to Settings.ACTION_APN_SETTINGS,
-        "App info" to Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
         "Developer options" to Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS,
         "Apps" to Settings.ACTION_APPLICATION_SETTINGS,
-        "App Search" to Settings.ACTION_APP_SEARCH_SETTINGS,
         "Battery Saver" to Settings.ACTION_BATTERY_SAVER_SETTINGS,
         "Biometric Enrollment" to Settings.ACTION_BIOMETRIC_ENROLL,
         "Bluetooth" to Settings.ACTION_BLUETOOTH_SETTINGS,
@@ -54,8 +51,6 @@ class SettingsProvider(
         "Storage" to Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
         "Language" to Settings.ACTION_LOCALE_SETTINGS,
         "Location" to Settings.ACTION_LOCATION_SOURCE_SETTINGS,
-        "All apps" to Settings.ACTION_MANAGE_ALL_APPLICATIONS_SETTINGS,
-        "Manage Applications" to Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS,
         "Default apps" to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
         "Display over other apps" to Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
         "Install unknown apps" to Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -76,7 +71,6 @@ class SettingsProvider(
         "Autofill Service" to Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE,
         "Search" to Settings.ACTION_SEARCH_SETTINGS,
         "Security" to Settings.ACTION_SECURITY_SETTINGS,
-        "Regulatory info" to Settings.ACTION_SHOW_REGULATORY_INFO,
         "Sound & vibration" to Settings.ACTION_SOUND_SETTINGS,
         "Storage Volume Access" to Settings.ACTION_STORAGE_VOLUME_ACCESS_SETTINGS,
         "Accounts" to Settings.ACTION_SYNC_SETTINGS,
@@ -88,6 +82,7 @@ class SettingsProvider(
         "WebView implementation" to Settings.ACTION_WEBVIEW_SETTINGS,
         "Wi-Fi IP Settings" to Settings.ACTION_WIFI_IP_SETTINGS,
         "Wi-Fi" to Settings.ACTION_WIFI_SETTINGS,
+        "Wireless Debugging" to "android.settings.ADB_WIFI_SETTINGS",
         "Network & internet" to Settings.ACTION_WIRELESS_SETTINGS,
         "Do Not Disturb" to Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS
     )
