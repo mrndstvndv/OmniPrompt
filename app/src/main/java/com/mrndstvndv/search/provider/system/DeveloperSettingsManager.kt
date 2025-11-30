@@ -350,7 +350,7 @@ class DeveloperSettingsManager(private val context: Context) {
         }
     }
 
-    private fun toggleViaShizuku(enable: Boolean): Boolean {
+    fun toggleViaShizuku(enable: Boolean): Boolean {
         Log.d(TAG, "toggleViaShizuku: enable=$enable, userService=${userService != null}")
         return try {
             val service = userService
@@ -366,6 +366,49 @@ class DeveloperSettingsManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "toggleViaShizuku failed", e)
             false
+        }
+    }
+
+    /**
+     * Attempts to launch Wireless Debugging settings via Root or Shizuku.
+     * @return true if the command was executed successfully, false otherwise.
+     */
+    fun launchWirelessDebugging(): Boolean {
+        val status = _permissionStatus.value
+        
+        return when (status.availableMethod) {
+            PermissionMethod.ROOT -> {
+                try {
+                    // Try launching the fragment directly via SubSettings
+                    val process = Runtime.getRuntime().exec(
+                        arrayOf(
+                            "su", 
+                            "-c", 
+                            "am start -n com.android.settings/.SubSettings -e :settings:show_fragment com.android.settings.development.WirelessDebuggingFragment"
+                        )
+                    )
+                    process.waitFor() == 0
+                } catch (e: Exception) {
+                    Log.e(TAG, "launchWirelessDebugging via Root failed", e)
+                    false
+                }
+            }
+            PermissionMethod.SHIZUKU -> {
+                try {
+                    val service = userService
+                    if (service != null) {
+                        service.launchWirelessDebugging()
+                    } else {
+                        Log.w(TAG, "launchWirelessDebugging: userService is null, binding...")
+                        bindUserService()
+                        false
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "launchWirelessDebugging via Shizuku failed", e)
+                    false
+                }
+            }
+            else -> false
         }
     }
 }

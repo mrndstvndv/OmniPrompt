@@ -123,14 +123,20 @@ class SettingsProvider(
             }
         }
 
+        val currentPermissionStatus = developerSettingsManager.permissionStatus.value
+
         // Add regular settings results with fuzzy matching
         results.addAll(
             settingsActions.mapNotNull { (title, action) ->
-                val matchResult = FuzzyMatcher.match(normalized, title)
-                if (matchResult != null) {
-                    Triple(title, action, matchResult)
+                if (action == "android.settings.ADB_WIFI_SETTINGS" && currentPermissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.NONE) {
+                    null // Skip this action if neither root nor shizuku is available
                 } else {
-                    null
+                    val matchResult = FuzzyMatcher.match(normalized, title)
+                    if (matchResult != null) {
+                        Triple(title, action, matchResult)
+                    } else {
+                        null
+                    }
                 }
             }.sortedByDescending { it.third.score }
             .map { (title, action, matchResult) ->
@@ -152,6 +158,18 @@ class SettingsProvider(
                                         val fallbackIntent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
                                         if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
                                             activity.startActivity(fallbackIntent)
+                                        }
+                                    } else if (action == "android.settings.ADB_WIFI_SETTINGS") {
+                                        val launched = withContext(Dispatchers.IO) {
+                                            developerSettingsManager.launchWirelessDebugging()
+                                        }
+                                        
+                                        if (!launched) {
+                                            val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                                            if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
+                                                Toast.makeText(activity, "Opening Developer Options", Toast.LENGTH_SHORT).show()
+                                                activity.startActivity(fallbackIntent)
+                                            }
                                         }
                                     }
                                 }

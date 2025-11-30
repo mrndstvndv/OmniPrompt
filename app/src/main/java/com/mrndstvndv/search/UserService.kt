@@ -43,4 +43,27 @@ class UserService : IUserService.Stub {
             false
         }
     }
+
+    override fun launchWirelessDebugging(): Boolean {
+        Log.d(TAG, "launchWirelessDebugging called")
+        return try {
+            val process = Runtime.getRuntime().exec(
+                arrayOf(
+                    "am", 
+                    "start", 
+                    "-n", 
+                    "com.android.settings/.SubSettings", 
+                    "-e", 
+                    ":settings:show_fragment", 
+                    "com.android.settings.development.WirelessDebuggingFragment"
+                )
+            )
+            val exitCode = process.waitFor()
+            Log.d(TAG, "launchWirelessDebugging: exitCode=$exitCode")
+            exitCode == 0
+        } catch (e: Exception) {
+            Log.e(TAG, "launchWirelessDebugging failed", e)
+            false
+        }
+    }
 }
