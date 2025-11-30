@@ -44,25 +44,31 @@ class UserService : IUserService.Stub {
         }
     }
 
-    override fun launchWirelessDebugging(): Boolean {
-        Log.d(TAG, "launchWirelessDebugging called")
+    override fun launchSettingsFragment(fragmentName: String, highlightKey: String?): Boolean {
+        Log.d(TAG, "launchSettingsFragment called: fragment=$fragmentName, key=$highlightKey")
         return try {
-            val process = Runtime.getRuntime().exec(
-                arrayOf(
-                    "am", 
-                    "start", 
-                    "-n", 
-                    "com.android.settings/.SubSettings", 
-                    "-e", 
-                    ":settings:show_fragment", 
-                    "com.android.settings.development.WirelessDebuggingFragment"
-                )
+            val cmd = mutableListOf(
+                "am", 
+                "start", 
+                "-n", 
+                "com.android.settings/.SubSettings", 
+                "-e", 
+                ":settings:show_fragment", 
+                fragmentName
             )
+            
+            if (!highlightKey.isNullOrEmpty()) {
+                cmd.add("-e")
+                cmd.add(":settings:fragment_args_key")
+                cmd.add(highlightKey)
+            }
+            
+            val process = Runtime.getRuntime().exec(cmd.toTypedArray())
             val exitCode = process.waitFor()
-            Log.d(TAG, "launchWirelessDebugging: exitCode=$exitCode")
+            Log.d(TAG, "launchSettingsFragment: exitCode=$exitCode")
             exitCode == 0
         } catch (e: Exception) {
-            Log.e(TAG, "launchWirelessDebugging failed", e)
+            Log.e(TAG, "launchSettingsFragment failed", e)
             false
         }
     }

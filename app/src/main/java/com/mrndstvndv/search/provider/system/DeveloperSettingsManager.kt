@@ -371,25 +371,41 @@ class DeveloperSettingsManager(private val context: Context) {
 
     /**
      * Attempts to launch Wireless Debugging settings via Root or Shizuku.
-     * @return true if the command was executed successfully, false otherwise.
      */
     fun launchWirelessDebugging(): Boolean {
+        return launchSettingsFragment(
+            "com.android.settings.development.WirelessDebuggingFragment",
+            null
+        )
+    }
+
+    /**
+     * Attempts to launch USB Debugging settings (Developer Options scrolled to key) via Root or Shizuku.
+     */
+    fun launchUsbDebugging(): Boolean {
+        return launchSettingsFragment(
+            "com.android.settings.development.DevelopmentSettingsDashboardFragment",
+            "enable_adb"
+        )
+    }
+
+    private fun launchSettingsFragment(fragmentName: String, highlightKey: String?): Boolean {
         val status = _permissionStatus.value
         
         return when (status.availableMethod) {
             PermissionMethod.ROOT -> {
                 try {
-                    // Try launching the fragment directly via SubSettings
+                    val cmd = StringBuilder("am start -n com.android.settings/.SubSettings -e :settings:show_fragment $fragmentName")
+                    if (!highlightKey.isNullOrEmpty()) {
+                        cmd.append(" -e :settings:fragment_args_key $highlightKey")
+                    }
+                    
                     val process = Runtime.getRuntime().exec(
-                        arrayOf(
-                            "su", 
-                            "-c", 
-                            "am start -n com.android.settings/.SubSettings -e :settings:show_fragment com.android.settings.development.WirelessDebuggingFragment"
-                        )
+                        arrayOf("su", "-c", cmd.toString())
                     )
                     process.waitFor() == 0
                 } catch (e: Exception) {
-                    Log.e(TAG, "launchWirelessDebugging via Root failed", e)
+                    Log.e(TAG, "launchSettingsFragment via Root failed", e)
                     false
                 }
             }
@@ -397,14 +413,14 @@ class DeveloperSettingsManager(private val context: Context) {
                 try {
                     val service = userService
                     if (service != null) {
-                        service.launchWirelessDebugging()
+                        service.launchSettingsFragment(fragmentName, highlightKey)
                     } else {
-                        Log.w(TAG, "launchWirelessDebugging: userService is null, binding...")
+                        Log.w(TAG, "launchSettingsFragment: userService is null, binding...")
                         bindUserService()
                         false
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "launchWirelessDebugging via Shizuku failed", e)
+                    Log.e(TAG, "launchSettingsFragment via Shizuku failed", e)
                     false
                 }
             }

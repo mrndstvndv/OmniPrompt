@@ -24,68 +24,108 @@ class SettingsProvider(
     override val id: String = "system-settings"
     override val displayName: String = "System Settings"
 
-    @Suppress("DEPRECATION")
-    private val settingsActions = listOf(
-        "Settings" to Settings.ACTION_SETTINGS,
-        "Accessibility" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
-        "Access Point Names" to Settings.ACTION_APN_SETTINGS,
-        "Developer options" to Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS,
-        "Apps" to Settings.ACTION_APPLICATION_SETTINGS,
-        "Battery Saver" to Settings.ACTION_BATTERY_SAVER_SETTINGS,
-        "Biometric Enrollment" to Settings.ACTION_BIOMETRIC_ENROLL,
-        "Bluetooth" to Settings.ACTION_BLUETOOTH_SETTINGS,
-        "Charging Control" to "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS",
-        "Captioning" to Settings.ACTION_CAPTIONING_SETTINGS,
-        "Cast" to Settings.ACTION_CAST_SETTINGS,
-        "Data Roaming" to Settings.ACTION_DATA_ROAMING_SETTINGS,
-        "Data Usage" to Settings.ACTION_DATA_USAGE_SETTINGS,
-        "Date & time" to Settings.ACTION_DATE_SETTINGS,
-        "About phone" to Settings.ACTION_DEVICE_INFO_SETTINGS,
-        "Display" to Settings.ACTION_DISPLAY_SETTINGS,
-        "Screen saver" to Settings.ACTION_DREAM_SETTINGS,
-        "Physical keyboard" to Settings.ACTION_HARD_KEYBOARD_SETTINGS,
-        "Default home app" to Settings.ACTION_HOME_SETTINGS,
-        "Battery optimization" to Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
-        "On-screen keyboard" to Settings.ACTION_INPUT_METHOD_SETTINGS,
-        "Input Method Subtype" to Settings.ACTION_INPUT_METHOD_SUBTYPE_SETTINGS,
-        "Storage" to Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
-        "Language" to Settings.ACTION_LOCALE_SETTINGS,
-        "Location" to Settings.ACTION_LOCATION_SOURCE_SETTINGS,
-        "Default apps" to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
-        "Display over other apps" to Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-        "Install unknown apps" to Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-        "Modify system settings" to Settings.ACTION_MANAGE_WRITE_SETTINGS,
-        "Memory card" to Settings.ACTION_MEMORY_CARD_SETTINGS,
-        "Network operators" to Settings.ACTION_NETWORK_OPERATOR_SETTINGS,
-        "Android Beam" to Settings.ACTION_NFCSHARING_SETTINGS,
-        "Tap & pay" to Settings.ACTION_NFC_PAYMENT_SETTINGS,
-        "NFC" to Settings.ACTION_NFC_SETTINGS,
-        "Night Light" to Settings.ACTION_NIGHT_DISPLAY_SETTINGS,
-        "Notification Assistant" to Settings.ACTION_NOTIFICATION_ASSISTANT_SETTINGS,
-        "Notification access" to Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS,
-        "Do Not Disturb access" to Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS,
-        "Printing" to Settings.ACTION_PRINT_SETTINGS,
-        "Privacy" to Settings.ACTION_PRIVACY_SETTINGS,
-        "Quick Access Wallet" to Settings.ACTION_QUICK_ACCESS_WALLET_SETTINGS,
-        "Quick Launch" to Settings.ACTION_QUICK_LAUNCH_SETTINGS,
-        "Autofill Service" to Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE,
-        "Search" to Settings.ACTION_SEARCH_SETTINGS,
-        "Security" to Settings.ACTION_SECURITY_SETTINGS,
-        "Sound & vibration" to Settings.ACTION_SOUND_SETTINGS,
-        "Storage Volume Access" to Settings.ACTION_STORAGE_VOLUME_ACCESS_SETTINGS,
-        "Accounts" to Settings.ACTION_SYNC_SETTINGS,
-        "Usage access" to Settings.ACTION_USAGE_ACCESS_SETTINGS,
-        "Personal dictionary" to Settings.ACTION_USER_DICTIONARY_SETTINGS,
-        "Voice input" to Settings.ACTION_VOICE_INPUT_SETTINGS,
-        "VPN" to Settings.ACTION_VPN_SETTINGS,
-        "VR helper services" to Settings.ACTION_VR_LISTENER_SETTINGS,
-        "WebView implementation" to Settings.ACTION_WEBVIEW_SETTINGS,
-        "Wi-Fi IP Settings" to Settings.ACTION_WIFI_IP_SETTINGS,
-        "Wi-Fi" to Settings.ACTION_WIFI_SETTINGS,
-        "Wireless Debugging" to "android.settings.ADB_WIFI_SETTINGS",
-        "Network & internet" to Settings.ACTION_WIRELESS_SETTINGS,
-        "Do Not Disturb" to Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS
+    private data class SettingsActionItem(
+        val title: String,
+        val action: String,
+        val requiresElevatedPermission: Boolean = false,
+        val onLaunch: (suspend () -> Unit)? = null
     )
+
+    private val settingsActions by lazy {
+        listOf(
+            SettingsActionItem("Settings", Settings.ACTION_SETTINGS),
+            SettingsActionItem("Accessibility", Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            SettingsActionItem("Access Point Names", Settings.ACTION_APN_SETTINGS),
+            SettingsActionItem("Developer options", Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+            SettingsActionItem("Apps", Settings.ACTION_APPLICATION_SETTINGS),
+            SettingsActionItem("Battery Saver", Settings.ACTION_BATTERY_SAVER_SETTINGS),
+            SettingsActionItem("Biometric Enrollment", Settings.ACTION_BIOMETRIC_ENROLL),
+            SettingsActionItem("Bluetooth", Settings.ACTION_BLUETOOTH_SETTINGS),
+            SettingsActionItem("Charging Control", "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS", onLaunch = {
+                val intent = Intent("org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS")
+                if (intent.resolveActivity(activity.packageManager) != null) {
+                    activity.startActivity(intent)
+                } else {
+                    val fallback = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                    if (fallback.resolveActivity(activity.packageManager) != null) {
+                        activity.startActivity(fallback)
+                    }
+                }
+            }),
+            SettingsActionItem("Captioning", Settings.ACTION_CAPTIONING_SETTINGS),
+            SettingsActionItem("Cast", Settings.ACTION_CAST_SETTINGS),
+            SettingsActionItem("Data Roaming", Settings.ACTION_DATA_ROAMING_SETTINGS),
+            SettingsActionItem("Data Usage", Settings.ACTION_DATA_USAGE_SETTINGS),
+            SettingsActionItem("Date & time", Settings.ACTION_DATE_SETTINGS),
+            SettingsActionItem("About phone", Settings.ACTION_DEVICE_INFO_SETTINGS),
+            SettingsActionItem("Display", Settings.ACTION_DISPLAY_SETTINGS),
+            SettingsActionItem("Screen saver", Settings.ACTION_DREAM_SETTINGS),
+            SettingsActionItem("Physical keyboard", Settings.ACTION_HARD_KEYBOARD_SETTINGS),
+            SettingsActionItem("Default home app", Settings.ACTION_HOME_SETTINGS),
+            SettingsActionItem("Battery optimization", Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            SettingsActionItem("On-screen keyboard", Settings.ACTION_INPUT_METHOD_SETTINGS),
+            SettingsActionItem("Input Method Subtype", Settings.ACTION_INPUT_METHOD_SUBTYPE_SETTINGS),
+            SettingsActionItem("Storage", Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
+            SettingsActionItem("Language", Settings.ACTION_LOCALE_SETTINGS),
+            SettingsActionItem("Location", Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+            SettingsActionItem("Default apps", Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+            SettingsActionItem("Display over other apps", Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
+            SettingsActionItem("Install unknown apps", Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES),
+            SettingsActionItem("Modify system settings", Settings.ACTION_MANAGE_WRITE_SETTINGS),
+            SettingsActionItem("Memory card", Settings.ACTION_MEMORY_CARD_SETTINGS),
+            SettingsActionItem("Network operators", Settings.ACTION_NETWORK_OPERATOR_SETTINGS),
+            SettingsActionItem("Android Beam", Settings.ACTION_NFCSHARING_SETTINGS),
+            SettingsActionItem("Tap & pay", Settings.ACTION_NFC_PAYMENT_SETTINGS),
+            SettingsActionItem("NFC", Settings.ACTION_NFC_SETTINGS),
+            SettingsActionItem("Night Light", Settings.ACTION_NIGHT_DISPLAY_SETTINGS),
+            SettingsActionItem("Notification Assistant", Settings.ACTION_NOTIFICATION_ASSISTANT_SETTINGS),
+            SettingsActionItem("Notification access", Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+            SettingsActionItem("Do Not Disturb access", Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
+            SettingsActionItem("Printing", Settings.ACTION_PRINT_SETTINGS),
+            SettingsActionItem("Privacy", Settings.ACTION_PRIVACY_SETTINGS),
+            SettingsActionItem("Quick Access Wallet", Settings.ACTION_QUICK_ACCESS_WALLET_SETTINGS),
+            SettingsActionItem("Quick Launch", Settings.ACTION_QUICK_LAUNCH_SETTINGS),
+            SettingsActionItem("Autofill Service", Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE),
+            SettingsActionItem("Search", Settings.ACTION_SEARCH_SETTINGS),
+            SettingsActionItem("Security", Settings.ACTION_SECURITY_SETTINGS),
+            SettingsActionItem("Sound & vibration", Settings.ACTION_SOUND_SETTINGS),
+            SettingsActionItem("Accounts", Settings.ACTION_SYNC_SETTINGS),
+            SettingsActionItem("Usage access", Settings.ACTION_USAGE_ACCESS_SETTINGS),
+            SettingsActionItem("Personal dictionary", Settings.ACTION_USER_DICTIONARY_SETTINGS),
+            SettingsActionItem("Voice input", Settings.ACTION_VOICE_INPUT_SETTINGS),
+            SettingsActionItem("VPN", Settings.ACTION_VPN_SETTINGS),
+            SettingsActionItem("VR helper services", Settings.ACTION_VR_LISTENER_SETTINGS),
+            SettingsActionItem("WebView implementation", Settings.ACTION_WEBVIEW_SETTINGS),
+            SettingsActionItem("Wi-Fi IP Settings", Settings.ACTION_WIFI_IP_SETTINGS),
+            SettingsActionItem("Wi-Fi", Settings.ACTION_WIFI_SETTINGS),
+            SettingsActionItem("Network & internet", Settings.ACTION_WIRELESS_SETTINGS),
+            SettingsActionItem("Do Not Disturb", Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS),
+
+            // Privileged Actions
+            SettingsActionItem(
+                "Wireless Debugging", 
+                "android.settings.ADB_WIFI_SETTINGS", 
+                requiresElevatedPermission = true,
+                onLaunch = {
+                    val launched = withContext(Dispatchers.IO) {
+                        developerSettingsManager.launchWirelessDebugging()
+                    }
+                    if (!launched) openDevOptionsFallback()
+                }
+            ),
+            SettingsActionItem(
+                "USB Debugging", 
+                "action.custom.USB_DEBUGGING", 
+                requiresElevatedPermission = true,
+                onLaunch = {
+                    val launched = withContext(Dispatchers.IO) {
+                        developerSettingsManager.launchUsbDebugging()
+                    }
+                    if (!launched) openDevOptionsFallback()
+                }
+            )
+        )
+    }
 
     // Keywords that trigger the developer toggle result
     private val developerToggleKeywords = listOf(
@@ -127,50 +167,34 @@ class SettingsProvider(
 
         // Add regular settings results with fuzzy matching
         results.addAll(
-            settingsActions.mapNotNull { (title, action) ->
-                if (action == "android.settings.ADB_WIFI_SETTINGS" && currentPermissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.NONE) {
+            settingsActions.mapNotNull { item ->
+                if (item.requiresElevatedPermission && currentPermissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.NONE) {
                     null // Skip this action if neither root nor shizuku is available
                 } else {
-                    val matchResult = FuzzyMatcher.match(normalized, title)
+                    val matchResult = FuzzyMatcher.match(normalized, item.title)
                     if (matchResult != null) {
-                        Triple(title, action, matchResult)
+                        Pair(item, matchResult)
                     } else {
                         null
                     }
                 }
-            }.sortedByDescending { it.third.score }
-            .map { (title, action, matchResult) ->
+            }.sortedByDescending { it.second.score }
+            .map { (item, matchResult) ->
                 ProviderResult(
-                    id = "$id:$action",
-                    title = title,
+                    id = "$id:${item.action}",
+                    title = item.title,
                     subtitle = "System Settings",
                     defaultVectorIcon = Icons.Outlined.Settings,
                     providerId = id,
                     onSelect = {
                         withContext(Dispatchers.Main) {
                             try {
-                                val intent = Intent(action)
-                                if (intent.resolveActivity(activity.packageManager) != null) {
-                                    activity.startActivity(intent)
+                                if (item.onLaunch != null) {
+                                    item.onLaunch.invoke()
                                 } else {
-                                    // Fallback for Charging Control to Battery Saver settings
-                                    if (action == "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS") {
-                                        val fallbackIntent = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
-                                        if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
-                                            activity.startActivity(fallbackIntent)
-                                        }
-                                    } else if (action == "android.settings.ADB_WIFI_SETTINGS") {
-                                        val launched = withContext(Dispatchers.IO) {
-                                            developerSettingsManager.launchWirelessDebugging()
-                                        }
-                                        
-                                        if (!launched) {
-                                            val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                                            if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
-                                                Toast.makeText(activity, "Opening Developer Options", Toast.LENGTH_SHORT).show()
-                                                activity.startActivity(fallbackIntent)
-                                            }
-                                        }
+                                    val intent = Intent(item.action)
+                                    if (intent.resolveActivity(activity.packageManager) != null) {
+                                        activity.startActivity(intent)
                                     }
                                 }
                             } catch (e: Exception) {
@@ -185,6 +209,14 @@ class SettingsProvider(
         )
 
         return results
+    }
+
+    private fun openDevOptionsFallback() {
+        val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+        if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
+            Toast.makeText(activity, "Opening Developer Options", Toast.LENGTH_SHORT).show()
+            activity.startActivity(fallbackIntent)
+        }
     }
 
     private fun buildDeveloperToggleResult(isCurrentlyEnabled: Boolean, isReady: Boolean, query: String): ProviderResult? {
