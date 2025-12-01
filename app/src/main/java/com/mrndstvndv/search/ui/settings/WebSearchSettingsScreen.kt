@@ -52,7 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.settings.Quicklink
@@ -438,6 +440,7 @@ private fun QuicklinkAddDialog(
     var title by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var fetchErrorDialog by remember { mutableStateOf<String?>(null) }
     var isFetchingFavicon by remember { mutableStateOf(false) }
     var fetchedFavicon by remember { mutableStateOf<Bitmap?>(null) }
     var quicklinkId by remember { mutableStateOf(UUID.randomUUID().toString()) }
@@ -470,18 +473,20 @@ private fun QuicklinkAddDialog(
         errorMessage = null
 
         scope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 FaviconLoader.fetchFavicon(normalizedUrl, context)
             }
 
             if (isFetchingFavicon) { // Check if not cancelled
-                if (bitmap != null) {
+                result.onSuccess { bitmap ->
                     val saved = withContext(Dispatchers.IO) {
                         FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
                     }
                     if (saved) {
                         fetchedFavicon = bitmap
                     }
+                }.onFailure { error ->
+                    fetchErrorDialog = error.message ?: "Unknown error"
                 }
                 isFetchingFavicon = false
             }
@@ -503,6 +508,13 @@ private fun QuicklinkAddDialog(
             hasFavicon = fetchedFavicon != null
         )
         onAdd(quicklink)
+    }
+
+    if (fetchErrorDialog != null) {
+        ErrorDialog(
+            error = fetchErrorDialog!!,
+            onDismiss = { fetchErrorDialog = null }
+        )
     }
 
     ScrimDialog(onDismiss = onDismiss) {
@@ -660,6 +672,7 @@ private fun QuicklinkEditDialog(
     var title by remember { mutableStateOf(quicklink.title) }
     var url by remember { mutableStateOf(quicklink.url) }
     var isFetchingFavicon by remember { mutableStateOf(false) }
+    var fetchErrorDialog by remember { mutableStateOf<String?>(null) }
     var currentHasFavicon by remember { mutableStateOf(quicklink.hasFavicon) }
     var fetchedFavicon by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
@@ -704,12 +717,12 @@ private fun QuicklinkEditDialog(
                 FaviconLoader.deleteFavicon(context, quicklink.id)
             }
 
-            val bitmap = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 FaviconLoader.fetchFavicon(normalizedUrl, context)
             }
 
             if (isFetchingFavicon) { // check if not cancelled
-                if (bitmap != null) {
+                result.onSuccess { bitmap ->
                     val saved = withContext(Dispatchers.IO) {
                         FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
                     }
@@ -720,9 +733,10 @@ private fun QuicklinkEditDialog(
                         fetchedFavicon = null
                         currentHasFavicon = false
                     }
-                } else {
+                }.onFailure { error ->
                     fetchedFavicon = null
                     currentHasFavicon = false
+                    fetchErrorDialog = error.message ?: "Unknown error"
                 }
                 isFetchingFavicon = false
             }
@@ -742,6 +756,13 @@ private fun QuicklinkEditDialog(
             url = normalizedUrl,
             hasFavicon = currentHasFavicon
         ))
+    }
+
+    if (fetchErrorDialog != null) {
+        ErrorDialog(
+            error = fetchErrorDialog!!,
+            onDismiss = { fetchErrorDialog = null }
+        )
     }
 
     ScrimDialog(onDismiss = onDismiss) {

@@ -25,10 +25,10 @@ object FaviconLoader {
      * Fetches a favicon for the given URL using Google's favicon service.
      * @param url The website URL to fetch favicon for
      * @param context Android context
-     * @return Bitmap if successful, null otherwise
+     * @return Result containing Bitmap if successful, or exception if failed
      */
-    suspend fun fetchFavicon(url: String, context: Context): Bitmap? = withContext(Dispatchers.IO) {
-        val domain = extractDomain(url) ?: return@withContext null
+    suspend fun fetchFavicon(url: String, context: Context): Result<Bitmap> = withContext(Dispatchers.IO) {
+        val domain = extractDomain(url) ?: return@withContext Result.failure(IllegalArgumentException("Could not extract domain from URL"))
         val faviconUrl = "https://www.google.com/s2/favicons?domain=$domain&sz=$FAVICON_SIZE"
 
         var connection: HttpURLConnection? = null
@@ -42,14 +42,19 @@ object FaviconLoader {
 
             val responseCode = connection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext null
+                return@withContext Result.failure(Exception("HTTP $responseCode"))
             }
 
             connection.inputStream.use { inputStream ->
-                BitmapFactory.decodeStream(inputStream)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                if (bitmap != null) {
+                    Result.success(bitmap)
+                } else {
+                    Result.failure(Exception("Failed to decode bitmap"))
+                }
             }
         } catch (e: Exception) {
-            null
+            Result.failure(e)
         } finally {
             connection?.disconnect()
         }
