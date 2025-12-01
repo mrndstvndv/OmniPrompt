@@ -42,7 +42,7 @@ object FaviconLoader {
 
             val responseCode = connection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext Result.failure(Exception("HTTP $responseCode"))
+                return@withContext Result.failure(Exception("HTTP $responseCode from $faviconUrl"))
             }
 
             connection.inputStream.use { inputStream ->
@@ -50,11 +50,11 @@ object FaviconLoader {
                 if (bitmap != null) {
                     Result.success(bitmap)
                 } else {
-                    Result.failure(Exception("Failed to decode bitmap"))
+                    Result.failure(Exception("Failed to decode bitmap from $faviconUrl"))
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception("Error fetching $faviconUrl: ${e.message}", e))
         } finally {
             connection?.disconnect()
         }
