@@ -11,6 +11,7 @@ sealed interface AliasTarget {
         private const val KEY_TYPE = "type"
         private const val TYPE_WEB_SEARCH = "web-search"
         private const val TYPE_APP_LAUNCH = "app-launch"
+        private const val TYPE_QUICKLINK = "quicklink"
 
         fun fromJson(json: JSONObject?): AliasTarget? {
             if (json == null) return null
@@ -18,6 +19,7 @@ sealed interface AliasTarget {
             return when (type) {
                 TYPE_WEB_SEARCH -> WebSearchAliasTarget.fromJson(json)
                 TYPE_APP_LAUNCH -> AppLaunchAliasTarget.fromJson(json)
+                TYPE_QUICKLINK -> QuicklinkAliasTarget.fromJson(json)
                 else -> null
             }
         }
@@ -115,6 +117,34 @@ data class AppLaunchAliasTarget(
             val packageName = json.optString("packageName").takeIf { it.isNotBlank() } ?: return null
             val label = json.optString("label").takeIf { it.isNotBlank() } ?: return null
             return AppLaunchAliasTarget(packageName, label)
+        }
+    }
+}
+
+data class QuicklinkAliasTarget(
+    val quicklinkId: String,
+    val title: String
+) : AliasTarget {
+    override val providerId: String = "web-search"
+    override val summary: String
+        get() = title
+
+    override fun toJson(): JSONObject {
+        return JSONObject().apply {
+            put("type", TYPE)
+            put("quicklinkId", quicklinkId)
+            put("title", title)
+        }
+    }
+
+    companion object {
+        private const val TYPE = "quicklink"
+
+        fun fromJson(json: JSONObject?): QuicklinkAliasTarget? {
+            if (json == null) return null
+            val quicklinkId = json.optString("quicklinkId").takeIf { it.isNotBlank() } ?: return null
+            val title = json.optString("title").takeIf { it.isNotBlank() } ?: return null
+            return QuicklinkAliasTarget(quicklinkId, title)
         }
     }
 }

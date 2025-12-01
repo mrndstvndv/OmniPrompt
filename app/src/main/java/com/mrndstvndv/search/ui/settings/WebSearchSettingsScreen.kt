@@ -1,5 +1,8 @@
 package com.mrndstvndv.search.ui.settings
 
+import android.graphics.Bitmap
+import android.util.Patterns
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,12 +18,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,16 +44,25 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSite
 import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.util.FaviconLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 @Composable
 fun WebSearchSettingsScreen(
@@ -56,13 +72,18 @@ fun WebSearchSettingsScreen(
 ) {
     var sites by remember { mutableStateOf(initialSettings.sites) }
     var defaultSiteId by remember { mutableStateOf(initialSettings.defaultSiteId) }
+    var quicklinks by remember { mutableStateOf(initialSettings.quicklinks) }
     var editingSite by remember { mutableStateOf<Pair<Int, WebSearchSite>?>(null) }
+    var editingQuicklink by remember { mutableStateOf<Pair<Int, Quicklink>?>(null) }
     var isAddDialogOpen by remember { mutableStateOf(false) }
+    var isAddQuicklinkDialogOpen by remember { mutableStateOf(false) }
     val placeholder = WebSearchSettings.QUERY_PLACEHOLDER
+    val context = LocalContext.current
 
     LaunchedEffect(initialSettings) {
         sites = initialSettings.sites
         defaultSiteId = initialSettings.defaultSiteId
+        quicklinks = initialSettings.quicklinks
     }
 
     val allTemplatesValid = sites.all { it.urlTemplate.contains(placeholder) }
@@ -72,7 +93,7 @@ fun WebSearchSettingsScreen(
             ?: sites.firstOrNull()?.id
             ?: ""
         if (resolvedDefault.isNotBlank() && allTemplatesValid) {
-            onSave(WebSearchSettings(resolvedDefault, sites))
+            onSave(WebSearchSettings(resolvedDefault, sites, quicklinks))
         }
     }
 
@@ -119,7 +140,27 @@ fun WebSearchSettingsScreen(
         return true
     }
 
-    // Edit dialog
+    fun addQuicklink(quicklink: Quicklink) {
+        quicklinks = quicklinks + quicklink
+        saveSettings()
+    }
+
+    fun updateQuicklink(index: Int, quicklink: Quicklink) {
+        val mutable = quicklinks.toMutableList()
+        mutable[index] = quicklink
+        quicklinks = mutable
+        saveSettings()
+    }
+
+    fun removeQuicklink(index: Int) {
+        val removed = quicklinks[index]
+        FaviconLoader.deleteFavicon(context, removed.id)
+        val mutable = quicklinks.toMutableList().also { it.removeAt(index) }
+        quicklinks = mutable
+        saveSettings()
+    }
+
+    // Edit site dialog
     editingSite?.let { (index, site) ->
         WebSearchSiteEditDialog(
             site = site,
@@ -136,7 +177,7 @@ fun WebSearchSettingsScreen(
         )
     }
 
-    // Add dialog
+    // Add site dialog
     if (isAddDialogOpen) {
         WebSearchSiteAddDialog(
             placeholder = placeholder,
@@ -145,6 +186,33 @@ fun WebSearchSettingsScreen(
                 if (addCustomSite(name, template, onError)) {
                     isAddDialogOpen = false
                 }
+            }
+        )
+    }
+
+    // Add quicklink dialog
+    if (isAddQuicklinkDialogOpen) {
+        QuicklinkAddDialog(
+            onDismiss = { isAddQuicklinkDialogOpen = false },
+            onAdd = { quicklink ->
+                addQuicklink(quicklink)
+                isAddQuicklinkDialogOpen = false
+            }
+        )
+    }
+
+    // Edit quicklink dialog
+    editingQuicklink?.let { (index, quicklink) ->
+        QuicklinkEditDialog(
+            quicklink = quicklink,
+            onDismiss = { editingQuicklink = null },
+            onSave = { updated ->
+                updateQuicklink(index, updated)
+                editingQuicklink = null
+            },
+            onRemove = {
+                removeQuicklink(index)
+                editingQuicklink = null
             }
         )
     }
@@ -165,6 +233,51 @@ fun WebSearchSettingsScreen(
                 WebSearchHeader(onBack = onBack)
             }
 
+            // Quicklinks section
+            item {
+                SettingsSection(
+                    title = "Quicklinks",
+                    subtitle = "Direct links to your favorite sites."
+                ) {
+                    SettingsCardGroup {
+                        if (quicklinks.isEmpty()) {
+                            Text(
+                                text = "No quicklinks yet. Add your favorite sites for quick access.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(20.dp)
+                            )
+                        } else {
+                            quicklinks.forEachIndexed { index, quicklink ->
+                                QuicklinkRow(
+                                    quicklink = quicklink,
+                                    onClick = { editingQuicklink = index to quicklink }
+                                )
+                                if (index < quicklinks.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        TextButton(
+                            onClick = { isAddQuicklinkDialogOpen = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(text = "Add Quicklink")
+                        }
+                    }
+                }
+            }
+
+            // Search Engines section
             item {
                 SettingsSection(
                     title = "Search Engines",
@@ -241,6 +354,426 @@ private fun WebSearchHeader(onBack: () -> Unit) {
                 contentDescription = "Back",
                 tint = MaterialTheme.colorScheme.onBackground
             )
+        }
+    }
+}
+
+@Composable
+private fun QuicklinkRow(
+    quicklink: Quicklink,
+    onClick: () -> Unit
+) {
+    var favicon by remember { mutableStateOf<Bitmap?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(quicklink.id, quicklink.hasFavicon) {
+        if (quicklink.hasFavicon) {
+            favicon = withContext(Dispatchers.IO) {
+                FaviconLoader.loadFavicon(context, quicklink.id)
+            }
+        } else {
+            favicon = null
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Favicon or fallback icon
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            if (favicon != null) {
+                Image(
+                    bitmap = favicon!!.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Link,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = quicklink.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = quicklink.displayUrl(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuicklinkAddDialog(
+    onDismiss: () -> Unit,
+    onAdd: (Quicklink) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isFetchingFavicon by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val isValidUrl = remember(url) {
+        val trimmed = url.trim()
+        trimmed.isNotBlank() && (
+            Patterns.WEB_URL.matcher(trimmed).matches() ||
+            Patterns.WEB_URL.matcher("https://$trimmed").matches()
+        )
+    }
+    val canSave = title.isNotBlank() && isValidUrl
+
+    fun normalizeUrl(input: String): String {
+        val trimmed = input.trim()
+        return when {
+            trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
+            else -> "https://$trimmed"
+        }
+    }
+
+    fun save() {
+        if (!canSave) return
+
+        val normalizedUrl = normalizeUrl(url)
+        val quicklinkId = UUID.randomUUID().toString()
+
+        isFetchingFavicon = true
+        errorMessage = null
+
+        scope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                FaviconLoader.fetchFavicon(normalizedUrl, context)
+            }
+
+            val hasFavicon = if (bitmap != null) {
+                withContext(Dispatchers.IO) {
+                    FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
+                }
+            } else {
+                false
+            }
+
+            isFetchingFavicon = false
+
+            val quicklink = Quicklink(
+                id = quicklinkId,
+                title = title.trim(),
+                url = normalizedUrl,
+                hasFavicon = hasFavicon
+            )
+            onAdd(quicklink)
+        }
+    }
+
+    fun skipAndSave() {
+        val normalizedUrl = normalizeUrl(url)
+        val quicklinkId = UUID.randomUUID().toString()
+        val quicklink = Quicklink(
+            id = quicklinkId,
+            title = title.trim(),
+            url = normalizedUrl,
+            hasFavicon = false
+        )
+        onAdd(quicklink)
+    }
+
+    // Cancelable loading dialog for favicon fetch
+    if (isFetchingFavicon) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismiss by tapping outside */ },
+            title = { Text("Fetching Favicon") },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Text("Loading favicon...")
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    isFetchingFavicon = false
+                    skipAndSave()
+                }) {
+                    Text("Skip")
+                }
+            }
+        )
+        return
+    }
+
+    ScrimDialog(onDismiss = onDismiss) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = "Add Quicklink",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Title") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("URL") },
+                placeholder = { Text("example.com") },
+                singleLine = true,
+                isError = url.isNotBlank() && !isValidUrl,
+                supportingText = if (url.isNotBlank() && !isValidUrl) {
+                    { Text("Please enter a valid URL") }
+                } else null,
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
+                )
+            )
+
+            if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = { save() },
+                    enabled = canSave
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuicklinkEditDialog(
+    quicklink: Quicklink,
+    onDismiss: () -> Unit,
+    onSave: (Quicklink) -> Unit,
+    onRemove: () -> Unit
+) {
+    var title by remember { mutableStateOf(quicklink.title) }
+    var url by remember { mutableStateOf(quicklink.url) }
+    var isFetchingFavicon by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val isValidUrl = remember(url) {
+        val trimmed = url.trim()
+        trimmed.isNotBlank() && (
+            Patterns.WEB_URL.matcher(trimmed).matches() ||
+            Patterns.WEB_URL.matcher("https://$trimmed").matches()
+        )
+    }
+    val canSave = title.isNotBlank() && isValidUrl
+
+    fun normalizeUrl(input: String): String {
+        val trimmed = input.trim()
+        return when {
+            trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
+            else -> "https://$trimmed"
+        }
+    }
+
+    fun save() {
+        if (!canSave) return
+
+        val normalizedUrl = normalizeUrl(url)
+        val urlChanged = normalizedUrl != quicklink.url
+
+        // If URL changed, refetch favicon
+        if (urlChanged) {
+            isFetchingFavicon = true
+
+            scope.launch {
+                // Delete old favicon
+                withContext(Dispatchers.IO) {
+                    FaviconLoader.deleteFavicon(context, quicklink.id)
+                }
+
+                val bitmap = withContext(Dispatchers.IO) {
+                    FaviconLoader.fetchFavicon(normalizedUrl, context)
+                }
+
+                val newHasFavicon = if (bitmap != null) {
+                    withContext(Dispatchers.IO) {
+                        FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
+                    }
+                } else {
+                    false
+                }
+
+                isFetchingFavicon = false
+
+                onSave(quicklink.copy(
+                    title = title.trim(),
+                    url = normalizedUrl,
+                    hasFavicon = newHasFavicon
+                ))
+            }
+        } else {
+            onSave(quicklink.copy(
+                title = title.trim(),
+                url = normalizedUrl
+            ))
+        }
+    }
+
+    fun skipAndSave() {
+        val normalizedUrl = normalizeUrl(url)
+        onSave(quicklink.copy(
+            title = title.trim(),
+            url = normalizedUrl,
+            hasFavicon = false
+        ))
+    }
+
+    // Cancelable loading dialog for favicon fetch
+    if (isFetchingFavicon) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismiss by tapping outside */ },
+            title = { Text("Fetching Favicon") },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Text("Loading favicon...")
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = {
+                    isFetchingFavicon = false
+                    skipAndSave()
+                }) {
+                    Text("Skip")
+                }
+            }
+        )
+        return
+    }
+
+    ScrimDialog(onDismiss = onDismiss) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = "Edit Quicklink",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Title") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
+                )
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text("URL") },
+                singleLine = true,
+                isError = url.isNotBlank() && !isValidUrl,
+                supportingText = if (url.isNotBlank() && !isValidUrl) {
+                    { Text("Please enter a valid URL") }
+                } else null,
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
+                )
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onRemove) {
+                    Text(
+                        text = "Remove",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { save() },
+                        enabled = canSave
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
         }
     }
 }

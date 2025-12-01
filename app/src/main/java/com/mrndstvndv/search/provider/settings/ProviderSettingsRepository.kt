@@ -379,7 +379,8 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
 
 data class WebSearchSettings(
     val defaultSiteId: String,
-    val sites: List<WebSearchSite>
+    val sites: List<WebSearchSite>,
+    val quicklinks: List<Quicklink> = emptyList()
 ) {
     companion object {
         private val DEFAULT_SITES = listOf(
@@ -424,7 +425,8 @@ data class WebSearchSettings(
         fun default(): WebSearchSettings {
             return WebSearchSettings(
                 defaultSiteId = DEFAULT_SITES.first().id,
-                sites = DEFAULT_SITES
+                sites = DEFAULT_SITES,
+                quicklinks = emptyList()
             )
         }
 
@@ -438,7 +440,15 @@ data class WebSearchSettings(
             if (sites.isEmpty()) return null
             val candidate = json.optString("defaultSiteId", sites.first().id)
             val defaultId = sites.firstOrNull { it.id == candidate }?.id ?: sites.first().id
-            return WebSearchSettings(defaultSiteId = defaultId, sites = sites)
+
+            // Parse quicklinks
+            val quicklinksArray = json.optJSONArray("quicklinks") ?: JSONArray()
+            val quicklinks = mutableListOf<Quicklink>()
+            for (i in 0 until quicklinksArray.length()) {
+                Quicklink.fromJson(quicklinksArray.optJSONObject(i))?.let { quicklinks.add(it) }
+            }
+
+            return WebSearchSettings(defaultSiteId = defaultId, sites = sites, quicklinks = quicklinks)
         }
     }
 
@@ -449,9 +459,15 @@ data class WebSearchSettings(
     fun toJson(): JSONObject {
         val root = JSONObject()
         root.put("defaultSiteId", defaultSiteId)
-        val array = JSONArray()
-        sites.forEach { array.put(it.toJson()) }
-        root.put("sites", array)
+
+        val sitesArray = JSONArray()
+        sites.forEach { sitesArray.put(it.toJson()) }
+        root.put("sites", sitesArray)
+
+        val quicklinksArray = JSONArray()
+        quicklinks.forEach { quicklinksArray.put(it.toJson()) }
+        root.put("quicklinks", quicklinksArray)
+
         return root
     }
 
@@ -494,6 +510,55 @@ data class WebSearchSite(
             val name = json.opt("displayName") as? String ?: return null
             val template = json.opt("urlTemplate") as? String ?: return null
             return WebSearchSite(id = id, displayName = name, urlTemplate = template)
+        }
+    }
+}
+
+data class Quicklink(
+    val id: String,
+    val title: String,
+    val url: String,
+    val hasFavicon: Boolean = false
+) {
+    /**
+     * Returns the URL without the protocol for display.
+     * Example: "https://github.com/user/repo" -> "github.com/user/repo"
+     */
+    fun displayUrl(): String {
+        return url
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .removeSuffix("/")
+    }
+
+    /**
+     * Extracts the domain from the URL for matching.
+     * Example: "https://github.com/user/repo" -> "github.com"
+     */
+    fun domain(): String {
+        val withoutProtocol = url
+            .removePrefix("https://")
+            .removePrefix("http://")
+        return withoutProtocol.substringBefore("/").substringBefore("?")
+    }
+
+    fun toJson(): JSONObject {
+        return JSONObject().apply {
+            put("id", id)
+            put("title", title)
+            put("url", url)
+            put("hasFavicon", hasFavicon)
+        }
+    }
+
+    companion object {
+        fun fromJson(json: JSONObject?): Quicklink? {
+            if (json == null) return null
+            val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
+            val title = json.optString("title").takeIf { it.isNotBlank() } ?: return null
+            val url = json.optString("url").takeIf { it.isNotBlank() } ?: return null
+            val hasFavicon = json.optBoolean("hasFavicon", false)
+            return Quicklink(id = id, title = title, url = url, hasFavicon = hasFavicon)
         }
     }
 }
