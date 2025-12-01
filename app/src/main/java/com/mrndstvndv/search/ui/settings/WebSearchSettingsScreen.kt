@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -438,7 +439,6 @@ private fun QuicklinkAddDialog(
     var url by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFetchingFavicon by remember { mutableStateOf(false) }
-    var isSaving by remember { mutableStateOf(false) }
     var fetchedFavicon by remember { mutableStateOf<Bitmap?>(null) }
     var quicklinkId by remember { mutableStateOf(UUID.randomUUID().toString()) }
     val context = LocalContext.current
@@ -474,16 +474,17 @@ private fun QuicklinkAddDialog(
                 FaviconLoader.fetchFavicon(normalizedUrl, context)
             }
 
-            if (bitmap != null) {
-                val saved = withContext(Dispatchers.IO) {
-                    FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
+            if (isFetchingFavicon) { // Check if not cancelled
+                if (bitmap != null) {
+                    val saved = withContext(Dispatchers.IO) {
+                        FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
+                    }
+                    if (saved) {
+                        fetchedFavicon = bitmap
+                    }
                 }
-                if (saved) {
-                    fetchedFavicon = bitmap
-                }
+                isFetchingFavicon = false
             }
-
-            isFetchingFavicon = false
         }
     }
 
@@ -495,94 +496,13 @@ private fun QuicklinkAddDialog(
         if (!canSave) return
 
         val normalizedUrl = normalizeUrl(url)
-
-        // If favicon not yet fetched, fetch it first
-        if (fetchedFavicon == null) {
-            isSaving = true
-            isFetchingFavicon = true
-            errorMessage = null
-
-            scope.launch {
-                val bitmap = withContext(Dispatchers.IO) {
-                    FaviconLoader.fetchFavicon(normalizedUrl, context)
-                }
-
-                val hasFavicon = if (bitmap != null) {
-                    withContext(Dispatchers.IO) {
-                        FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
-                    }
-                } else {
-                    false
-                }
-
-                isFetchingFavicon = false
-                isSaving = false
-
-                val quicklink = Quicklink(
-                    id = quicklinkId,
-                    title = title.trim(),
-                    url = normalizedUrl,
-                    hasFavicon = hasFavicon
-                )
-                onAdd(quicklink)
-            }
-        } else {
-            // Favicon already fetched
-            val quicklink = Quicklink(
-                id = quicklinkId,
-                title = title.trim(),
-                url = normalizedUrl,
-                hasFavicon = true
-            )
-            onAdd(quicklink)
-        }
-    }
-
-    fun skipAndSave() {
-        val normalizedUrl = normalizeUrl(url)
-        // Delete any previously fetched favicon
-        FaviconLoader.deleteFavicon(context, quicklinkId)
         val quicklink = Quicklink(
             id = quicklinkId,
             title = title.trim(),
             url = normalizedUrl,
-            hasFavicon = false
+            hasFavicon = fetchedFavicon != null
         )
         onAdd(quicklink)
-    }
-
-    // Cancelable loading dialog for favicon fetch
-    if (isFetchingFavicon) {
-        AlertDialog(
-            onDismissRequest = { /* Prevent dismiss by tapping outside */ },
-            title = { Text("Fetching Favicon") },
-            text = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    Text("Loading favicon...")
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = {
-                    if (isSaving) {
-                        // If we were saving, skip and save without favicon
-                        isFetchingFavicon = false
-                        isSaving = false
-                        skipAndSave()
-                    } else {
-                        // Just cancel the fetch preview
-                        cancelFaviconFetch()
-                    }
-                }) {
-                    Text(if (isSaving) "Skip" else "Cancel")
-                }
-            }
-        )
-        return
     }
 
     ScrimDialog(onDismiss = onDismiss) {
@@ -608,7 +528,7 @@ private fun QuicklinkAddDialog(
 
             TextField(
                 value = url,
-                onValueChange = { 
+                onValueChange = {
                     url = it
                     // Reset favicon if URL changes
                     if (fetchedFavicon != null) {
@@ -676,11 +596,26 @@ private fun QuicklinkAddDialog(
                     )
                 }
 
-                TextButton(
-                    onClick = { fetchFavicon() },
-                    enabled = canFetchFavicon
-                ) {
-                    Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
+                if (isFetchingFavicon) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                        IconButton(onClick = { cancelFaviconFetch() }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Cancel"
+                            )
+                        }
+                    }
+                } else {
+                    TextButton(
+                        onClick = { fetchFavicon() },
+                        enabled = canFetchFavicon
+                    ) {
+                        Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
+                    }
                 }
             }
 
@@ -725,7 +660,6 @@ private fun QuicklinkEditDialog(
     var title by remember { mutableStateOf(quicklink.title) }
     var url by remember { mutableStateOf(quicklink.url) }
     var isFetchingFavicon by remember { mutableStateOf(false) }
-    var isSaving by remember { mutableStateOf(false) }
     var currentHasFavicon by remember { mutableStateOf(quicklink.hasFavicon) }
     var fetchedFavicon by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
@@ -774,20 +708,24 @@ private fun QuicklinkEditDialog(
                 FaviconLoader.fetchFavicon(normalizedUrl, context)
             }
 
-            if (bitmap != null) {
-                val saved = withContext(Dispatchers.IO) {
-                    FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
+            if (isFetchingFavicon) { // check if not cancelled
+                if (bitmap != null) {
+                    val saved = withContext(Dispatchers.IO) {
+                        FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
+                    }
+                    if (saved) {
+                        fetchedFavicon = bitmap
+                        currentHasFavicon = true
+                    } else {
+                        fetchedFavicon = null
+                        currentHasFavicon = false
+                    }
+                } else {
+                    fetchedFavicon = null
+                    currentHasFavicon = false
                 }
-                if (saved) {
-                    fetchedFavicon = bitmap
-                    currentHasFavicon = true
-                }
-            } else {
-                fetchedFavicon = null
-                currentHasFavicon = false
+                isFetchingFavicon = false
             }
-
-            isFetchingFavicon = false
         }
     }
 
@@ -799,92 +737,11 @@ private fun QuicklinkEditDialog(
         if (!canSave) return
 
         val normalizedUrl = normalizeUrl(url)
-        val urlChanged = normalizedUrl != quicklink.url
-
-        // If URL changed and no favicon fetched yet, fetch it
-        if (urlChanged && fetchedFavicon == null) {
-            isSaving = true
-            isFetchingFavicon = true
-
-            scope.launch {
-                // Delete old favicon
-                withContext(Dispatchers.IO) {
-                    FaviconLoader.deleteFavicon(context, quicklink.id)
-                }
-
-                val bitmap = withContext(Dispatchers.IO) {
-                    FaviconLoader.fetchFavicon(normalizedUrl, context)
-                }
-
-                val newHasFavicon = if (bitmap != null) {
-                    withContext(Dispatchers.IO) {
-                        FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
-                    }
-                } else {
-                    false
-                }
-
-                isFetchingFavicon = false
-                isSaving = false
-
-                onSave(quicklink.copy(
-                    title = title.trim(),
-                    url = normalizedUrl,
-                    hasFavicon = newHasFavicon
-                ))
-            }
-        } else {
-            onSave(quicklink.copy(
-                title = title.trim(),
-                url = normalizedUrl,
-                hasFavicon = currentHasFavicon
-            ))
-        }
-    }
-
-    fun skipAndSave() {
-        val normalizedUrl = normalizeUrl(url)
-        // Delete favicon if URL changed
-        if (normalizedUrl != quicklink.url) {
-            FaviconLoader.deleteFavicon(context, quicklink.id)
-        }
         onSave(quicklink.copy(
             title = title.trim(),
             url = normalizedUrl,
-            hasFavicon = false
+            hasFavicon = currentHasFavicon
         ))
-    }
-
-    // Cancelable loading dialog for favicon fetch
-    if (isFetchingFavicon) {
-        AlertDialog(
-            onDismissRequest = { /* Prevent dismiss by tapping outside */ },
-            title = { Text("Fetching Favicon") },
-            text = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    Text("Loading favicon...")
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = {
-                    if (isSaving) {
-                        isFetchingFavicon = false
-                        isSaving = false
-                        skipAndSave()
-                    } else {
-                        cancelFaviconFetch()
-                    }
-                }) {
-                    Text(if (isSaving) "Skip" else "Cancel")
-                }
-            }
-        )
-        return
     }
 
     ScrimDialog(onDismiss = onDismiss) {
@@ -977,11 +834,26 @@ private fun QuicklinkEditDialog(
                     )
                 }
 
-                TextButton(
-                    onClick = { fetchFavicon() },
-                    enabled = canFetchFavicon
-                ) {
-                    Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
+                if (isFetchingFavicon) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                        IconButton(onClick = { cancelFaviconFetch() }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Cancel"
+                            )
+                        }
+                    }
+                } else {
+                    TextButton(
+                        onClick = { fetchFavicon() },
+                        enabled = canFetchFavicon
+                    ) {
+                        Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
+                    }
                 }
             }
 
