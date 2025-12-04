@@ -2,6 +2,8 @@ package com.mrndstvndv.search.provider
 
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 interface Provider {
 
@@ -10,6 +12,13 @@ interface Provider {
 
     /** Human readable name shown in settings or logs. */
     val displayName: String
+
+    /** 
+     * Optional flow that emits when results should be refreshed.
+     * Providers can emit to this flow to signal that the UI should re-query.
+     */
+    val refreshSignal: SharedFlow<Unit>
+        get() = MutableSharedFlow() // Default: never emits
 
     /** Optional initialization hook for heavy setup. */
     fun initialize() {}

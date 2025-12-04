@@ -75,6 +75,7 @@ import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
@@ -167,6 +168,13 @@ class MainActivity : ComponentActivity() {
             val providerResults = remember { mutableStateListOf<ProviderResult>() }
             var shouldShowResults by remember { mutableStateOf(false) }
             var pendingQueryJob by remember { mutableStateOf<Job?>(null) }
+            var refreshTrigger by remember { mutableStateOf(0) }
+
+            // Listen for provider refresh signals
+            LaunchedEffect(providers) {
+                merge(*providers.map { it.refreshSignal }.toTypedArray())
+                    .collect { refreshTrigger++ }
+            }
 
             var aliasDialogCandidate by remember { mutableStateOf<AliasCreationCandidate?>(null) }
             var aliasDialogValue by remember { mutableStateOf("") }
@@ -208,7 +216,7 @@ class MainActivity : ComponentActivity() {
                 return false
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings) {
+            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger) {
                 // Cancel previous query job to debounce typing
                 pendingQueryJob?.cancel()
                 

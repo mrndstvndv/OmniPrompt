@@ -13,6 +13,8 @@ import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 
 class SettingsProvider(
@@ -23,6 +25,9 @@ class SettingsProvider(
 
     override val id: String = "system-settings"
     override val displayName: String = "System Settings"
+
+    private val _refreshSignal = MutableSharedFlow<Unit>()
+    override val refreshSignal: SharedFlow<Unit> = _refreshSignal
 
     private data class SettingsActionItem(
         val title: String,
@@ -249,13 +254,15 @@ class SettingsProvider(
                             val newState = !isCurrentlyEnabled
                             val success = developerSettingsManager.setDeveloperSettingsEnabled(newState)
                             withContext(Dispatchers.Main) {
-                                if (success) {
-                                    val message = if (newState) "Developer options enabled" else "Developer options disabled"
-                                    Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
-                                    activity.finish()
+                                val message = if (success) {
+                                    if (newState) "Developer options enabled" else "Developer options disabled"
                                 } else {
-                                    Toast.makeText(activity, "Failed to toggle developer options", Toast.LENGTH_SHORT).show()
+                                    "Failed to toggle developer options"
                                 }
+                                Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+                            }
+                            if (success) {
+                                _refreshSignal.emit(Unit)
                             }
                         }
                     }
