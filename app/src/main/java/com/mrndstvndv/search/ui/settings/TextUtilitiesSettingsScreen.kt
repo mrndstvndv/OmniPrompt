@@ -17,11 +17,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -34,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.text.TextUtilityInfo
 
@@ -101,16 +106,22 @@ fun TextUtilitiesSettingsScreen(
                         val isEnabled = info.id !in textUtilitiesSettings.disabledUtilities
                         val disabledKeywords = textUtilitiesSettings.disabledKeywords[info.id] ?: emptySet()
                         val enabledKeywords = info.keywords - disabledKeywords
+                        val defaultMode = textUtilitiesSettings.utilityDefaultModes[info.id]
+                            ?: info.defaultMode
 
                         UtilityRow(
                             info = info,
                             enabled = isEnabled,
                             enabledKeywords = enabledKeywords,
+                            defaultMode = defaultMode,
                             onToggleUtility = { enabled ->
                                 settingsRepository.setUtilityEnabled(info.id, enabled)
                             },
                             onToggleKeyword = { keyword, enabled ->
                                 settingsRepository.setKeywordEnabled(info.id, keyword, enabled)
+                            },
+                            onModeChange = { mode ->
+                                settingsRepository.setUtilityDefaultMode(info.id, mode)
                             }
                         )
                     }
@@ -196,14 +207,16 @@ private fun SettingsToggleRow(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun UtilityRow(
     info: TextUtilityInfo,
     enabled: Boolean,
     enabledKeywords: Set<String>,
+    defaultMode: TextUtilityDefaultMode,
     onToggleUtility: (Boolean) -> Unit,
-    onToggleKeyword: (String, Boolean) -> Unit
+    onToggleKeyword: (String, Boolean) -> Unit,
+    onModeChange: (TextUtilityDefaultMode) -> Unit
 ) {
     val contentAlpha = if (enabled) 1f else 0.5f
 
@@ -265,6 +278,38 @@ private fun UtilityRow(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Mode selector for utilities that support both modes
+            if (info.supportsBothModes) {
+                Text(
+                    text = "Default mode",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    SegmentedButton(
+                        selected = defaultMode == TextUtilityDefaultMode.DECODE,
+                        onClick = { onModeChange(TextUtilityDefaultMode.DECODE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        enabled = enabled
+                    ) {
+                        Text("Decode")
+                    }
+                    SegmentedButton(
+                        selected = defaultMode == TextUtilityDefaultMode.ENCODE,
+                        onClick = { onModeChange(TextUtilityDefaultMode.ENCODE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        enabled = enabled
+                    ) {
+                        Text("Encode")
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Text(
                 text = info.example,
                 style = MaterialTheme.typography.bodySmall,

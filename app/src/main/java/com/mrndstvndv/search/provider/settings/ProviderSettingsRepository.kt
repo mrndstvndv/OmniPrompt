@@ -197,6 +197,13 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         saveTextUtilitiesSettings(current.copy(disabledKeywords = updatedDisabledKeywords))
     }
 
+    fun setUtilityDefaultMode(utilityId: String, mode: TextUtilityDefaultMode) {
+        val current = _textUtilitiesSettings.value
+        val updatedModes = current.utilityDefaultModes + (utilityId to mode)
+        if (updatedModes == current.utilityDefaultModes) return
+        saveTextUtilitiesSettings(current.copy(utilityDefaultModes = updatedModes))
+    }
+
     fun setDownloadsIndexingEnabled(enabled: Boolean) {
         val current = _fileSearchSettings.value
         if (current.includeDownloads == enabled) return
@@ -624,16 +631,23 @@ data class Quicklink(
     }
 }
 
+enum class TextUtilityDefaultMode {
+    ENCODE,
+    DECODE
+}
+
 data class TextUtilitiesSettings(
     val openDecodedUrls: Boolean,
     val disabledUtilities: Set<String> = emptySet(),
-    val disabledKeywords: Map<String, Set<String>> = emptyMap()
+    val disabledKeywords: Map<String, Set<String>> = emptyMap(),
+    val utilityDefaultModes: Map<String, TextUtilityDefaultMode> = emptyMap()
 ) {
     companion object {
         fun default(): TextUtilitiesSettings = TextUtilitiesSettings(
             openDecodedUrls = true,
             disabledUtilities = emptySet(),
-            disabledKeywords = emptyMap()
+            disabledKeywords = emptyMap(),
+            utilityDefaultModes = emptyMap()
         )
 
         fun fromJson(json: JSONObject?): TextUtilitiesSettings? {
@@ -669,10 +683,29 @@ data class TextUtilitiesSettings(
                 }
             }
             
+            // Parse utilityDefaultModes
+            val modesObj = json.optJSONObject("utilityDefaultModes")
+            val utilityDefaultModes = buildMap<String, TextUtilityDefaultMode> {
+                if (modesObj != null) {
+                    val keys = modesObj.keys()
+                    while (keys.hasNext()) {
+                        val utilityId = keys.next()
+                        val modeStr = modesObj.optString(utilityId)
+                        val mode = try {
+                            TextUtilityDefaultMode.valueOf(modeStr)
+                        } catch (e: Exception) {
+                            null
+                        }
+                        if (mode != null) put(utilityId, mode)
+                    }
+                }
+            }
+            
             return TextUtilitiesSettings(
                 openDecodedUrls = json.optBoolean("openDecodedUrls", true),
                 disabledUtilities = disabledUtilities,
-                disabledKeywords = disabledKeywords
+                disabledKeywords = disabledKeywords,
+                utilityDefaultModes = utilityDefaultModes
             )
         }
     }
@@ -684,6 +717,11 @@ data class TextUtilitiesSettings(
             put("disabledKeywords", JSONObject().apply {
                 disabledKeywords.forEach { (utilityId, keywords) ->
                     put(utilityId, JSONArray(keywords.toList()))
+                }
+            })
+            put("utilityDefaultModes", JSONObject().apply {
+                utilityDefaultModes.forEach { (utilityId, mode) ->
+                    put(utilityId, mode.name)
                 }
             })
         }

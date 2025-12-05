@@ -13,6 +13,7 @@ import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
+import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.min
@@ -132,7 +133,17 @@ class TextUtilitiesProvider(
         val utilityMatch = matchUtility(firstToken) ?: return null
         var remainder = if (firstSpaceIndex == -1) "" else trimmed.substring(firstSpaceIndex).trimStart()
 
-        var mode = TransformMode.DECODE
+        // Get per-utility default mode from settings, fallback to utility's built-in default
+        val settings = settingsRepository.textUtilitiesSettings.value
+        val savedMode = settings.utilityDefaultModes[utilityMatch.utility.id]
+        var mode = if (savedMode != null) {
+            when (savedMode) {
+                TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
+                TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+            }
+        } else {
+            utilityMatch.utility.defaultMode
+        }
         var consumedModeToken: String? = null
         if (remainder.isNotBlank()) {
             val nextSpaceIndex = remainder.indexOfFirst { it.isWhitespace() }
@@ -242,13 +253,15 @@ class TextUtilitiesProvider(
         DECODE(verb = "decoded", action = "decode")
     }
 
-    private interface TextUtility {
+private interface TextUtility {
         val id: String
         val displayName: String
         val description: String
         val primaryKeyword: String
         val keywords: Set<String>
         val invalidInputHint: String
+        val supportsBothModes: Boolean
+        val defaultMode: TransformMode
 
         fun transform(mode: TransformMode, text: String): TransformOutcome
     }
@@ -265,6 +278,8 @@ class TextUtilitiesProvider(
         override val primaryKeyword: String = "base64"
         override val keywords: Set<String> = setOf("base64", "b64")
         override val invalidInputHint: String = "base64 SGVsbG8gV29ybGQ= → Hello World"
+        override val supportsBothModes: Boolean = true
+        override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             return when (mode) {
@@ -300,6 +315,8 @@ class TextUtilitiesProvider(
         override val primaryKeyword: String = "trim"
         override val keywords: Set<String> = setOf("trim", "strip")
         override val invalidInputHint: String = "trim   hello world   → hello world"
+        override val supportsBothModes: Boolean = false
+        override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             val trimmed = text.trim()
@@ -318,6 +335,8 @@ class TextUtilitiesProvider(
         override val primaryKeyword: String = "rmws"
         override val keywords: Set<String> = setOf("rmws", "removews", "nows")
         override val invalidInputHint: String = "rmws hello world → helloworld"
+        override val supportsBothModes: Boolean = false
+        override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             val result = text.replace("\\s+".toRegex(), "")
@@ -336,6 +355,8 @@ class TextUtilitiesProvider(
         override val primaryKeyword: String = "fblink"
         override val keywords: Set<String> = setOf("fblink", "fburl", "messengerurl")
         override val invalidInputHint: String = "fblink <messenger link> → original URL"
+        override val supportsBothModes: Boolean = false
+        override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             val trimmed = text.trim()
@@ -363,6 +384,45 @@ class TextUtilitiesProvider(
         }
     }
 
+    private class UrlEncodeUtility : TextUtility {
+        override val id: String = "url-encode"
+        override val displayName: String = "URL Encode/Decode"
+        override val description: String = "Encode or decode URL percent-encoded text"
+        override val primaryKeyword: String = "url"
+        override val keywords: Set<String> = setOf("url", "urlencode", "urldecode", "percent")
+        override val invalidInputHint: String = "url encode hello world → hello%20world"
+        override val supportsBothModes: Boolean = true
+        override val defaultMode: TransformMode = TransformMode.ENCODE
+
+        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+            return when (mode) {
+                TransformMode.ENCODE -> encode(text)
+                TransformMode.DECODE -> decode(text)
+            }
+        }
+
+        private fun encode(text: String): TransformOutcome {
+            if (text.isEmpty()) {
+                return TransformOutcome.InvalidInput("Nothing to encode")
+            }
+            val encoded = Uri.encode(text)
+            return TransformOutcome.Success(encoded)
+        }
+
+        private fun decode(text: String): TransformOutcome {
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) {
+                return TransformOutcome.InvalidInput("Nothing to decode")
+            }
+            return try {
+                val decoded = Uri.decode(trimmed)
+                TransformOutcome.Success(decoded)
+            } catch (e: Exception) {
+                TransformOutcome.InvalidInput("Invalid URL-encoded text")
+            }
+        }
+    }
+
     private data class UtilityMatch(
         val utility: TextUtility,
         val canonicalKeyword: String
@@ -380,7 +440,8 @@ class TextUtilitiesProvider(
             Base64Utility(),
             TrimUtility(),
             RemoveWhitespacesUtility(),
-            MessengerUrlExtractorUtility()
+            MessengerUrlExtractorUtility(),
+            UrlEncodeUtility()
         )
 
         fun getUtilitiesInfo(): List<TextUtilityInfo> = utilities.map { utility ->
@@ -389,7 +450,12 @@ class TextUtilitiesProvider(
                 displayName = utility.displayName,
                 description = utility.description,
                 keywords = utility.keywords,
-                example = utility.invalidInputHint
+                example = utility.invalidInputHint,
+                supportsBothModes = utility.supportsBothModes,
+                defaultMode = when (utility.defaultMode) {
+                    TransformMode.ENCODE -> TextUtilityDefaultMode.ENCODE
+                    TransformMode.DECODE -> TextUtilityDefaultMode.DECODE
+                }
             )
         }
     }
@@ -400,5 +466,7 @@ data class TextUtilityInfo(
     val displayName: String,
     val description: String,
     val keywords: Set<String>,
-    val example: String
+    val example: String,
+    val supportsBothModes: Boolean,
+    val defaultMode: TextUtilityDefaultMode
 )
