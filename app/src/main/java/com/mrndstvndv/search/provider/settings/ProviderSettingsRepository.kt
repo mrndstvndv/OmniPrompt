@@ -845,15 +845,20 @@ enum class FileSearchSortMode {
 }
 
 data class AppSearchSettings(
-    val includePackageName: Boolean
+    val includePackageName: Boolean,
+    val aiAssistantQueriesEnabled: Boolean = true
 ) {
     companion object {
-        fun default(): AppSearchSettings = AppSearchSettings(includePackageName = false)
+        fun default(): AppSearchSettings = AppSearchSettings(
+            includePackageName = false,
+            aiAssistantQueriesEnabled = true
+        )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
             if (json == null) return null
             return AppSearchSettings(
-                includePackageName = json.optBoolean("includePackageName", false)
+                includePackageName = json.optBoolean("includePackageName", false),
+                aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true)
             )
         }
     }
@@ -861,6 +866,7 @@ data class AppSearchSettings(
     fun toJson(): JSONObject {
         return JSONObject().apply {
             put("includePackageName", includePackageName)
+            put("aiAssistantQueriesEnabled", aiAssistantQueriesEnabled)
         }
     }
 

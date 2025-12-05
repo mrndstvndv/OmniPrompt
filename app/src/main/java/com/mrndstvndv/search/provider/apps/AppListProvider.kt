@@ -34,10 +34,25 @@ class AppListProvider(
         val normalized = query.trimmedText
         val settings = settingsRepository.appSearchSettings.value
         val includePackageName = settings.includePackageName
+        val aiEnabled = settings.aiAssistantQueriesEnabled
+
+        // Build set of installed package names for quick lookup
+        val installedPackages = applications.map { it.packageName }.toSet()
+
+        // Check for "ask <assistant> <query>" OR "<assistant> <query>" pattern
+        val askMatch = if (aiEnabled) {
+            parseAskQuery(normalized, installedPackages)
+                ?: parseDirectAiQuery(normalized, installedPackages)
+        } else null
 
         val matches: List<ScoredApp> = if (normalized.isBlank()) {
             // No query - return all apps with zero score
             applications.map { ScoredApp(it, 0, emptyList(), emptyList()) }
+        } else if (askMatch != null) {
+            // When "ask <assistant>" is detected, only show that assistant's app
+            applications
+                .filter { it.packageName == askMatch.assistant.packageName }
+                .map { ScoredApp(it, 100, emptyList(), emptyList()) }
         } else {
             // Apply fuzzy matching and scoring
             applications.mapNotNull { app ->
@@ -80,19 +95,46 @@ class AppListProvider(
 
         for (scoredApp in limited) {
             val entry = scoredApp.app
-            val action: suspend () -> Unit = {
-                withContext(Dispatchers.Main) {
-                    val launchIntent = packageManager.getLaunchIntentForPackage(entry.packageName)
-                    if (launchIntent != null) {
-                        activity.startActivity(launchIntent)
+
+            // Check if this app should be transformed into an AI query result
+            val isAiQueryResult = askMatch != null &&
+                entry.packageName == askMatch.assistant.packageName
+
+            // Determine title, subtitle, and action based on whether this is an AI query
+            val title: String
+            val subtitle: String
+            val action: suspend () -> Unit
+
+            if (isAiQueryResult && askMatch!!.query.isNotEmpty()) {
+                // "ask gemini <query>" - send query to AI
+                title = "Ask ${askMatch.assistant.displayName}: ${askMatch.query}"
+                subtitle = askMatch.assistant.displayName
+                action = {
+                    withContext(Dispatchers.Main) {
+                        val intent = buildAiQueryIntent(askMatch.assistant, askMatch.query)
+                        activity.startActivity(intent)
                         activity.finish()
                     }
                 }
+            } else {
+                // Normal app launch (or "ask gemini" with no query)
+                title = entry.label
+                subtitle = entry.packageName
+                action = {
+                    withContext(Dispatchers.Main) {
+                        val launchIntent = packageManager.getLaunchIntentForPackage(entry.packageName)
+                        if (launchIntent != null) {
+                            activity.startActivity(launchIntent)
+                            activity.finish()
+                        }
+                    }
+                }
             }
+
             results += ProviderResult(
                 id = "$id:${entry.packageName}",
-                title = entry.label,
-                subtitle = entry.packageName,
+                title = title,
+                subtitle = subtitle,
                 icon = null,
                 defaultVectorIcon = Icons.Outlined.Android,
                 iconLoader = { loadIcon(entry.packageName) },
@@ -101,11 +143,71 @@ class AppListProvider(
                 onSelect = action,
                 aliasTarget = AppLaunchAliasTarget(entry.packageName, entry.label),
                 keepOverlayUntilExit = true,
-                matchedTitleIndices = scoredApp.matchedTitleIndices,
-                matchedSubtitleIndices = scoredApp.matchedSubtitleIndices
+                matchedTitleIndices = if (isAiQueryResult) emptyList() else scoredApp.matchedTitleIndices,
+                matchedSubtitleIndices = if (isAiQueryResult) emptyList() else scoredApp.matchedSubtitleIndices
             )
         }
         return results
+    }
+
+    /**
+     * Parses "ask <assistant> <query>" pattern.
+     * Returns null if pattern doesn't match or assistant app isn't installed.
+     */
+    private fun parseAskQuery(query: String, installedPackages: Set<String>): AskMatch? {
+        if (!query.startsWith("ask ", ignoreCase = true)) return null
+        val afterAsk = query.drop(4).trimStart() // Remove "ask "
+        if (afterAsk.isBlank()) return null
+
+        val triggerToken = afterAsk.takeWhile { !it.isWhitespace() }
+
+        for (assistant in AI_ASSISTANTS) {
+            // Skip if app not installed
+            if (assistant.packageName !in installedPackages) continue
+
+            val match = FuzzyMatcher.match(triggerToken, assistant.triggerName)
+            if (match != null && match.score >= ASK_TRIGGER_MIN_SCORE) {
+                val remainingQuery = afterAsk.drop(triggerToken.length).trimStart()
+                return AskMatch(assistant, remainingQuery)
+            }
+        }
+        return null
+    }
+
+    /**
+     * Parses "<assistant> <query>" pattern (without "ask" prefix).
+     * Returns null if pattern doesn't match, no query content after trigger, or assistant app isn't installed.
+     */
+    private fun parseDirectAiQuery(query: String, installedPackages: Set<String>): AskMatch? {
+        if (query.isBlank()) return null
+
+        val triggerToken = query.takeWhile { !it.isWhitespace() }
+        val remainingQuery = query.drop(triggerToken.length).trimStart()
+
+        // Only match if there's actual query content after the trigger
+        if (remainingQuery.isBlank()) return null
+
+        for (assistant in AI_ASSISTANTS) {
+            // Skip if app not installed
+            if (assistant.packageName !in installedPackages) continue
+
+            val match = FuzzyMatcher.match(triggerToken, assistant.triggerName)
+            if (match != null && match.score >= ASK_TRIGGER_MIN_SCORE) {
+                return AskMatch(assistant, remainingQuery)
+            }
+        }
+        return null
+    }
+
+    /**
+     * Builds an ACTION_SEND intent to send a query to an AI assistant.
+     */
+    private fun buildAiQueryIntent(assistant: AiAssistant, query: String): Intent {
+        return Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            setPackage(assistant.packageName)
+            putExtra(Intent.EXTRA_TEXT, query)
+        }
     }
 
     private fun loadApplications(): List<AppEntry> {
@@ -139,10 +241,36 @@ class AppListProvider(
         val matchedSubtitleIndices: List<Int>
     )
 
+    /** Definition of a supported AI assistant app */
+    private data class AiAssistant(
+        val id: String,
+        val packageName: String,
+        val displayName: String,
+        val triggerName: String
+    )
+
+    /** Result of parsing an "ask <assistant> <query>" pattern */
+    private data class AskMatch(
+        val assistant: AiAssistant,
+        val query: String
+    )
+
     private companion object {
         const val MAX_RESULTS = 40
         private const val EXTRA_PACKAGE_NAME = "packageName"
         /** Penalty applied to package name matches so label matches rank higher */
         private const val PACKAGE_NAME_PENALTY = 10
+        /** Minimum fuzzy match score for "ask <trigger>" pattern */
+        private const val ASK_TRIGGER_MIN_SCORE = 40
+
+        /** Supported AI assistant apps */
+        private val AI_ASSISTANTS = listOf(
+            AiAssistant(
+                id = "gemini",
+                packageName = "com.google.android.apps.bard",
+                displayName = "Gemini",
+                triggerName = "gemini"
+            )
+        )
     }
 }

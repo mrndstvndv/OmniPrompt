@@ -63,6 +63,16 @@ fun AppSearchSettingsScreen(
                             )
                         }
                     )
+                    SettingsToggleRow(
+                        title = "AI Assistant queries",
+                        subtitle = "Send queries directly to AI apps like Gemini using \"ask gemini <query>\".",
+                        checked = appSearchSettings.aiAssistantQueriesEnabled,
+                        onCheckedChange = {
+                            settingsRepository.saveAppSearchSettings(
+                                appSearchSettings.copy(aiAssistantQueriesEnabled = it)
+                            )
+                        }
+                    )
                 }
             }
         }
