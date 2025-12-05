@@ -270,6 +270,12 @@ class AppListProvider(
                 packageName = "com.google.android.apps.bard",
                 displayName = "Gemini",
                 triggerName = "gemini"
+            ),
+            AiAssistant(
+                id = "chatgpt",
+                packageName = "com.openai.chatgpt",
+                displayName = "ChatGPT",
+                triggerName = "chatgpt"
             )
         )
     }

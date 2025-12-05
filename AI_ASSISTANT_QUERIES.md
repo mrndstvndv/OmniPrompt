@@ -1,6 +1,6 @@
 # AI Assistant Queries
 
-This document describes the AI Assistant Queries feature, which allows users to send queries directly to AI apps (like Gemini) from the search interface.
+This document describes the AI Assistant Queries feature, which allows users to send queries directly to AI apps (like Gemini and ChatGPT) from the search interface.
 
 ## Overview
 
@@ -11,6 +11,7 @@ The feature is integrated into the `AppListProvider` and transforms the AI assis
 | ID | Package Name | Display Name | Trigger Name |
 |----|--------------|--------------|--------------|
 | `gemini` | `com.google.android.apps.bard` | Gemini | `gemini` |
+| `chatgpt` | `com.openai.chatgpt` | ChatGPT | `chatgpt` |
 
 ### Adding New AI Assistants
 
@@ -24,13 +25,13 @@ private val AI_ASSISTANTS = listOf(
         displayName = "Gemini",
         triggerName = "gemini"
     ),
-    // Add new assistants here:
     AiAssistant(
         id = "chatgpt",
-        packageName = "com.openai.chatgpt",  // Verify actual package name
+        packageName = "com.openai.chatgpt",
         displayName = "ChatGPT",
         triggerName = "chatgpt"
-    )
+    ),
+    // Add new assistants here
 )
 ```
 
@@ -48,16 +49,22 @@ The feature supports two trigger patterns:
 Examples:
 - `ask gemini what is the weather`
 - `ask gemi how do I cook pasta` (fuzzy match on "gemi")
+- `ask chatgpt explain quantum physics`
+- `ask chat what is machine learning` (fuzzy match on "chat")
 
 ### 2. Direct Trigger: `<assistant> <query>`
 
 Examples:
 - `gemini what is the weather`
 - `gemi how do I cook pasta` (fuzzy match on "gemi")
+- `chatgpt explain this code`
+- `chat what is AI` (fuzzy match on "chat")
 
-**Note:** The direct trigger only activates when there is query content after the assistant name. Typing just `gemini` will show the normal app launch result.
+**Note:** The direct trigger only activates when there is query content after the assistant name. Typing just `gemini` or `chatgpt` will show the normal app launch result.
 
 ## Behavior Matrix
+
+### Gemini
 
 | User Input | Title | Subtitle | Action |
 |------------|-------|----------|--------|
@@ -68,6 +75,17 @@ Examples:
 | `gemi weather` | `Ask: weather` | `Gemini` | Send query (fuzzy match) |
 | `ask gemini weather` | `Ask: weather` | `Gemini` | Send query to Gemini |
 | `ask gemi what` | `Ask: what` | `Gemini` | Send query (fuzzy match) |
+
+### ChatGPT
+
+| User Input | Title | Subtitle | Action |
+|------------|-------|----------|--------|
+| `chatgpt` | `ChatGPT` | `com.openai.chatgpt` | Launch app |
+| `chat` | `ChatGPT` | `com.openai.chatgpt` | Launch app (fuzzy match) |
+| `ask chatgpt` | `ChatGPT` | `com.openai.chatgpt` | Launch app (no query) |
+| `chatgpt explain code` | `Ask: explain code` | `ChatGPT` | Send query to ChatGPT |
+| `chat hello` | `Ask: hello` | `ChatGPT` | Send query (fuzzy match) |
+| `ask chatgpt help me` | `Ask: help me` | `ChatGPT` | Send query to ChatGPT |
 
 ## Intent Format
 
@@ -122,6 +140,7 @@ If the app is not installed, the `ask <assistant>` pattern will not match anythi
 The trigger name is matched using `FuzzyMatcher` with a minimum score threshold of `ASK_TRIGGER_MIN_SCORE = 40`. This allows partial matches like:
 - `gemi` → `gemini`
 - `gem` → `gemini`
+- `chat` → `chatgpt`
 
 ## Future Considerations
 
@@ -137,11 +156,34 @@ The trigger name is matched using `FuzzyMatcher` with a minimum score threshold 
 
 ### Known AI App Intent Formats
 
-When adding new assistants, verify their intent requirements:
+When adding new assistants, verify their intent requirements using `adb`:
 
-| App | Intent Format | Notes |
-|-----|---------------|-------|
-| Gemini | `ACTION_SEND` with `EXTRA_TEXT` | Confirmed working |
-| ChatGPT | TBD | Needs verification |
-| Claude | TBD | Needs verification |
-| Copilot | TBD | Needs verification |
+```bash
+# Find package name
+adb shell pm list packages | grep -i <app_name>
+
+# Check for ACTION_SEND support
+adb shell dumpsys package <package_name> | grep -E "Action:|Category:|mimeType"
+
+# Test the intent
+adb shell 'am start -a android.intent.action.SEND -t "text/plain" --es android.intent.extra.TEXT "test query" -p <package_name>'
+```
+
+| App | Package Name | Intent Format | Status |
+|-----|--------------|---------------|--------|
+| Gemini | `com.google.android.apps.bard` | `ACTION_SEND` with `EXTRA_TEXT` | Supported |
+| ChatGPT | `com.openai.chatgpt` | `ACTION_SEND` with `EXTRA_TEXT` | Supported |
+| Grok | `ai.x.grok` | N/A | Not supported (no `ACTION_SEND` handler) |
+| Claude | TBD | TBD | Needs investigation |
+| Copilot | TBD | TBD | Needs investigation |
+
+### Grok Investigation Notes
+
+Grok (`ai.x.grok`) was investigated but does not support third-party queries:
+- No `ACTION_SEND` intent filter
+- No `ACTION_WEB_SEARCH` intent filter
+- No `ACTION_ASSIST` intent filter
+- Deep links (`https://grok.com`, `xai-grok://`) do not accept query parameters
+- The `xai-grok://voice*` schemes are for voice call control, not query input
+
+If Grok adds support in the future, the package name is `ai.x.grok` and the trigger name would likely be `grok`.
