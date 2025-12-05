@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -59,6 +61,12 @@ fun TextUtilitiesSettingsScreen(
                         checked = textUtilitiesSettings.openDecodedUrls,
                         onCheckedChange = { settingsRepository.setOpenDecodedUrlsAutomatically(it) }
                     )
+                }
+            }
+
+            item {
+                SettingsCardGroup {
+                    UtilitiesGuidanceSection()
                 }
             }
         }
@@ -137,6 +145,63 @@ private fun SettingsToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+private fun UtilitiesGuidanceSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+    ) {
+        Text(
+            text = "Available Utilities",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        UtilityGuidanceItem(
+            name = "Base64",
+            keywords = "base64, b64",
+            example = "base64 SGVsbG8gV29ybGQ= → Hello World"
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        UtilityGuidanceItem(
+            name = "Trim",
+            keywords = "trim, strip",
+            example = "trim   hello world   → hello world"
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        UtilityGuidanceItem(
+            name = "Remove Whitespaces",
+            keywords = "rmws, removews, nows",
+            example = "rmws hello world → helloworld"
+        )
+    }
+}
+
+@Composable
+private fun UtilityGuidanceItem(
+    name: String,
+    keywords: String,
+    example: String
+) {
+    Column {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = "Keywords: $keywords",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = example,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

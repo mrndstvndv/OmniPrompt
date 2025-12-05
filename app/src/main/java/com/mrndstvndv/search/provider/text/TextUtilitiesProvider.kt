@@ -281,6 +281,40 @@ class TextUtilitiesProvider(
         }
     }
 
+    private class TrimUtility : TextUtility {
+        override val id: String = "trim"
+        override val displayName: String = "Trim"
+        override val primaryKeyword: String = "trim"
+        override val keywords: Set<String> = setOf("trim", "strip")
+        override val invalidInputHint: String = "Example: trim   hello world   "
+
+        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+            val trimmed = text.trim()
+            return if (trimmed.isEmpty()) {
+                TransformOutcome.InvalidInput("Nothing to trim")
+            } else {
+                TransformOutcome.Success(trimmed)
+            }
+        }
+    }
+
+    private class RemoveWhitespacesUtility : TextUtility {
+        override val id: String = "remove-whitespaces"
+        override val displayName: String = "Remove Whitespaces"
+        override val primaryKeyword: String = "rmws"
+        override val keywords: Set<String> = setOf("rmws", "removews", "nows")
+        override val invalidInputHint: String = "Example: rmws hello world"
+
+        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+            val result = text.replace("\\s+".toRegex(), "")
+            return if (result.isEmpty()) {
+                TransformOutcome.InvalidInput("Nothing left after removing whitespaces")
+            } else {
+                TransformOutcome.Success(result)
+            }
+        }
+    }
+
     private data class UtilityMatch(
         val utility: TextUtility,
         val canonicalKeyword: String
@@ -295,7 +329,9 @@ class TextUtilitiesProvider(
         private val ENCODE_TOKENS = setOf("e", "enc", "encode")
         private val DECODE_TOKENS = setOf("d", "dec", "decode")
         private val utilities: List<TextUtility> = listOf(
-            Base64Utility()
+            Base64Utility(),
+            TrimUtility(),
+            RemoveWhitespacesUtility()
         )
     }
 }

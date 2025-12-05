@@ -1,5 +1,10 @@
 package com.mrndstvndv.search.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,11 +45,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
@@ -162,9 +172,30 @@ fun ProvidersSettingsScreen(
     onOpenTextUtilitiesSettings: () -> Unit,
     onOpenAppSearchSettings: () -> Unit,
     onOpenSystemSettingsSettings: () -> Unit,
+    onOpenContactsSettings: () -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()
+
+    // Contacts permission state
+    var hasContactsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Permission launcher for contacts
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasContactsPermission = isGranted
+        if (isGranted) {
+            settingsRepository.setProviderEnabled("contacts", true)
+        } else {
+            Toast.makeText(context, "Permission required to search contacts", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     SettingsScaffold(
         title = "Providers",
@@ -186,6 +217,25 @@ fun ProvidersSettingsScreen(
                     enabled = enabledProviders["app-list"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("app-list", it) },
                     onClick = onOpenAppSearchSettings
+                )
+                SettingsDivider()
+                ProviderRow(
+                    id = "contacts",
+                    name = "Contacts",
+                    description = "Search your contacts",
+                    enabled = enabledProviders["contacts"] ?: false,
+                    onToggle = { enabled ->
+                        if (enabled) {
+                            if (hasContactsPermission) {
+                                settingsRepository.setProviderEnabled("contacts", true)
+                            } else {
+                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                            }
+                        } else {
+                            settingsRepository.setProviderEnabled("contacts", false)
+                        }
+                    },
+                    onClick = onOpenContactsSettings
                 )
                 SettingsDivider()
                 ProviderRow(

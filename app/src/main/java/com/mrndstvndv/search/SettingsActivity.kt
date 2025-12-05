@@ -36,8 +36,10 @@ import com.mrndstvndv.search.ui.settings.FileSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.TextUtilitiesSettingsScreen
 import com.mrndstvndv.search.ui.settings.ProviderListScreen
 import com.mrndstvndv.search.ui.settings.AppSearchSettingsScreen
+import com.mrndstvndv.search.ui.settings.ContactsSettingsScreen
 import com.mrndstvndv.search.ui.settings.SystemSettingsScreen
 import com.mrndstvndv.search.ui.theme.SearchTheme
+import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,7 +64,8 @@ class SettingsActivity : ComponentActivity() {
         TextUtilities,
         AppSearch,
         ProviderList,
-        SystemSettings
+        SystemSettings,
+        ContactsSettings
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +79,7 @@ class SettingsActivity : ComponentActivity() {
             val settingsRepository = remember { ProviderSettingsRepository(this@SettingsActivity, coroutineScope) }
             val fileSearchRepository = remember { FileSearchRepository.getInstance(this@SettingsActivity) }
             val rankingRepository = remember { ProviderRankingRepository.getInstance(this@SettingsActivity, coroutineScope) }
+            val contactsRepository = remember { ContactsRepository.getInstance(this@SettingsActivity) }
             val developerSettingsManager = remember { DeveloperSettingsManager.getInstance(this@SettingsActivity) }
             val isDefaultAssistant by defaultAssistantState
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
@@ -145,6 +149,7 @@ class SettingsActivity : ComponentActivity() {
                             onOpenTextUtilitiesSettings = { currentScreen = Screen.TextUtilities },
                             onOpenAppSearchSettings = { currentScreen = Screen.AppSearch },
                             onOpenSystemSettingsSettings = { currentScreen = Screen.SystemSettings },
+                            onOpenContactsSettings = { currentScreen = Screen.ContactsSettings },
                             onBack = {
                                 if (initialScreen == Screen.Providers) {
                                     finish()
@@ -239,6 +244,14 @@ class SettingsActivity : ComponentActivity() {
                         SystemSettingsScreen(
                             settingsRepository = settingsRepository,
                             developerSettingsManager = developerSettingsManager,
+                            onBack = { currentScreen = Screen.Providers }
+                        )
+                    }
+                    Screen.ContactsSettings -> {
+                        BackHandler { currentScreen = Screen.Providers }
+                        ContactsSettingsScreen(
+                            settingsRepository = settingsRepository,
+                            contactsRepository = contactsRepository,
                             onBack = { currentScreen = Screen.Providers }
                         )
                     }

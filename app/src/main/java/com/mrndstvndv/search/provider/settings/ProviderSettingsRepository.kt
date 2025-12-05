@@ -36,6 +36,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         private const val KEY_FILE_SEARCH = "file_search"
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
         private const val KEY_SYSTEM_SETTINGS = "system_settings"
+        private const val KEY_CONTACTS = "contacts"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -85,6 +86,9 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
     private val _systemSettingsSettings = MutableStateFlow(SystemSettingsSettings.default())
     val systemSettingsSettings: StateFlow<SystemSettingsSettings> = _systemSettingsSettings
 
+    private val _contactsSettings = MutableStateFlow(ContactsSettings.default())
+    val contactsSettings: StateFlow<ContactsSettings> = _contactsSettings
+
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
         // Load persisted settings off the main thread if scope provided
@@ -101,6 +105,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
                 _fileSearchSettings.value = loadFileSearchSettings()
                 _enabledProviders.value = loadEnabledProviders()
                 _systemSettingsSettings.value = loadSystemSettingsSettings()
+                _contactsSettings.value = loadContactsSettings()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
@@ -115,6 +120,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
             _fileSearchSettings.value = loadFileSearchSettings()
             _enabledProviders.value = loadEnabledProviders()
             _systemSettingsSettings.value = loadSystemSettingsSettings()
+            _contactsSettings.value = loadContactsSettings()
         }
     }
 
@@ -374,6 +380,33 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         val current = _systemSettingsSettings.value
         if (current.developerToggleEnabled == enabled) return
         saveSystemSettingsSettings(current.copy(developerToggleEnabled = enabled))
+    }
+
+    private fun loadContactsSettings(): ContactsSettings {
+        val json = preferences.getString(KEY_CONTACTS, null)
+        return try {
+            val parsed = json?.let { JSONObject(it) }
+            ContactsSettings.fromJson(parsed) ?: ContactsSettings.default()
+        } catch (ignored: JSONException) {
+            ContactsSettings.default()
+        }
+    }
+
+    fun saveContactsSettings(settings: ContactsSettings) {
+        preferences.edit { putString(KEY_CONTACTS, settings.toJsonString()) }
+        _contactsSettings.value = settings
+    }
+
+    fun setContactsIncludePhoneNumbers(enabled: Boolean) {
+        val current = _contactsSettings.value
+        if (current.includePhoneNumbers == enabled) return
+        saveContactsSettings(current.copy(includePhoneNumbers = enabled))
+    }
+
+    fun setContactsShowSimNumbers(enabled: Boolean) {
+        val current = _contactsSettings.value
+        if (current.showSimNumbers == enabled) return
+        saveContactsSettings(current.copy(showSimNumbers = enabled))
     }
 }
 
@@ -851,6 +884,35 @@ data class SystemSettingsSettings(
     fun toJson(): JSONObject {
         return JSONObject().apply {
             put("developerToggleEnabled", developerToggleEnabled)
+        }
+    }
+
+    fun toJsonString(): String = toJson().toString()
+}
+
+data class ContactsSettings(
+    val includePhoneNumbers: Boolean,
+    val showSimNumbers: Boolean
+) {
+    companion object {
+        fun default(): ContactsSettings = ContactsSettings(
+            includePhoneNumbers = true,
+            showSimNumbers = false
+        )
+
+        fun fromJson(json: JSONObject?): ContactsSettings? {
+            if (json == null) return null
+            return ContactsSettings(
+                includePhoneNumbers = json.optBoolean("includePhoneNumbers", true),
+                showSimNumbers = json.optBoolean("showSimNumbers", false)
+            )
+        }
+    }
+
+    fun toJson(): JSONObject {
+        return JSONObject().apply {
+            put("includePhoneNumbers", includePhoneNumbers)
+            put("showSimNumbers", showSimNumbers)
         }
     }
 

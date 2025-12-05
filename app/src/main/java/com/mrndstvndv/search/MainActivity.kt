@@ -53,6 +53,9 @@ import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.apps.AppListProvider
+import com.mrndstvndv.search.provider.contacts.ContactsProvider
+import com.mrndstvndv.search.provider.contacts.ContactsRepository
+import com.mrndstvndv.search.provider.contacts.PhoneNumber
 import com.mrndstvndv.search.provider.system.SettingsProvider
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.calculator.CalculatorProvider
@@ -66,6 +69,8 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.web.WebSearchProvider
+import com.mrndstvndv.search.ui.components.ContactActionData
+import com.mrndstvndv.search.ui.components.ContactActionSheet
 import com.mrndstvndv.search.ui.components.ItemsList
 import com.mrndstvndv.search.ui.components.SearchField
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
@@ -114,6 +119,7 @@ class MainActivity : ComponentActivity() {
 
             val fileSearchRepository = remember(this@MainActivity) { FileSearchRepository.getInstance(this@MainActivity) }
             val fileThumbnailRepository = remember(this@MainActivity) { FileThumbnailRepository.getInstance(this@MainActivity) }
+            val contactsRepository = remember(this@MainActivity) { ContactsRepository.getInstance(this@MainActivity) }
             val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
@@ -125,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     add(CalculatorProvider(this@MainActivity))
                     add(TextUtilitiesProvider(this@MainActivity, settingsRepository))
                     add(FileSearchProvider(this@MainActivity, settingsRepository, fileSearchRepository, fileThumbnailRepository))
+                    add(ContactsProvider(settingsRepository, contactsRepository))
                     add(WebSearchProvider(this@MainActivity, settingsRepository))
                 }
             }
@@ -182,6 +189,7 @@ class MainActivity : ComponentActivity() {
             var isPerformingAction by remember { mutableStateOf(false) }
             var showLoadingOverlay by remember { mutableStateOf(false) }
             var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
+            var contactActionData by remember { mutableStateOf<ContactActionData?>(null) }
 
             fun startPendingAction(result: ProviderResult?) {
                 val action = result?.onSelect ?: return
@@ -207,6 +215,23 @@ class MainActivity : ComponentActivity() {
                         selection = TextRange(completedPrefill.length)
                     )
                     shouldShowResults = true
+                    return true
+                }
+                // Handle contacts specially - show action sheet
+                if (candidate.providerId == "contacts") {
+                    @Suppress("UNCHECKED_CAST")
+                    val phoneNumbers = candidate.extras[ContactsProvider.EXTRA_PHONE_NUMBERS] as? List<PhoneNumber> ?: emptyList()
+                    val displayName = candidate.extras[ContactsProvider.EXTRA_DISPLAY_NAME] as? String ?: candidate.title
+                    val isSimNumber = candidate.extras[ContactsProvider.EXTRA_IS_SIM_NUMBER] as? Boolean ?: false
+                    contactActionData = ContactActionData(
+                        contactId = candidate.extras[ContactsProvider.EXTRA_CONTACT_ID] as? String,
+                        lookupKey = candidate.extras[ContactsProvider.EXTRA_LOOKUP_KEY] as? String,
+                        displayName = displayName,
+                        phoneNumbers = phoneNumbers,
+                        isSimNumber = isSimNumber
+                    )
+                    // Track usage for contacts too
+                    rankingRepository.incrementResultUsage(candidate.id)
                     return true
                 }
                 if (candidate.onSelect != null) {
@@ -503,6 +528,18 @@ class MainActivity : ComponentActivity() {
                                 aliasDialogError = "Alias cannot be empty"
                             }
                         }
+                    }
+                )
+            }
+
+            // Contact action sheet
+            contactActionData?.let { contact ->
+                ContactActionSheet(
+                    contact = contact,
+                    onDismiss = { contactActionData = null },
+                    onActionComplete = {
+                        contactActionData = null
+                        finish()
                     }
                 )
             }
