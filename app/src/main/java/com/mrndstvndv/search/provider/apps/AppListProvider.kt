@@ -107,7 +107,7 @@ class AppListProvider(
 
             if (isAiQueryResult && askMatch!!.query.isNotEmpty()) {
                 // "ask gemini <query>" - send query to AI
-                title = "Ask ${askMatch.assistant.displayName}: ${askMatch.query}"
+                title = "Ask: ${askMatch.query}"
                 subtitle = askMatch.assistant.displayName
                 action = {
                     withContext(Dispatchers.Main) {
