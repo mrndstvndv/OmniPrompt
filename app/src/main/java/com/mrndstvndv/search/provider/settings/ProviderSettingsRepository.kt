@@ -169,6 +169,34 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         saveTextUtilitiesSettings(updated)
     }
 
+    fun setUtilityEnabled(utilityId: String, enabled: Boolean) {
+        val current = _textUtilitiesSettings.value
+        val updatedDisabled = if (enabled) {
+            current.disabledUtilities - utilityId
+        } else {
+            current.disabledUtilities + utilityId
+        }
+        if (updatedDisabled == current.disabledUtilities) return
+        saveTextUtilitiesSettings(current.copy(disabledUtilities = updatedDisabled))
+    }
+
+    fun setKeywordEnabled(utilityId: String, keyword: String, enabled: Boolean) {
+        val current = _textUtilitiesSettings.value
+        val currentDisabledForUtility = current.disabledKeywords[utilityId] ?: emptySet()
+        val updatedDisabledForUtility = if (enabled) {
+            currentDisabledForUtility - keyword
+        } else {
+            currentDisabledForUtility + keyword
+        }
+        val updatedDisabledKeywords = if (updatedDisabledForUtility.isEmpty()) {
+            current.disabledKeywords - utilityId
+        } else {
+            current.disabledKeywords + (utilityId to updatedDisabledForUtility)
+        }
+        if (updatedDisabledKeywords == current.disabledKeywords) return
+        saveTextUtilitiesSettings(current.copy(disabledKeywords = updatedDisabledKeywords))
+    }
+
     fun setDownloadsIndexingEnabled(enabled: Boolean) {
         val current = _fileSearchSettings.value
         if (current.includeDownloads == enabled) return
@@ -597,15 +625,54 @@ data class Quicklink(
 }
 
 data class TextUtilitiesSettings(
-    val openDecodedUrls: Boolean
+    val openDecodedUrls: Boolean,
+    val disabledUtilities: Set<String> = emptySet(),
+    val disabledKeywords: Map<String, Set<String>> = emptyMap()
 ) {
     companion object {
-        fun default(): TextUtilitiesSettings = TextUtilitiesSettings(openDecodedUrls = true)
+        fun default(): TextUtilitiesSettings = TextUtilitiesSettings(
+            openDecodedUrls = true,
+            disabledUtilities = emptySet(),
+            disabledKeywords = emptyMap()
+        )
 
         fun fromJson(json: JSONObject?): TextUtilitiesSettings? {
             if (json == null) return null
+            
+            // Parse disabledUtilities
+            val disabledUtilitiesArray = json.optJSONArray("disabledUtilities")
+            val disabledUtilities = buildSet {
+                if (disabledUtilitiesArray != null) {
+                    for (i in 0 until disabledUtilitiesArray.length()) {
+                        disabledUtilitiesArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                    }
+                }
+            }
+            
+            // Parse disabledKeywords
+            val disabledKeywordsObj = json.optJSONObject("disabledKeywords")
+            val disabledKeywords = buildMap<String, Set<String>> {
+                if (disabledKeywordsObj != null) {
+                    val keys = disabledKeywordsObj.keys()
+                    while (keys.hasNext()) {
+                        val utilityId = keys.next()
+                        val keywordsArray = disabledKeywordsObj.optJSONArray(utilityId)
+                        if (keywordsArray != null) {
+                            val keywords = buildSet {
+                                for (i in 0 until keywordsArray.length()) {
+                                    keywordsArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                                }
+                            }
+                            if (keywords.isNotEmpty()) put(utilityId, keywords)
+                        }
+                    }
+                }
+            }
+            
             return TextUtilitiesSettings(
-                openDecodedUrls = json.optBoolean("openDecodedUrls", true)
+                openDecodedUrls = json.optBoolean("openDecodedUrls", true),
+                disabledUtilities = disabledUtilities,
+                disabledKeywords = disabledKeywords
             )
         }
     }
@@ -613,6 +680,12 @@ data class TextUtilitiesSettings(
     fun toJson(): JSONObject {
         return JSONObject().apply {
             put("openDecodedUrls", openDecodedUrls)
+            put("disabledUtilities", JSONArray(disabledUtilities.toList()))
+            put("disabledKeywords", JSONObject().apply {
+                disabledKeywords.forEach { (utilityId, keywords) ->
+                    put(utilityId, JSONArray(keywords.toList()))
+                }
+            })
         }
     }
 

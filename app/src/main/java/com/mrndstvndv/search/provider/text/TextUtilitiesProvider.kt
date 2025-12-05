@@ -162,10 +162,20 @@ class TextUtilitiesProvider(
     private fun matchUtility(token: String): UtilityMatch? {
         val normalized = token.lowercase()
         if (normalized.isBlank()) return null
+        val settings = settingsRepository.textUtilitiesSettings.value
+
         for (utility in utilities) {
-            val exact = utility.keywords.firstOrNull { normalized == it }
-            val prefix = utility.keywords.firstOrNull { it.startsWith(normalized) }
-            val startsWith = utility.keywords.firstOrNull { normalized.startsWith(it) }
+            // Skip disabled utilities
+            if (utility.id in settings.disabledUtilities) continue
+
+            // Get enabled keywords only
+            val disabledKeywords = settings.disabledKeywords[utility.id] ?: emptySet()
+            val enabledKeywords = utility.keywords - disabledKeywords
+            if (enabledKeywords.isEmpty()) continue
+
+            val exact = enabledKeywords.firstOrNull { normalized == it }
+            val prefix = enabledKeywords.firstOrNull { it.startsWith(normalized) }
+            val startsWith = enabledKeywords.firstOrNull { normalized.startsWith(it) }
             val match = exact ?: prefix ?: startsWith
             if (match != null) {
                 return UtilityMatch(utility, utility.primaryKeyword)
@@ -235,6 +245,7 @@ class TextUtilitiesProvider(
     private interface TextUtility {
         val id: String
         val displayName: String
+        val description: String
         val primaryKeyword: String
         val keywords: Set<String>
         val invalidInputHint: String
@@ -250,9 +261,10 @@ class TextUtilitiesProvider(
     private class Base64Utility : TextUtility {
         override val id: String = "base64"
         override val displayName: String = "Base64"
+        override val description: String = "Encode or decode Base64 text"
         override val primaryKeyword: String = "base64"
         override val keywords: Set<String> = setOf("base64", "b64")
-        override val invalidInputHint: String = "Example: base64 SGVhZCBtZSB0byBxdWFydGVycy4="
+        override val invalidInputHint: String = "base64 SGVsbG8gV29ybGQ= → Hello World"
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             return when (mode) {
@@ -284,9 +296,10 @@ class TextUtilitiesProvider(
     private class TrimUtility : TextUtility {
         override val id: String = "trim"
         override val displayName: String = "Trim"
+        override val description: String = "Remove leading and trailing whitespace"
         override val primaryKeyword: String = "trim"
         override val keywords: Set<String> = setOf("trim", "strip")
-        override val invalidInputHint: String = "Example: trim   hello world   "
+        override val invalidInputHint: String = "trim   hello world   → hello world"
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             val trimmed = text.trim()
@@ -301,9 +314,10 @@ class TextUtilitiesProvider(
     private class RemoveWhitespacesUtility : TextUtility {
         override val id: String = "remove-whitespaces"
         override val displayName: String = "Remove Whitespaces"
+        override val description: String = "Remove all whitespace characters"
         override val primaryKeyword: String = "rmws"
         override val keywords: Set<String> = setOf("rmws", "removews", "nows")
-        override val invalidInputHint: String = "Example: rmws hello world"
+        override val invalidInputHint: String = "rmws hello world → helloworld"
 
         override fun transform(mode: TransformMode, text: String): TransformOutcome {
             val result = text.replace("\\s+".toRegex(), "")
@@ -312,6 +326,40 @@ class TextUtilitiesProvider(
             } else {
                 TransformOutcome.Success(result)
             }
+        }
+    }
+
+    private class MessengerUrlExtractorUtility : TextUtility {
+        override val id: String = "messenger-url"
+        override val displayName: String = "Extract Messenger URL"
+        override val description: String = "Extract the original URL from Facebook Messenger redirect links"
+        override val primaryKeyword: String = "fblink"
+        override val keywords: Set<String> = setOf("fblink", "fburl", "messengerurl")
+        override val invalidInputHint: String = "fblink <messenger link> → original URL"
+
+        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) {
+                return TransformOutcome.InvalidInput("No URL provided")
+            }
+
+            val uri = try {
+                Uri.parse(trimmed)
+            } catch (e: Exception) {
+                return TransformOutcome.InvalidInput("Invalid URL format")
+            }
+
+            // Only accept l.facebook.com
+            val host = uri.host?.lowercase()
+            if (host != "l.facebook.com") {
+                return TransformOutcome.InvalidInput("Not a Facebook Messenger redirect URL")
+            }
+
+            // Extract the 'u' parameter (already URL-decoded by getQueryParameter)
+            val originalUrl = uri.getQueryParameter("u")
+                ?: return TransformOutcome.InvalidInput("No redirect URL found in link")
+
+            return TransformOutcome.Success(originalUrl)
         }
     }
 
@@ -331,7 +379,26 @@ class TextUtilitiesProvider(
         private val utilities: List<TextUtility> = listOf(
             Base64Utility(),
             TrimUtility(),
-            RemoveWhitespacesUtility()
+            RemoveWhitespacesUtility(),
+            MessengerUrlExtractorUtility()
         )
+
+        fun getUtilitiesInfo(): List<TextUtilityInfo> = utilities.map { utility ->
+            TextUtilityInfo(
+                id = utility.id,
+                displayName = utility.displayName,
+                description = utility.description,
+                keywords = utility.keywords,
+                example = utility.invalidInputHint
+            )
+        }
     }
 }
+
+data class TextUtilityInfo(
+    val id: String,
+    val displayName: String,
+    val description: String,
+    val keywords: Set<String>,
+    val example: String
+)
