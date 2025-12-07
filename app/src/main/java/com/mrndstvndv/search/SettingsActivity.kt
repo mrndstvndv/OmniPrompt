@@ -38,6 +38,7 @@ import com.mrndstvndv.search.ui.settings.ProviderListScreen
 import com.mrndstvndv.search.ui.settings.AppSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.ContactsSettingsScreen
 import com.mrndstvndv.search.ui.settings.SystemSettingsScreen
+import com.mrndstvndv.search.ui.settings.BackupRestoreSettingsScreen
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
@@ -65,7 +66,8 @@ class SettingsActivity : ComponentActivity() {
         AppSearch,
         ProviderList,
         SystemSettings,
-        ContactsSettings
+        ContactsSettings,
+        BackupRestore
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,6 +130,7 @@ class SettingsActivity : ComponentActivity() {
                             onOpenBehavior = { currentScreen = Screen.Behavior },
                             onOpenAliases = { currentScreen = Screen.Aliases },
                             onOpenResultRanking = { currentScreen = Screen.Ranking },
+                            onOpenBackupRestore = { currentScreen = Screen.BackupRestore },
                             onClose = { finish() }
                         )
                     }
@@ -253,6 +256,15 @@ class SettingsActivity : ComponentActivity() {
                             settingsRepository = settingsRepository,
                             contactsRepository = contactsRepository,
                             onBack = { currentScreen = Screen.Providers }
+                        )
+                    }
+                    Screen.BackupRestore -> {
+                        BackHandler { currentScreen = Screen.Home }
+                        BackupRestoreSettingsScreen(
+                            settingsRepository = settingsRepository,
+                            rankingRepository = rankingRepository,
+                            aliasRepository = aliasRepository,
+                            onBack = { currentScreen = Screen.Home }
                         )
                     }
                 }

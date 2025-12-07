@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Speed
@@ -73,6 +74,7 @@ fun GeneralSettingsScreen(
     onOpenBehavior: () -> Unit,
     onOpenAliases: () -> Unit,
     onOpenResultRanking: () -> Unit,
+    onOpenBackupRestore: () -> Unit,
     onClose: () -> Unit
 ) {
     // Collect once so future tweaks can surface live states on tiles if desired.
@@ -154,6 +156,17 @@ fun GeneralSettingsScreen(
                         title = "Result ranking",
                         subtitle = rankingSubtitle,
                         onClick = onOpenResultRanking
+                    )
+                }
+            }
+
+            item {
+                SettingsTileGroup {
+                    SettingsTile(
+                        icon = Icons.Rounded.CloudUpload,
+                        title = "Backup & Restore",
+                        subtitle = "Export or import your settings",
+                        onClick = onOpenBackupRestore
                     )
                 }
             }
