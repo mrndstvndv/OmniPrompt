@@ -356,12 +356,26 @@ class BackupRestoreManager(
                             com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
                                 .fromJson(textUtilsJson)
                         if (settings != null) {
-                            // We need to use reflection or add a public save method
-                            // For now, restore individual settings
+                            // Restore openDecodedUrls
                             settingsRepository.setOpenDecodedUrlsAutomatically(settings.openDecodedUrls)
+
+                            // Restore disabled utilities
                             settings.disabledUtilities.forEach { utilityId ->
                                 settingsRepository.setUtilityEnabled(utilityId, false)
                             }
+
+                            // Restore disabled keywords
+                            settings.disabledKeywords.forEach { (utilityId, keywords) ->
+                                keywords.forEach { keyword ->
+                                    settingsRepository.setKeywordEnabled(utilityId, keyword, false)
+                                }
+                            }
+
+                            // Restore utility default modes
+                            settings.utilityDefaultModes.forEach { (utilityId, mode) ->
+                                settingsRepository.setUtilityDefaultMode(utilityId, mode)
+                            }
+
                             settingsRestored++
                         }
                     } catch (e: Exception) {
