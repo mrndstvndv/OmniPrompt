@@ -1,7 +1,10 @@
 package com.mrndstvndv.search.ui.settings
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,6 +62,8 @@ import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.termux.TermuxProvider
+import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
 import kotlin.math.roundToInt
 
 @Composable
@@ -207,6 +212,12 @@ fun ProvidersSettingsScreen(
         )
     }
 
+    // Termux permission state
+    var hasTermuxPermission by remember {
+        mutableStateOf(TermuxProvider.hasRunCommandPermission(context))
+    }
+    var showTermuxPermissionDialog by remember { mutableStateOf(false) }
+
     // Permission launcher for contacts
     val contactsPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -219,6 +230,21 @@ fun ProvidersSettingsScreen(
                 Toast.makeText(context, "Permission required to search contacts", Toast.LENGTH_SHORT).show()
             }
         }
+
+    // Permission dialog for Termux
+    if (showTermuxPermissionDialog) {
+        TermuxPermissionDialog(
+            onDismiss = { showTermuxPermissionDialog = false },
+            onOpenSettings = {
+                showTermuxPermissionDialog = false
+                val intent =
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                context.startActivity(intent)
+            },
+        )
+    }
 
     SettingsScaffold(
         title = "Providers",
@@ -312,7 +338,13 @@ fun ProvidersSettingsScreen(
                     enabled = if (isTermuxInstalled) enabledProviders["termux"] ?: true else false,
                     onToggle = { enabled ->
                         if (isTermuxInstalled) {
-                            settingsRepository.setProviderEnabled("termux", enabled)
+                            // Refresh permission state
+                            hasTermuxPermission = TermuxProvider.hasRunCommandPermission(context)
+                            if (enabled && !hasTermuxPermission) {
+                                showTermuxPermissionDialog = true
+                            } else {
+                                settingsRepository.setProviderEnabled("termux", enabled)
+                            }
                         }
                     },
                     onClick = if (isTermuxInstalled) onOpenTermuxSettings else null,
