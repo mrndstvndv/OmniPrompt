@@ -1,5 +1,8 @@
 package com.mrndstvndv.search.ui.settings
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +23,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
@@ -46,11 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxCommand
+import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
 import com.mrndstvndv.search.ui.components.ScrimDialog
 import java.util.UUID
@@ -61,10 +67,16 @@ fun TermuxSettingsScreen(
     isTermuxInstalled: Boolean,
     onBack: () -> Unit,
 ) {
+    val context = LocalContext.current
     val termuxSettings by settingsRepository.termuxSettings.collectAsState()
     var commands by remember { mutableStateOf(termuxSettings.commands) }
     var editingCommand by remember { mutableStateOf<Pair<Int, TermuxCommand>?>(null) }
     var isAddDialogOpen by remember { mutableStateOf(false) }
+
+    // Permission state - checked fresh on composition
+    var hasRunCommandPermission by remember {
+        mutableStateOf(TermuxProvider.hasRunCommandPermission(context))
+    }
 
     LaunchedEffect(termuxSettings) {
         commands = termuxSettings.commands
@@ -144,6 +156,25 @@ fun TermuxSettingsScreen(
                 }
             }
 
+            // Permission status card (only show if Termux is installed)
+            if (isTermuxInstalled) {
+                item {
+                    TermuxPermissionStatusCard(
+                        hasPermission = hasRunCommandPermission,
+                        onOpenSettings = {
+                            val intent =
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                            context.startActivity(intent)
+                        },
+                        onRefresh = {
+                            hasRunCommandPermission = TermuxProvider.hasRunCommandPermission(context)
+                        },
+                    )
+                }
+            }
+
             // Commands section
             item {
                 SettingsSection(
@@ -211,10 +242,23 @@ fun TermuxSettingsScreen(
                     SettingsCardGroup {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(
-                                text =
-                                    "Commands are executed via Termux's RUN_COMMAND intent. " +
-                                        "Make sure you have enabled 'allow-external-apps' in Termux properties.",
+                                text = "Commands are executed via Termux's RUN_COMMAND intent.",
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Requirements:",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text =
+                                    "1. Grant RUN_COMMAND permission to this app\n" +
+                                        "2. Enable 'allow-external-apps' in ~/.termux/termux.properties\n" +
+                                        "3. For foreground commands on Android 10+, grant Termux 'Draw Over Apps' permission",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -225,7 +269,7 @@ fun TermuxSettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "• ~/ → Termux home directory\n• \$PREFIX/ → Termux usr directory",
+                                text = "• ~/ expands to Termux home directory\n• \$PREFIX/ expands to Termux usr directory",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -262,6 +306,85 @@ private fun TermuxSettingsHeader(onBack: () -> Unit) {
                 contentDescription = "Back",
                 tint = MaterialTheme.colorScheme.onBackground,
             )
+        }
+    }
+}
+
+@Composable
+private fun TermuxPermissionStatusCard(
+    hasPermission: Boolean,
+    onOpenSettings: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color =
+            if (hasPermission) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.errorContainer
+            },
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .clickable {
+                        if (hasPermission) {
+                            onRefresh()
+                        } else {
+                            onOpenSettings()
+                        }
+                    }.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (hasPermission) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
+                contentDescription = null,
+                tint =
+                    if (hasPermission) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onErrorContainer
+                    },
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (hasPermission) "Permission Granted" else "Permission Required",
+                    style = MaterialTheme.typography.titleSmall,
+                    color =
+                        if (hasPermission) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        },
+                )
+                Text(
+                    text =
+                        if (hasPermission) {
+                            "RUN_COMMAND permission is enabled"
+                        } else {
+                            "Tap to grant RUN_COMMAND permission in Settings"
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    color =
+                        if (hasPermission) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        },
+                )
+            }
+            if (!hasPermission) {
+                TextButton(onClick = onOpenSettings) {
+                    Text(
+                        "Grant",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
         }
     }
 }

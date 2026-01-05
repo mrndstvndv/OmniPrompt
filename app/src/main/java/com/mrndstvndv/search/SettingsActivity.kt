@@ -247,6 +247,7 @@ class SettingsActivity : ComponentActivity() {
                             }
                             ProviderListScreen(
                                 settingsRepository = settingsRepository,
+                                isTermuxInstalled = TermuxProvider.isTermuxInstalled(this@SettingsActivity),
                                 onBack = {
                                     if (initialScreen == Screen.ProviderList) {
                                         finish()
@@ -257,6 +258,7 @@ class SettingsActivity : ComponentActivity() {
                                 onOpenWebSearchSettings = { currentScreen = Screen.WebSearch },
                                 onOpenFileSearchSettings = { currentScreen = Screen.FileSearch },
                                 onOpenTextUtilitiesSettings = { currentScreen = Screen.TextUtilities },
+                                onOpenTermuxSettings = { currentScreen = Screen.TermuxSettings },
                             )
                         }
 

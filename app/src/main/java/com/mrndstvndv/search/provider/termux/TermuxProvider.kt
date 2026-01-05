@@ -1,9 +1,13 @@
 package com.mrndstvndv.search.provider.termux
 
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -136,9 +140,20 @@ class TermuxProvider(
 
             try {
                 activity.startService(intent)
+            } catch (e: SecurityException) {
+                Toast
+                    .makeText(
+                        activity,
+                        "Permission denied. Grant RUN_COMMAND permission in Settings.",
+                        Toast.LENGTH_LONG,
+                    ).show()
             } catch (e: Exception) {
-                // Handle potential security exceptions if permission not granted
-                e.printStackTrace()
+                Toast
+                    .makeText(
+                        activity,
+                        "Failed to run command: ${e.message}",
+                        Toast.LENGTH_LONG,
+                    ).show()
             }
 
             activity.finish()
@@ -153,6 +168,7 @@ class TermuxProvider(
 
     companion object {
         const val TERMUX_PACKAGE = "com.termux"
+        const val TERMUX_RUN_COMMAND_PERMISSION = "com.termux.permission.RUN_COMMAND"
         private const val TERMUX_RUN_COMMAND_SERVICE = "com.termux.app.RunCommandService"
         private const val ACTION_RUN_COMMAND = "com.termux.RUN_COMMAND"
         private const val EXTRA_COMMAND_PATH = "com.termux.RUN_COMMAND_PATH"
@@ -168,5 +184,14 @@ class TermuxProvider(
          */
         fun isTermuxInstalled(activity: ComponentActivity): Boolean =
             activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
+
+        /**
+         * Static helper to check if RUN_COMMAND permission is granted.
+         */
+        fun hasRunCommandPermission(context: Context): Boolean =
+            ContextCompat.checkSelfPermission(
+                context,
+                TERMUX_RUN_COMMAND_PERMISSION,
+            ) == PackageManager.PERMISSION_GRANTED
     }
 }
