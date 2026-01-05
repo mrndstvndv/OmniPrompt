@@ -1,8 +1,11 @@
 package com.mrndstvndv.search.provider.settings
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Environment
+import androidx.core.content.edit
+import com.mrndstvndv.search.provider.termux.TermuxSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -12,17 +15,18 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import android.content.SharedPreferences
-import androidx.core.content.edit
 
 /**
  * Repository for provider settings.
- * 
+ *
  * @param context Application context
  * @param scope CoroutineScope for async initialization. Pass null for synchronous initialization
  *              (useful for Workers that are already on IO thread).
  */
-class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null) {
+class ProviderSettingsRepository(
+    context: Context,
+    scope: CoroutineScope? = null,
+) {
     companion object {
         private const val PREF_NAME = "provider_settings"
         private const val KEY_WEB_SEARCH = "web_search"
@@ -37,6 +41,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
         private const val KEY_SYSTEM_SETTINGS = "system_settings"
         private const val KEY_CONTACTS = "contacts"
+        private const val KEY_TERMUX = "termux"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -45,12 +50,13 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
     }
 
     private val preferences: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        when (key) {
-            KEY_FILE_SEARCH -> _fileSearchSettings.value = loadFileSearchSettings()
-            KEY_APP_SEARCH -> _appSearchSettings.value = loadAppSearchSettings()
+    private val preferenceListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                KEY_FILE_SEARCH -> _fileSearchSettings.value = loadFileSearchSettings()
+                KEY_APP_SEARCH -> _appSearchSettings.value = loadAppSearchSettings()
+            }
         }
-    }
 
     // Initialize with defaults; actual values loaded async in init block
     private val _webSearchSettings = MutableStateFlow(WebSearchSettings.default())
@@ -89,6 +95,9 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
     private val _contactsSettings = MutableStateFlow(ContactsSettings.default())
     val contactsSettings: StateFlow<ContactsSettings> = _contactsSettings
 
+    private val _termuxSettings = MutableStateFlow(TermuxSettings.default())
+    val termuxSettings: StateFlow<TermuxSettings> = _termuxSettings
+
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
         // Load persisted settings off the main thread if scope provided
@@ -106,6 +115,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
                 _enabledProviders.value = loadEnabledProviders()
                 _systemSettingsSettings.value = loadSystemSettingsSettings()
                 _contactsSettings.value = loadContactsSettings()
+                _termuxSettings.value = loadTermuxSettings()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
@@ -121,6 +131,7 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
             _enabledProviders.value = loadEnabledProviders()
             _systemSettingsSettings.value = loadSystemSettingsSettings()
             _contactsSettings.value = loadContactsSettings()
+            _termuxSettings.value = loadTermuxSettings()
         }
     }
 
@@ -169,35 +180,48 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         saveTextUtilitiesSettings(updated)
     }
 
-    fun setUtilityEnabled(utilityId: String, enabled: Boolean) {
+    fun setUtilityEnabled(
+        utilityId: String,
+        enabled: Boolean,
+    ) {
         val current = _textUtilitiesSettings.value
-        val updatedDisabled = if (enabled) {
-            current.disabledUtilities - utilityId
-        } else {
-            current.disabledUtilities + utilityId
-        }
+        val updatedDisabled =
+            if (enabled) {
+                current.disabledUtilities - utilityId
+            } else {
+                current.disabledUtilities + utilityId
+            }
         if (updatedDisabled == current.disabledUtilities) return
         saveTextUtilitiesSettings(current.copy(disabledUtilities = updatedDisabled))
     }
 
-    fun setKeywordEnabled(utilityId: String, keyword: String, enabled: Boolean) {
+    fun setKeywordEnabled(
+        utilityId: String,
+        keyword: String,
+        enabled: Boolean,
+    ) {
         val current = _textUtilitiesSettings.value
         val currentDisabledForUtility = current.disabledKeywords[utilityId] ?: emptySet()
-        val updatedDisabledForUtility = if (enabled) {
-            currentDisabledForUtility - keyword
-        } else {
-            currentDisabledForUtility + keyword
-        }
-        val updatedDisabledKeywords = if (updatedDisabledForUtility.isEmpty()) {
-            current.disabledKeywords - utilityId
-        } else {
-            current.disabledKeywords + (utilityId to updatedDisabledForUtility)
-        }
+        val updatedDisabledForUtility =
+            if (enabled) {
+                currentDisabledForUtility - keyword
+            } else {
+                currentDisabledForUtility + keyword
+            }
+        val updatedDisabledKeywords =
+            if (updatedDisabledForUtility.isEmpty()) {
+                current.disabledKeywords - utilityId
+            } else {
+                current.disabledKeywords + (utilityId to updatedDisabledForUtility)
+            }
         if (updatedDisabledKeywords == current.disabledKeywords) return
         saveTextUtilitiesSettings(current.copy(disabledKeywords = updatedDisabledKeywords))
     }
 
-    fun setUtilityDefaultMode(utilityId: String, mode: TextUtilityDefaultMode) {
+    fun setUtilityDefaultMode(
+        utilityId: String,
+        mode: TextUtilityDefaultMode,
+    ) {
         val current = _textUtilitiesSettings.value
         val updatedModes = current.utilityDefaultModes + (utilityId to mode)
         if (updatedModes == current.utilityDefaultModes) return
@@ -265,11 +289,15 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         saveFileSearchSettings(current.copy(roots = updatedRoots, scanMetadata = updatedMetadata))
     }
 
-    fun setFileSearchRootEnabled(rootId: String, enabled: Boolean) {
+    fun setFileSearchRootEnabled(
+        rootId: String,
+        enabled: Boolean,
+    ) {
         val current = _fileSearchSettings.value
-        val updatedRoots = current.roots.map { root ->
-            if (root.id == rootId) root.copy(isEnabled = enabled) else root
-        }
+        val updatedRoots =
+            current.roots.map { root ->
+                if (root.id == rootId) root.copy(isEnabled = enabled) else root
+            }
         if (updatedRoots == current.roots) return
         saveFileSearchSettings(current.copy(roots = updatedRoots))
     }
@@ -278,20 +306,24 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         rootId: String,
         state: FileSearchScanState,
         itemCount: Int = 0,
-        errorMessage: String? = null
+        errorMessage: String? = null,
     ) {
         val current = _fileSearchSettings.value
-        val metadata = FileSearchScanMetadata(
-            state = state,
-            indexedItemCount = itemCount,
-            updatedAtMillis = System.currentTimeMillis(),
-            errorMessage = errorMessage
-        )
+        val metadata =
+            FileSearchScanMetadata(
+                state = state,
+                indexedItemCount = itemCount,
+                updatedAtMillis = System.currentTimeMillis(),
+                errorMessage = errorMessage,
+            )
         val updatedMetadata = current.scanMetadata.toMutableMap().apply { put(rootId, metadata) }
         saveFileSearchSettings(current.copy(scanMetadata = updatedMetadata))
     }
 
-    fun setProviderEnabled(providerId: String, enabled: Boolean) {
+    fun setProviderEnabled(
+        providerId: String,
+        enabled: Boolean,
+    ) {
         val current = _enabledProviders.value.toMutableMap()
         current[providerId] = enabled
         saveEnabledProviders(current)
@@ -316,30 +348,20 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         }
     }
 
-    private fun loadTranslucentResultsEnabled(): Boolean {
-        return preferences.getBoolean(KEY_TRANSLUCENT_RESULTS, true)
-    }
+    private fun loadTranslucentResultsEnabled(): Boolean = preferences.getBoolean(KEY_TRANSLUCENT_RESULTS, true)
 
-    private fun loadBackgroundOpacity(): Float {
-        return preferences.getFloat(KEY_BACKGROUND_OPACITY, DEFAULT_BACKGROUND_OPACITY)
-    }
+    private fun loadBackgroundOpacity(): Float = preferences.getFloat(KEY_BACKGROUND_OPACITY, DEFAULT_BACKGROUND_OPACITY)
 
-    private fun loadBackgroundBlurStrength(): Float {
-        return preferences.getFloat(KEY_BACKGROUND_BLUR_STRENGTH, DEFAULT_BACKGROUND_BLUR_STRENGTH)
-    }
+    private fun loadBackgroundBlurStrength(): Float = preferences.getFloat(KEY_BACKGROUND_BLUR_STRENGTH, DEFAULT_BACKGROUND_BLUR_STRENGTH)
 
     private fun loadActivityIndicatorDelayMs(): Int {
         val stored = preferences.getInt(KEY_ACTIVITY_INDICATOR_DELAY_MS, DEFAULT_ACTIVITY_INDICATOR_DELAY_MS)
         return stored.coerceIn(0, MAX_ACTIVITY_INDICATOR_DELAY_MS)
     }
 
-    private fun loadAnimationsEnabled(): Boolean {
-        return preferences.getBoolean(KEY_ANIMATIONS_ENABLED, DEFAULT_ANIMATIONS_ENABLED)
-    }
+    private fun loadAnimationsEnabled(): Boolean = preferences.getBoolean(KEY_ANIMATIONS_ENABLED, DEFAULT_ANIMATIONS_ENABLED)
 
-    private fun loadMotionPreferences(): MotionPreferences {
-        return MotionPreferences(animationsEnabled = loadAnimationsEnabled())
-    }
+    private fun loadMotionPreferences(): MotionPreferences = MotionPreferences(animationsEnabled = loadAnimationsEnabled())
 
     private fun loadTextUtilitiesSettings(): TextUtilitiesSettings {
         val json = preferences.getString(KEY_TEXT_UTILITIES, null)
@@ -443,60 +465,75 @@ class ProviderSettingsRepository(context: Context, scope: CoroutineScope? = null
         if (current.showSimNumbers == enabled) return
         saveContactsSettings(current.copy(showSimNumbers = enabled))
     }
+
+    private fun loadTermuxSettings(): TermuxSettings {
+        val json = preferences.getString(KEY_TERMUX, null)
+        return try {
+            val parsed = json?.let { JSONObject(it) }
+            TermuxSettings.fromJson(parsed) ?: TermuxSettings.default()
+        } catch (ignored: JSONException) {
+            TermuxSettings.default()
+        }
+    }
+
+    fun saveTermuxSettings(settings: TermuxSettings) {
+        preferences.edit { putString(KEY_TERMUX, settings.toJsonString()) }
+        _termuxSettings.value = settings
+    }
 }
 
 data class WebSearchSettings(
     val defaultSiteId: String,
     val sites: List<WebSearchSite>,
-    val quicklinks: List<Quicklink> = emptyList()
+    val quicklinks: List<Quicklink> = emptyList(),
 ) {
     companion object {
-        private val DEFAULT_SITES = listOf(
-            WebSearchSite(
-                id = "bing",
-                displayName = "Bing",
-                urlTemplate = "https://www.bing.com/search?q={query}&form=QBLH"
-            ),
-            WebSearchSite(
-                id = "duckduckgo",
-                displayName = "DuckDuckGo",
-                urlTemplate = "https://duckduckgo.com/?q={query}"
-            ),
-            WebSearchSite(
-                id = "google",
-                displayName = "Google",
-                urlTemplate = "https://www.google.com/search?q={query}"
-            ),
-            WebSearchSite(
-                id = "youtube",
-                displayName = "YouTube",
-                urlTemplate = "https://m.youtube.com/results?search_query={query}"
-            ),
-            WebSearchSite(
-                id = "twitter",
-                displayName = "Twitter",
-                urlTemplate = "https://x.com/search?q={query}"
-            ),
-            WebSearchSite(
-                id = "playstore",
-                displayName = "Play Store",
-                urlTemplate = "https://play.google.com/store/search?q={query}&c=apps"
-            ),
-            WebSearchSite(
-                id = "github",
-                displayName = "GitHub",
-                urlTemplate = "https://github.com/search?q={query}"
+        private val DEFAULT_SITES =
+            listOf(
+                WebSearchSite(
+                    id = "bing",
+                    displayName = "Bing",
+                    urlTemplate = "https://www.bing.com/search?q={query}&form=QBLH",
+                ),
+                WebSearchSite(
+                    id = "duckduckgo",
+                    displayName = "DuckDuckGo",
+                    urlTemplate = "https://duckduckgo.com/?q={query}",
+                ),
+                WebSearchSite(
+                    id = "google",
+                    displayName = "Google",
+                    urlTemplate = "https://www.google.com/search?q={query}",
+                ),
+                WebSearchSite(
+                    id = "youtube",
+                    displayName = "YouTube",
+                    urlTemplate = "https://m.youtube.com/results?search_query={query}",
+                ),
+                WebSearchSite(
+                    id = "twitter",
+                    displayName = "Twitter",
+                    urlTemplate = "https://x.com/search?q={query}",
+                ),
+                WebSearchSite(
+                    id = "playstore",
+                    displayName = "Play Store",
+                    urlTemplate = "https://play.google.com/store/search?q={query}&c=apps",
+                ),
+                WebSearchSite(
+                    id = "github",
+                    displayName = "GitHub",
+                    urlTemplate = "https://github.com/search?q={query}",
+                ),
             )
-        )
         const val QUERY_PLACEHOLDER = "{query}"
 
-        fun default(): WebSearchSettings {
-            return WebSearchSettings(
+        fun default(): WebSearchSettings =
+            WebSearchSettings(
                 defaultSiteId = DEFAULT_SITES.first().id,
                 sites = DEFAULT_SITES,
-                quicklinks = emptyList()
+                quicklinks = emptyList(),
             )
-        }
 
         fun fromJson(json: JSONObject?): WebSearchSettings? {
             if (json == null) return null
@@ -520,9 +557,7 @@ data class WebSearchSettings(
         }
     }
 
-    fun siteForId(id: String?): WebSearchSite? {
-        return sites.firstOrNull { it.id == id }
-    }
+    fun siteForId(id: String?): WebSearchSite? = sites.firstOrNull { it.id == id }
 
     fun toJson(): JSONObject {
         val root = JSONObject()
@@ -545,7 +580,7 @@ data class WebSearchSettings(
 data class WebSearchSite(
     val id: String,
     val displayName: String,
-    val urlTemplate: String
+    val urlTemplate: String,
 ) {
     fun buildUrl(query: String): String {
         val template = normalizedTemplate()
@@ -553,23 +588,21 @@ data class WebSearchSite(
         return template.replace(WebSearchSettings.QUERY_PLACEHOLDER, encoded)
     }
 
-    private fun normalizedTemplate(): String {
-        return if (urlTemplate.contains(WebSearchSettings.QUERY_PLACEHOLDER)) {
+    private fun normalizedTemplate(): String =
+        if (urlTemplate.contains(WebSearchSettings.QUERY_PLACEHOLDER)) {
             urlTemplate
         } else if (urlTemplate.contains("?")) {
-            "${urlTemplate}&q=${WebSearchSettings.QUERY_PLACEHOLDER}"
+            "$urlTemplate&q=${WebSearchSettings.QUERY_PLACEHOLDER}"
         } else {
-            "${urlTemplate}?q=${WebSearchSettings.QUERY_PLACEHOLDER}"
+            "$urlTemplate?q=${WebSearchSettings.QUERY_PLACEHOLDER}"
         }
-    }
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("id", id)
             put("displayName", displayName)
             put("urlTemplate", urlTemplate)
         }
-    }
 
     companion object {
         fun fromJson(json: JSONObject?): WebSearchSite? {
@@ -586,38 +619,37 @@ data class Quicklink(
     val id: String,
     val title: String,
     val url: String,
-    val hasFavicon: Boolean = false
+    val hasFavicon: Boolean = false,
 ) {
     /**
      * Returns the URL without the protocol for display.
      * Example: "https://github.com/user/repo" -> "github.com/user/repo"
      */
-    fun displayUrl(): String {
-        return url
+    fun displayUrl(): String =
+        url
             .removePrefix("https://")
             .removePrefix("http://")
             .removeSuffix("/")
-    }
 
     /**
      * Extracts the domain from the URL for matching.
      * Example: "https://github.com/user/repo" -> "github.com"
      */
     fun domain(): String {
-        val withoutProtocol = url
-            .removePrefix("https://")
-            .removePrefix("http://")
+        val withoutProtocol =
+            url
+                .removePrefix("https://")
+                .removePrefix("http://")
         return withoutProtocol.substringBefore("/").substringBefore("?")
     }
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("id", id)
             put("title", title)
             put("url", url)
             put("hasFavicon", hasFavicon)
         }
-    }
 
     companion object {
         fun fromJson(json: JSONObject?): Quicklink? {
@@ -633,99 +665,110 @@ data class Quicklink(
 
 enum class TextUtilityDefaultMode {
     ENCODE,
-    DECODE
+    DECODE,
 }
 
 data class TextUtilitiesSettings(
     val openDecodedUrls: Boolean,
     val disabledUtilities: Set<String> = emptySet(),
     val disabledKeywords: Map<String, Set<String>> = emptyMap(),
-    val utilityDefaultModes: Map<String, TextUtilityDefaultMode> = emptyMap()
+    val utilityDefaultModes: Map<String, TextUtilityDefaultMode> = emptyMap(),
 ) {
     companion object {
-        fun default(): TextUtilitiesSettings = TextUtilitiesSettings(
-            openDecodedUrls = true,
-            disabledUtilities = emptySet(),
-            disabledKeywords = emptyMap(),
-            utilityDefaultModes = emptyMap()
-        )
+        fun default(): TextUtilitiesSettings =
+            TextUtilitiesSettings(
+                openDecodedUrls = true,
+                disabledUtilities = emptySet(),
+                disabledKeywords = emptyMap(),
+                utilityDefaultModes = emptyMap(),
+            )
 
         fun fromJson(json: JSONObject?): TextUtilitiesSettings? {
             if (json == null) return null
-            
+
             // Parse disabledUtilities
             val disabledUtilitiesArray = json.optJSONArray("disabledUtilities")
-            val disabledUtilities = buildSet {
-                if (disabledUtilitiesArray != null) {
-                    for (i in 0 until disabledUtilitiesArray.length()) {
-                        disabledUtilitiesArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+            val disabledUtilities =
+                buildSet {
+                    if (disabledUtilitiesArray != null) {
+                        for (i in 0 until disabledUtilitiesArray.length()) {
+                            disabledUtilitiesArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                        }
                     }
                 }
-            }
-            
+
             // Parse disabledKeywords
             val disabledKeywordsObj = json.optJSONObject("disabledKeywords")
-            val disabledKeywords = buildMap<String, Set<String>> {
-                if (disabledKeywordsObj != null) {
-                    val keys = disabledKeywordsObj.keys()
-                    while (keys.hasNext()) {
-                        val utilityId = keys.next()
-                        val keywordsArray = disabledKeywordsObj.optJSONArray(utilityId)
-                        if (keywordsArray != null) {
-                            val keywords = buildSet {
-                                for (i in 0 until keywordsArray.length()) {
-                                    keywordsArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
-                                }
+            val disabledKeywords =
+                buildMap<String, Set<String>> {
+                    if (disabledKeywordsObj != null) {
+                        val keys = disabledKeywordsObj.keys()
+                        while (keys.hasNext()) {
+                            val utilityId = keys.next()
+                            val keywordsArray = disabledKeywordsObj.optJSONArray(utilityId)
+                            if (keywordsArray != null) {
+                                val keywords =
+                                    buildSet {
+                                        for (i in 0 until keywordsArray.length()) {
+                                            keywordsArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                                        }
+                                    }
+                                if (keywords.isNotEmpty()) put(utilityId, keywords)
                             }
-                            if (keywords.isNotEmpty()) put(utilityId, keywords)
                         }
                     }
                 }
-            }
-            
+
             // Parse utilityDefaultModes
             val modesObj = json.optJSONObject("utilityDefaultModes")
-            val utilityDefaultModes = buildMap<String, TextUtilityDefaultMode> {
-                if (modesObj != null) {
-                    val keys = modesObj.keys()
-                    while (keys.hasNext()) {
-                        val utilityId = keys.next()
-                        val modeStr = modesObj.optString(utilityId)
-                        val mode = try {
-                            TextUtilityDefaultMode.valueOf(modeStr)
-                        } catch (e: Exception) {
-                            null
+            val utilityDefaultModes =
+                buildMap<String, TextUtilityDefaultMode> {
+                    if (modesObj != null) {
+                        val keys = modesObj.keys()
+                        while (keys.hasNext()) {
+                            val utilityId = keys.next()
+                            val modeStr = modesObj.optString(utilityId)
+                            val mode =
+                                try {
+                                    TextUtilityDefaultMode.valueOf(modeStr)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            if (mode != null) put(utilityId, mode)
                         }
-                        if (mode != null) put(utilityId, mode)
                     }
                 }
-            }
-            
+
             return TextUtilitiesSettings(
                 openDecodedUrls = json.optBoolean("openDecodedUrls", true),
                 disabledUtilities = disabledUtilities,
                 disabledKeywords = disabledKeywords,
-                utilityDefaultModes = utilityDefaultModes
+                utilityDefaultModes = utilityDefaultModes,
             )
         }
     }
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("openDecodedUrls", openDecodedUrls)
             put("disabledUtilities", JSONArray(disabledUtilities.toList()))
-            put("disabledKeywords", JSONObject().apply {
-                disabledKeywords.forEach { (utilityId, keywords) ->
-                    put(utilityId, JSONArray(keywords.toList()))
-                }
-            })
-            put("utilityDefaultModes", JSONObject().apply {
-                utilityDefaultModes.forEach { (utilityId, mode) ->
-                    put(utilityId, mode.name)
-                }
-            })
+            put(
+                "disabledKeywords",
+                JSONObject().apply {
+                    disabledKeywords.forEach { (utilityId, keywords) ->
+                        put(utilityId, JSONArray(keywords.toList()))
+                    }
+                },
+            )
+            put(
+                "utilityDefaultModes",
+                JSONObject().apply {
+                    utilityDefaultModes.forEach { (utilityId, mode) ->
+                        put(utilityId, mode.name)
+                    }
+                },
+            )
         }
-    }
 
     fun toJsonString(): String = toJson().toString()
 }
@@ -740,7 +783,7 @@ data class FileSearchSettings(
     val sortAscending: Boolean,
     val syncIntervalMinutes: Int,
     val syncOnAppOpen: Boolean,
-    val lastSyncTimestamp: Long
+    val lastSyncTimestamp: Long,
 ) {
     fun toJsonString(): String {
         val json = JSONObject()
@@ -774,28 +817,30 @@ data class FileSearchSettings(
         const val DEFAULT_SYNC_INTERVAL_MINUTES = 30
         const val DEFAULT_SYNC_ON_APP_OPEN = true
 
-        fun empty(): FileSearchSettings = FileSearchSettings(
-            roots = emptyList(),
-            scanMetadata = emptyMap(),
-            includeDownloads = false,
-            loadThumbnails = true,
-            thumbnailCropMode = FileSearchThumbnailCropMode.CENTER_CROP,
-            sortMode = FileSearchSortMode.NAME,
-            sortAscending = true,
-            syncIntervalMinutes = DEFAULT_SYNC_INTERVAL_MINUTES,
-            syncOnAppOpen = DEFAULT_SYNC_ON_APP_OPEN,
-            lastSyncTimestamp = 0L
-        )
+        fun empty(): FileSearchSettings =
+            FileSearchSettings(
+                roots = emptyList(),
+                scanMetadata = emptyMap(),
+                includeDownloads = false,
+                loadThumbnails = true,
+                thumbnailCropMode = FileSearchThumbnailCropMode.CENTER_CROP,
+                sortMode = FileSearchSortMode.NAME,
+                sortAscending = true,
+                syncIntervalMinutes = DEFAULT_SYNC_INTERVAL_MINUTES,
+                syncOnAppOpen = DEFAULT_SYNC_ON_APP_OPEN,
+                lastSyncTimestamp = 0L,
+            )
 
         fun fromJson(json: JSONObject?): FileSearchSettings? {
             if (json == null) return empty()
             val rootsArray = json.optJSONArray("roots") ?: JSONArray()
-            val roots = buildList {
-                for (i in 0 until rootsArray.length()) {
-                    val parsed = FileSearchRoot.fromJson(rootsArray.optJSONObject(i))
-                    if (parsed != null) add(parsed)
+            val roots =
+                buildList {
+                    for (i in 0 until rootsArray.length()) {
+                        val parsed = FileSearchRoot.fromJson(rootsArray.optJSONObject(i))
+                        if (parsed != null) add(parsed)
+                    }
                 }
-            }
             val metadataObject = json.optJSONObject("metadata") ?: JSONObject()
             val metadata = mutableMapOf<String, FileSearchScanMetadata>()
             val keys = metadataObject.keys()
@@ -824,7 +869,7 @@ data class FileSearchSettings(
                 sortAscending = sortAscending,
                 syncIntervalMinutes = syncIntervalMinutes,
                 syncOnAppOpen = syncOnAppOpen,
-                lastSyncTimestamp = lastSyncTimestamp
+                lastSyncTimestamp = lastSyncTimestamp,
             )
         }
     }
@@ -836,10 +881,10 @@ data class FileSearchRoot(
     val displayName: String,
     val isEnabled: Boolean = true,
     val addedAtMillis: Long,
-    val parentDisplayName: String? = null
+    val parentDisplayName: String? = null,
 ) {
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("id", id)
             put("uri", uri.toString())
             put("displayName", displayName)
@@ -849,7 +894,6 @@ data class FileSearchRoot(
                 put("parentDisplayName", parentDisplayName)
             }
         }
-    }
 
     companion object {
         fun fromJson(json: JSONObject?): FileSearchRoot? {
@@ -867,7 +911,7 @@ data class FileSearchRoot(
                 displayName = name,
                 isEnabled = enabled,
                 addedAtMillis = addedAt,
-                parentDisplayName = parent
+                parentDisplayName = parent,
             )
         }
 
@@ -881,7 +925,7 @@ data class FileSearchRoot(
                 displayName = "Downloads",
                 isEnabled = true,
                 addedAtMillis = directory.lastModified(),
-                parentDisplayName = parentName
+                parentDisplayName = parentName,
             )
         }
     }
@@ -891,10 +935,10 @@ data class FileSearchScanMetadata(
     val state: FileSearchScanState,
     val indexedItemCount: Int,
     val updatedAtMillis: Long,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 ) {
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("state", state.name)
             put("indexedItemCount", indexedItemCount)
             put("updatedAtMillis", updatedAtMillis)
@@ -902,14 +946,14 @@ data class FileSearchScanMetadata(
                 put("errorMessage", errorMessage)
             }
         }
-    }
 
     companion object {
         fun fromJson(json: JSONObject?): FileSearchScanMetadata? {
             if (json == null) return null
             val stateName = json.optString("state", FileSearchScanState.IDLE.name)
-            val state = runCatching { FileSearchScanState.valueOf(stateName) }
-                .getOrDefault(FileSearchScanState.IDLE)
+            val state =
+                runCatching { FileSearchScanState.valueOf(stateName) }
+                    .getOrDefault(FileSearchScanState.IDLE)
             val itemCount = json.optInt("indexedItemCount", 0)
             val updatedAt = json.optLong("updatedAtMillis", 0L)
             val rawError = json.optString("errorMessage")
@@ -918,7 +962,7 @@ data class FileSearchScanMetadata(
                 state = state,
                 indexedItemCount = itemCount,
                 updatedAtMillis = updatedAt,
-                errorMessage = error
+                errorMessage = error,
             )
         }
     }
@@ -928,12 +972,13 @@ enum class FileSearchScanState {
     IDLE,
     INDEXING,
     SUCCESS,
-    ERROR
+    ERROR,
 }
 
 enum class FileSearchThumbnailCropMode {
     FIT,
-    CENTER_CROP;
+    CENTER_CROP,
+    ;
 
     companion object {
         fun fromStorageValue(value: String?): FileSearchThumbnailCropMode {
@@ -945,7 +990,8 @@ enum class FileSearchThumbnailCropMode {
 
 enum class FileSearchSortMode {
     DATE,
-    NAME;
+    NAME,
+    ;
 
     companion object {
         fun fromStorageValue(value: String?): FileSearchSortMode {
@@ -957,35 +1003,35 @@ enum class FileSearchSortMode {
 
 data class AppSearchSettings(
     val includePackageName: Boolean,
-    val aiAssistantQueriesEnabled: Boolean = true
+    val aiAssistantQueriesEnabled: Boolean = true,
 ) {
     companion object {
-        fun default(): AppSearchSettings = AppSearchSettings(
-            includePackageName = false,
-            aiAssistantQueriesEnabled = true
-        )
+        fun default(): AppSearchSettings =
+            AppSearchSettings(
+                includePackageName = false,
+                aiAssistantQueriesEnabled = true,
+            )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
             if (json == null) return null
             return AppSearchSettings(
                 includePackageName = json.optBoolean("includePackageName", false),
-                aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true)
+                aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true),
             )
         }
     }
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("includePackageName", includePackageName)
             put("aiAssistantQueriesEnabled", aiAssistantQueriesEnabled)
         }
-    }
 
     fun toJsonString(): String = toJson().toString()
 }
 
 data class SystemSettingsSettings(
-    val developerToggleEnabled: Boolean
+    val developerToggleEnabled: Boolean,
 ) {
     companion object {
         fun default(): SystemSettingsSettings = SystemSettingsSettings(developerToggleEnabled = false)
@@ -993,45 +1039,44 @@ data class SystemSettingsSettings(
         fun fromJson(json: JSONObject?): SystemSettingsSettings? {
             if (json == null) return null
             return SystemSettingsSettings(
-                developerToggleEnabled = json.optBoolean("developerToggleEnabled", false)
+                developerToggleEnabled = json.optBoolean("developerToggleEnabled", false),
             )
         }
     }
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("developerToggleEnabled", developerToggleEnabled)
         }
-    }
 
     fun toJsonString(): String = toJson().toString()
 }
 
 data class ContactsSettings(
     val includePhoneNumbers: Boolean,
-    val showSimNumbers: Boolean
+    val showSimNumbers: Boolean,
 ) {
     companion object {
-        fun default(): ContactsSettings = ContactsSettings(
-            includePhoneNumbers = true,
-            showSimNumbers = false
-        )
+        fun default(): ContactsSettings =
+            ContactsSettings(
+                includePhoneNumbers = true,
+                showSimNumbers = false,
+            )
 
         fun fromJson(json: JSONObject?): ContactsSettings? {
             if (json == null) return null
             return ContactsSettings(
                 includePhoneNumbers = json.optBoolean("includePhoneNumbers", true),
-                showSimNumbers = json.optBoolean("showSimNumbers", false)
+                showSimNumbers = json.optBoolean("showSimNumbers", false),
             )
         }
     }
 
-    fun toJson(): JSONObject {
-        return JSONObject().apply {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
             put("includePhoneNumbers", includePhoneNumbers)
             put("showSimNumbers", showSimNumbers)
         }
-    }
 
     fun toJsonString(): String = toJson().toString()
 }

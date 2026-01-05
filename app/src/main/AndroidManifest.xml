@@ -16,11 +16,16 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
 
+    <!-- Termux RUN_COMMAND permission for executing commands -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Query for Termux to check if installed -->
+        <package android:name="com.termux" />
     </queries>
 
     <application

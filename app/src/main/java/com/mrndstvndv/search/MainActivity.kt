@@ -9,9 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -52,21 +52,22 @@ import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListProvider
+import com.mrndstvndv.search.provider.calculator.CalculatorProvider
 import com.mrndstvndv.search.provider.contacts.ContactsProvider
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.contacts.PhoneNumber
-import com.mrndstvndv.search.provider.system.SettingsProvider
-import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
-import com.mrndstvndv.search.provider.calculator.CalculatorProvider
 import com.mrndstvndv.search.provider.files.FileSearchProvider
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
+import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
+import com.mrndstvndv.search.provider.system.SettingsProvider
+import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.web.WebSearchProvider
 import com.mrndstvndv.search.ui.components.ContactActionData
@@ -124,17 +125,19 @@ class MainActivity : ComponentActivity() {
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
-            val providers = remember(this@MainActivity) {
-                buildList {
-                    add(AppListProvider(this@MainActivity, settingsRepository, defaultAppIconSize))
-                    add(SettingsProvider(this@MainActivity, settingsRepository, developerSettingsManager))
-                    add(CalculatorProvider(this@MainActivity))
-                    add(TextUtilitiesProvider(this@MainActivity, settingsRepository))
-                    add(FileSearchProvider(this@MainActivity, settingsRepository, fileSearchRepository, fileThumbnailRepository))
-                    add(ContactsProvider(settingsRepository, contactsRepository))
-                    add(WebSearchProvider(this@MainActivity, settingsRepository))
+            val providers =
+                remember(this@MainActivity) {
+                    buildList {
+                        add(AppListProvider(this@MainActivity, settingsRepository, defaultAppIconSize))
+                        add(SettingsProvider(this@MainActivity, settingsRepository, developerSettingsManager))
+                        add(CalculatorProvider(this@MainActivity))
+                        add(TextUtilitiesProvider(this@MainActivity, settingsRepository))
+                        add(FileSearchProvider(this@MainActivity, settingsRepository, fileSearchRepository, fileThumbnailRepository))
+                        add(ContactsProvider(settingsRepository, contactsRepository))
+                        add(WebSearchProvider(this@MainActivity, settingsRepository))
+                        add(TermuxProvider(this@MainActivity, settingsRepository))
+                    }
                 }
-            }
 
             // Pre-initialize heavy providers on first composition
             LaunchedEffect(Unit) {
@@ -146,7 +149,7 @@ class MainActivity : ComponentActivity() {
             // Sync-on-open: trigger incremental file sync if enabled and enough time has passed
             val fileSearchSettings by settingsRepository.fileSearchSettings.collectAsState()
             val systemSettingsSettings by settingsRepository.systemSettingsSettings.collectAsState()
-            
+
             // Initialize developer settings manager if feature is enabled
             LaunchedEffect(systemSettingsSettings.developerToggleEnabled) {
                 if (systemSettingsSettings.developerToggleEnabled) {
@@ -154,7 +157,7 @@ class MainActivity : ComponentActivity() {
                     developerSettingsManager.refreshStatus()
                 }
             }
-            
+
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
                     val settings = settingsRepository.fileSearchSettings.value
@@ -210,10 +213,11 @@ class MainActivity : ComponentActivity() {
                 val prefillQuery = candidate.extras[TextUtilitiesProvider.PREFILL_QUERY_EXTRA] as? String
                 if (prefillQuery != null) {
                     val completedPrefill = ensureTrailingSpace(prefillQuery)
-                    textState.value = TextFieldValue(
-                        text = completedPrefill,
-                        selection = TextRange(completedPrefill.length)
-                    )
+                    textState.value =
+                        TextFieldValue(
+                            text = completedPrefill,
+                            selection = TextRange(completedPrefill.length),
+                        )
                     shouldShowResults = true
                     return true
                 }
@@ -223,13 +227,14 @@ class MainActivity : ComponentActivity() {
                     val phoneNumbers = candidate.extras[ContactsProvider.EXTRA_PHONE_NUMBERS] as? List<PhoneNumber> ?: emptyList()
                     val displayName = candidate.extras[ContactsProvider.EXTRA_DISPLAY_NAME] as? String ?: candidate.title
                     val isSimNumber = candidate.extras[ContactsProvider.EXTRA_IS_SIM_NUMBER] as? Boolean ?: false
-                    contactActionData = ContactActionData(
-                        contactId = candidate.extras[ContactsProvider.EXTRA_CONTACT_ID] as? String,
-                        lookupKey = candidate.extras[ContactsProvider.EXTRA_LOOKUP_KEY] as? String,
-                        displayName = displayName,
-                        phoneNumbers = phoneNumbers,
-                        isSimNumber = isSimNumber
-                    )
+                    contactActionData =
+                        ContactActionData(
+                            contactId = candidate.extras[ContactsProvider.EXTRA_CONTACT_ID] as? String,
+                            lookupKey = candidate.extras[ContactsProvider.EXTRA_LOOKUP_KEY] as? String,
+                            displayName = displayName,
+                            phoneNumbers = phoneNumbers,
+                            isSimNumber = isSimNumber,
+                        )
                     // Track usage for contacts too
                     rankingRepository.incrementResultUsage(candidate.id)
                     return true
@@ -244,88 +249,95 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger) {
                 // Cancel previous query job to debounce typing
                 pendingQueryJob?.cancel()
-                
-                pendingQueryJob = launch {
-                    // Minimal debounce: 50ms to reduce jank while still batching keystrokes
-                    delay(50)
-                    
-                    val currentText = textState.value.text
-                    val match = aliasRepository.matchAlias(currentText)
-                    val normalizedText = match?.remainingQuery ?: currentText
-                    val query = Query(normalizedText, originalText = currentText)
 
-                    val aggregated = mutableListOf<ProviderResult>()
-                    val seenIds = mutableSetOf<String>()
-                    val matchingProviders = providers
-                        .filter { enabledProviders[it.id] ?: true }
-                        .filter { it.canHandle(query) }
-                    val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
+                pendingQueryJob =
+                    launch {
+                        // Minimal debounce: 50ms to reduce jank while still batching keystrokes
+                        delay(50)
 
-                    // Use supervisorScope to isolate provider failures
-                    supervisorScope {
-                        matchingProviders.forEach { provider ->
-                            launch {
-                                try {
-                                    val results = withContext(Dispatchers.IO) { provider.query(query) }
-                                    val newItems = results.filterNot { seenIds.contains(it.id) }
-                                    if (newItems.isNotEmpty()) {
-                                        newItems.forEach { seenIds.add(it.id) }
-                                        aggregated += newItems
+                        val currentText = textState.value.text
+                        val match = aliasRepository.matchAlias(currentText)
+                        val normalizedText = match?.remainingQuery ?: currentText
+                        val query = Query(normalizedText, originalText = currentText)
+
+                        val aggregated = mutableListOf<ProviderResult>()
+                        val seenIds = mutableSetOf<String>()
+                        val matchingProviders =
+                            providers
+                                .filter { enabledProviders[it.id] ?: true }
+                                .filter { it.canHandle(query) }
+                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
+
+                        // Use supervisorScope to isolate provider failures
+                        supervisorScope {
+                            matchingProviders.forEach { provider ->
+                                launch {
+                                    try {
+                                        val results = withContext(Dispatchers.IO) { provider.query(query) }
+                                        val newItems = results.filterNot { seenIds.contains(it.id) }
+                                        if (newItems.isNotEmpty()) {
+                                            newItems.forEach { seenIds.add(it.id) }
+                                            aggregated += newItems
+                                        }
+                                    } catch (error: Exception) {
+                                        // Silently ignore individual provider failures
                                     }
-                                } catch (error: Exception) {
-                                    // Silently ignore individual provider failures
                                 }
                             }
                         }
-                    }
 
-                    // Final update after all providers complete - only if results changed
-                    val filtered = match?.entry?.target?.let { aliasTarget ->
-                        aggregated.filterNot { it.aliasTarget == aliasTarget }
-                    } ?: aggregated
-                    
-                    // Sort results:
-                    // If frequency ranking enabled:
-                    //   - Items with usage frequency appear first (sorted by frequency)
-                    //   - Items with no usage follow provider ranking
-                    // Otherwise: sort purely by provider ranking
-                    val sortedResults = if (useFrequencyRanking) {
-                        filtered.sortedWith(compareBy(
-                            { result ->
-                                // Primary: items with frequency (0) come first, then items without (-1)
-                                if (rankingRepository.getResultFrequency(result.id) > 0) 0 else 1
-                            },
-                            { result ->
-                                // Secondary: within each group, sort appropriately
-                                val freq = rankingRepository.getResultFrequency(result.id)
-                                if (freq > 0) {
-                                    // For frequent items, sort by frequency rank
-                                    rankingRepository.getResultFrequencyRank(result.id)
-                                } else {
-                                    // For non-frequent items, sort by provider rank
+                        // Final update after all providers complete - only if results changed
+                        val filtered =
+                            match?.entry?.target?.let { aliasTarget ->
+                                aggregated.filterNot { it.aliasTarget == aliasTarget }
+                            } ?: aggregated
+
+                        // Sort results:
+                        // If frequency ranking enabled:
+                        //   - Items with usage frequency appear first (sorted by frequency)
+                        //   - Items with no usage follow provider ranking
+                        // Otherwise: sort purely by provider ranking
+                        val sortedResults =
+                            if (useFrequencyRanking) {
+                                filtered.sortedWith(
+                                    compareBy(
+                                        { result ->
+                                            // Primary: items with frequency (0) come first, then items without (-1)
+                                            if (rankingRepository.getResultFrequency(result.id) > 0) 0 else 1
+                                        },
+                                        { result ->
+                                            // Secondary: within each group, sort appropriately
+                                            val freq = rankingRepository.getResultFrequency(result.id)
+                                            if (freq > 0) {
+                                                // For frequent items, sort by frequency rank
+                                                rankingRepository.getResultFrequencyRank(result.id)
+                                            } else {
+                                                // For non-frequent items, sort by provider rank
+                                                rankingRepository.getProviderRank(result.providerId)
+                                            }
+                                        },
+                                    ),
+                                )
+                            } else {
+                                filtered.sortedBy { result ->
                                     rankingRepository.getProviderRank(result.providerId)
                                 }
                             }
-                        ))
-                    } else {
-                        filtered.sortedBy { result ->
-                            rankingRepository.getProviderRank(result.providerId)
+
+                        val newResults =
+                            buildList {
+                                aliasResult?.let { add(it) }
+                                addAll(sortedResults)
+                            }
+
+                        // Only update UI if results actually changed
+                        if (providerResults != newResults) {
+                            providerResults.clear()
+                            providerResults.addAll(newResults)
                         }
+
+                        shouldShowResults = normalizedText.isNotBlank() || match != null
                     }
-                    
-                    val newResults = buildList {
-                        aliasResult?.let { add(it) }
-                        addAll(sortedResults)
-                    }
-                    
-                    // Only update UI if results actually changed
-                    if (providerResults != newResults) {
-                        providerResults.clear()
-                        providerResults.addAll(newResults)
-                    }
-                    
-                    shouldShowResults = normalizedText.isNotBlank() || match != null
-                }
             }
 
             SearchTheme(motionPreferences = motionPreferences) {
@@ -333,14 +345,15 @@ class MainActivity : ComponentActivity() {
                 val spacerWeight by rememberMotionAwareFloat(
                     targetValue = if (hasVisibleResults) 0.01f else 1f,
                     durationMillis = 300,
-                    label = "resultsSpacer"
+                    label = "resultsSpacer",
                 )
 
-                val tintedPrimaryBackground = lerp(
-                    start = MaterialTheme.colorScheme.surfaceBright,
-                    stop = MaterialTheme.colorScheme.primaryContainer,
-                    fraction = 0.65f
-                )
+                val tintedPrimaryBackground =
+                    lerp(
+                        start = MaterialTheme.colorScheme.surfaceBright,
+                        stop = MaterialTheme.colorScheme.primaryContainer,
+                        fraction = 0.65f,
+                    )
                 val backgroundColor = tintedPrimaryBackground.copy(alpha = backgroundOpacity.coerceIn(0f, 1f))
                 Box(
                     Modifier
@@ -348,45 +361,47 @@ class MainActivity : ComponentActivity() {
                         .background(backgroundColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null
+                            indication = null,
                         ) {
                             finish()
-                        }
-                        .padding(top = 50.dp)
+                        }.padding(top = 50.dp),
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
                     ) {
                         Spacer(Modifier.weight(spacerWeight))
 
                         Column(modifier = Modifier.fillMaxWidth()) {
                             SearchField(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequester),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(focusRequester),
                                 value = textState.value,
                                 onValueChange = { textState.value = it },
                                 singleLine = true,
                                 placeholder = { Text("Search") },
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions = KeyboardActions(onDone = {
-                                    val primaryResult = providerResults.firstOrNull()
-                                    val handled = handleResultSelection(primaryResult)
-                                    if (!handled) {
-                                        val query = textState.value.text.trim()
-                                        if (query.isNotEmpty()) {
-                                            handleQuerySubmission(query)
+                                keyboardActions =
+                                    KeyboardActions(onDone = {
+                                        val primaryResult = providerResults.firstOrNull()
+                                        val handled = handleResultSelection(primaryResult)
+                                        if (!handled) {
+                                            val query = textState.value.text.trim()
+                                            if (query.isNotEmpty()) {
+                                                handleQuerySubmission(query)
+                                            }
                                         }
-                                    }
-                                })
+                                    }),
                             )
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                horizontalArrangement = Arrangement.End,
                             ) {
                                 TextButton(onClick = {
                                     val intent = Intent(this@MainActivity, SettingsActivity::class.java)
@@ -406,20 +421,23 @@ class MainActivity : ComponentActivity() {
                         val listExitDuration = 200
                         motionAwareVisibility(
                             visible = hasVisibleResults,
-                            modifier = Modifier
-                                .weight(if (hasVisibleResults) 1f else 0.01f)
-                                .imePadding()
-                                .padding(bottom = 8.dp),
-                            enter = fadeIn(animationSpec = tween(durationMillis = listEnterDuration)) +
+                            modifier =
+                                Modifier
+                                    .weight(if (hasVisibleResults) 1f else 0.01f)
+                                    .imePadding()
+                                    .padding(bottom = 8.dp),
+                            enter =
+                                fadeIn(animationSpec = tween(durationMillis = listEnterDuration)) +
                                     expandVertically(
                                         expandFrom = Alignment.Top,
-                                        animationSpec = tween(durationMillis = listEnterDuration)
+                                        animationSpec = tween(durationMillis = listEnterDuration),
                                     ),
-                            exit = fadeOut(animationSpec = tween(durationMillis = listExitDuration)) +
+                            exit =
+                                fadeOut(animationSpec = tween(durationMillis = listExitDuration)) +
                                     shrinkVertically(
                                         shrinkTowards = Alignment.Top,
-                                        animationSpec = tween(durationMillis = listExitDuration)
-                                    )
+                                        animationSpec = tween(durationMillis = listExitDuration),
+                                    ),
                         ) {
                             ItemsList(
                                 modifier = Modifier.fillMaxSize(),
@@ -430,11 +448,12 @@ class MainActivity : ComponentActivity() {
                                     val suggestion = sanitizeAliasSuggestion(result.title)
                                     aliasDialogValue = suggestion
                                     aliasDialogError = null
-                                    aliasDialogCandidate = AliasCreationCandidate(
-                                        target = target,
-                                        suggestion = suggestion,
-                                        description = result.subtitle ?: result.title
-                                    )
+                                    aliasDialogCandidate =
+                                        AliasCreationCandidate(
+                                            target = target,
+                                            suggestion = suggestion,
+                                            description = result.subtitle ?: result.title,
+                                        )
                                 },
                                 translucentItems = translucentResultsEnabled,
                             )
@@ -443,27 +462,31 @@ class MainActivity : ComponentActivity() {
 
                     if (isPerformingAction) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { }
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) { },
                         ) {
                             if (showLoadingOverlay) {
                                 Box(
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
-                                                .copy(alpha = 0.95f),
-                                            shape = RoundedCornerShape(28.dp)
-                                        )
-                                        .padding(horizontal = 28.dp, vertical = 24.dp)
+                                    modifier =
+                                        Modifier
+                                            .align(Alignment.Center)
+                                            .background(
+                                                color =
+                                                    MaterialTheme.colorScheme
+                                                        .surfaceColorAtElevation(6.dp)
+                                                        .copy(alpha = 0.95f),
+                                                shape = RoundedCornerShape(28.dp),
+                                            ).padding(horizontal = 28.dp, vertical = 24.dp),
                                 ) {
                                     LoadingIndicator(
-                                        modifier = Modifier
-                                            .size(48.dp)
+                                        modifier =
+                                            Modifier
+                                                .size(48.dp),
                                     )
                                 }
                             }
@@ -521,14 +544,16 @@ class MainActivity : ComponentActivity() {
                                 aliasDialogCandidate = null
                                 aliasDialogError = null
                             }
+
                             AliasRepository.SaveResult.DUPLICATE -> {
                                 aliasDialogError = "Alias already exists"
                             }
+
                             AliasRepository.SaveResult.INVALID_ALIAS -> {
                                 aliasDialogError = "Alias cannot be empty"
                             }
                         }
-                    }
+                    },
                 )
             }
 
@@ -540,7 +565,7 @@ class MainActivity : ComponentActivity() {
                     onActionComplete = {
                         contactActionData = null
                         finish()
-                    }
+                    },
                 )
             }
 
@@ -552,11 +577,12 @@ class MainActivity : ComponentActivity() {
 
     private fun handleQuerySubmission(query: String) {
         if (Patterns.WEB_URL.matcher(query).matches()) {
-            val normalizedUrl = if (query.startsWith("http://", ignoreCase = true) || query.startsWith("https://", ignoreCase = true)) {
-                query
-            } else {
-                "https://$query"
-            }
+            val normalizedUrl =
+                if (query.startsWith("http://", ignoreCase = true) || query.startsWith("https://", ignoreCase = true)) {
+                    query
+                } else {
+                    "https://$query"
+                }
             val intent = Intent(Intent.ACTION_VIEW, normalizedUrl.toUri())
             startActivity(intent)
         } else {
@@ -567,7 +593,11 @@ class MainActivity : ComponentActivity() {
         finish()
     }
 
-    private fun buildAliasResult(entry: AliasEntry, query: String, webSearchSettings: WebSearchSettings): ProviderResult? {
+    private fun buildAliasResult(
+        entry: AliasEntry,
+        query: String,
+        webSearchSettings: WebSearchSettings,
+    ): ProviderResult? {
         return when (val target = entry.target) {
             is WebSearchAliasTarget -> {
                 val site = webSearchSettings.siteForId(target.siteId) ?: webSearchSettings.sites.firstOrNull()
@@ -587,9 +617,10 @@ class MainActivity : ComponentActivity() {
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,
-                    keepOverlayUntilExit = true
+                    keepOverlayUntilExit = true,
                 )
             }
+
             is AppLaunchAliasTarget -> {
                 val action: suspend () -> Unit = {
                     withContext(Dispatchers.Main) {
@@ -607,17 +638,22 @@ class MainActivity : ComponentActivity() {
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,
-                    keepOverlayUntilExit = true
+                    keepOverlayUntilExit = true,
                 )
             }
-            else -> null
+
+            else -> {
+                null
+            }
         }
     }
 
     private fun sanitizeAliasSuggestion(text: String): String {
-        val normalized = text.lowercase()
-            .replace(Regex("[^a-z0-9]+"), "-")
-            .trim('-')
+        val normalized =
+            text
+                .lowercase()
+                .replace(Regex("[^a-z0-9]+"), "-")
+                .trim('-')
         return normalized.ifBlank { "alias" }
     }
 
@@ -631,5 +667,5 @@ class MainActivity : ComponentActivity() {
 
 private data class PendingAction(
     val block: suspend () -> Unit,
-    val keepOverlayUntilExit: Boolean
+    val keepOverlayUntilExit: Boolean,
 )

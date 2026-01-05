@@ -16,12 +16,15 @@ import org.json.JSONObject
  * Manages provider display order/ranking.
  * Supports both manual ranking and algorithmic frequency-based ranking.
  * Ensures results are always sorted by user-configured provider order or frequency, not by load speed.
- * 
+ *
  * @param context Application context
  * @param scope CoroutineScope for async initialization. Pass null for synchronous initialization
  *              (useful for Workers that are already on IO thread).
  */
-class ProviderRankingRepository private constructor(context: Context, scope: CoroutineScope? = null) {
+class ProviderRankingRepository private constructor(
+    context: Context,
+    scope: CoroutineScope? = null,
+) {
     companion object {
         private const val PREF_NAME = "provider_rankings"
         private const val KEY_PROVIDER_ORDER = "provider_order"
@@ -29,35 +32,39 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         private const val KEY_USE_FREQUENCY_RANKING = "use_frequency_ranking"
 
         // Default provider order (used if not yet customized by user)
-        private val DEFAULT_PROVIDER_ORDER = listOf(
-            "app-list",
-            "calculator",
-            "text-utilities",
-            "file-search",
-            "web-search",
-            "system-settings",
-            "debug-long-operation"
-        )
+        private val DEFAULT_PROVIDER_ORDER =
+            listOf(
+                "app-list",
+                "calculator",
+                "text-utilities",
+                "file-search",
+                "termux",
+                "web-search",
+                "system-settings",
+                "debug-long-operation",
+            )
 
         @Volatile
         private var INSTANCE: ProviderRankingRepository? = null
 
-        fun getInstance(context: Context, scope: CoroutineScope? = null): ProviderRankingRepository {
-            return INSTANCE ?: synchronized(this) {
+        fun getInstance(
+            context: Context,
+            scope: CoroutineScope? = null,
+        ): ProviderRankingRepository =
+            INSTANCE ?: synchronized(this) {
                 INSTANCE ?: ProviderRankingRepository(context.applicationContext, scope).also { INSTANCE = it }
             }
-        }
     }
 
     private val preferences: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    
+
     // Initialize with defaults; actual values loaded async in init block
     private val _providerOrder = MutableStateFlow(DEFAULT_PROVIDER_ORDER)
     val providerOrder: StateFlow<List<String>> = _providerOrder
-    
+
     private val _useFrequencyRanking = MutableStateFlow(true)
     val useFrequencyRanking: StateFlow<Boolean> = _useFrequencyRanking
-    
+
     private val _resultFrequency = MutableStateFlow(emptyMap<String, Int>())
     val resultFrequency: StateFlow<Map<String, Int>> = _resultFrequency
 
@@ -76,14 +83,11 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         }
     }
 
-
     /**
      * Get the rank/position of a provider (for provider-level sorting).
      * Provider ranking is always based on manual order, not frequency.
      */
-    fun getProviderRank(providerId: String): Int {
-        return _providerOrder.value.indexOf(providerId).takeIf { it >= 0 } ?: Int.MAX_VALUE
-    }
+    fun getProviderRank(providerId: String): Int = _providerOrder.value.indexOf(providerId).takeIf { it >= 0 } ?: Int.MAX_VALUE
 
     /**
      * Get the frequency rank of a result (for result-level sorting when frequency mode is enabled).
@@ -99,9 +103,7 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
     /**
      * Get frequency count for a specific result.
      */
-    fun getResultFrequency(resultId: String): Int {
-        return _resultFrequency.value[resultId] ?: 0
-    }
+    fun getResultFrequency(resultId: String): Int = _resultFrequency.value[resultId] ?: 0
 
     /**
      * Update the provider order
@@ -115,7 +117,10 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
      * Move provider up in ranking (higher priority).
      * Skips over disabled providers to swap with the nearest enabled one.
      */
-    fun moveUp(providerId: String, isEnabled: (String) -> Boolean) {
+    fun moveUp(
+        providerId: String,
+        isEnabled: (String) -> Boolean,
+    ) {
         val current = _providerOrder.value.toMutableList()
         val index = current.indexOf(providerId)
         if (index <= 0) return
@@ -141,7 +146,10 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
      * Move provider down in ranking (lower priority).
      * Skips over disabled providers to swap with the nearest enabled one.
      */
-    fun moveDown(providerId: String, isEnabled: (String) -> Boolean) {
+    fun moveDown(
+        providerId: String,
+        isEnabled: (String) -> Boolean,
+    ) {
         val current = _providerOrder.value.toMutableList()
         val index = current.indexOf(providerId)
         if (index == -1 || index >= current.size - 1) return
@@ -190,8 +198,8 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         saveResultFrequency(emptyMap())
     }
 
-    private fun loadProviderOrder(): List<String> {
-        return try {
+    private fun loadProviderOrder(): List<String> =
+        try {
             val json = preferences.getString(KEY_PROVIDER_ORDER, null)
             if (json != null) {
                 val array = JSONArray(json)
@@ -202,7 +210,6 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         } catch (e: JSONException) {
             DEFAULT_PROVIDER_ORDER
         }
-    }
 
     private fun saveProviderOrder(order: List<String>) {
         preferences.edit {
@@ -211,9 +218,7 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         }
     }
 
-    private fun loadUseFrequencyRanking(): Boolean {
-        return preferences.getBoolean(KEY_USE_FREQUENCY_RANKING, true)
-    }
+    private fun loadUseFrequencyRanking(): Boolean = preferences.getBoolean(KEY_USE_FREQUENCY_RANKING, true)
 
     private fun saveUseFrequencyRanking(enabled: Boolean) {
         preferences.edit {
@@ -221,8 +226,8 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         }
     }
 
-    private fun loadResultFrequency(): Map<String, Int> {
-        return try {
+    private fun loadResultFrequency(): Map<String, Int> =
+        try {
             val json = preferences.getString(KEY_RESULT_FREQUENCY, null)
             if (json != null) {
                 val obj = JSONObject(json)
@@ -237,7 +242,6 @@ class ProviderRankingRepository private constructor(context: Context, scope: Cor
         } catch (e: JSONException) {
             emptyMap()
         }
-    }
 
     private fun saveResultFrequency(frequency: Map<String, Int>) {
         preferences.edit {

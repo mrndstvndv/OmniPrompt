@@ -27,11 +27,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudUpload
-import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Button
@@ -75,7 +75,7 @@ fun GeneralSettingsScreen(
     onOpenAliases: () -> Unit,
     onOpenResultRanking: () -> Unit,
     onOpenBackupRestore: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
 ) {
     // Collect once so future tweaks can surface live states on tiles if desired.
     aliasRepository.aliases.collectAsState()
@@ -95,17 +95,19 @@ fun GeneralSettingsScreen(
     val rankingSubtitle = "Control the order of results and providers."
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
     ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
                 SettingsHomeHeader(onClose = onClose)
@@ -123,14 +125,14 @@ fun GeneralSettingsScreen(
                         icon = Icons.Rounded.Apps,
                         title = "Providers",
                         subtitle = providerSubtitle.ifEmpty { "Manage search sources" },
-                        onClick = onOpenProviders
+                        onClick = onOpenProviders,
                     )
                     SettingsDivider()
                     SettingsTile(
                         icon = Icons.Rounded.Palette,
                         title = "Appearance",
                         subtitle = appearanceSubtitle,
-                        onClick = onOpenAppearance
+                        onClick = onOpenAppearance,
                     )
                 }
             }
@@ -141,21 +143,21 @@ fun GeneralSettingsScreen(
                         icon = Icons.Rounded.Speed,
                         title = "Behavior",
                         subtitle = behaviorSubtitle,
-                        onClick = onOpenBehavior
+                        onClick = onOpenBehavior,
                     )
                     SettingsDivider()
                     SettingsTile(
                         icon = Icons.AutoMirrored.Rounded.Label,
                         title = "Aliases",
                         subtitle = aliasesSubtitle,
-                        onClick = onOpenAliases
+                        onClick = onOpenAliases,
                     )
                     SettingsDivider()
                     SettingsTile(
                         icon = Icons.Rounded.BarChart,
                         title = "Result ranking",
                         subtitle = rankingSubtitle,
-                        onClick = onOpenResultRanking
+                        onClick = onOpenResultRanking,
                     )
                 }
             }
@@ -166,7 +168,7 @@ fun GeneralSettingsScreen(
                         icon = Icons.Rounded.CloudUpload,
                         title = "Backup & Restore",
                         subtitle = "Export or import your settings",
-                        onClick = onOpenBackupRestore
+                        onClick = onOpenBackupRestore,
                     )
                 }
             }
@@ -186,33 +188,41 @@ fun ProvidersSettingsScreen(
     onOpenAppSearchSettings: () -> Unit,
     onOpenSystemSettingsSettings: () -> Unit,
     onOpenContactsSettings: () -> Unit,
-    onBack: () -> Unit
+    onOpenTermuxSettings: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()
 
+    // Check if Termux is installed
+    val isTermuxInstalled =
+        remember {
+            context.packageManager.getLaunchIntentForPackage("com.termux") != null
+        }
+
     // Contacts permission state
     var hasContactsPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED,
         )
     }
 
     // Permission launcher for contacts
-    val contactsPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasContactsPermission = isGranted
-        if (isGranted) {
-            settingsRepository.setProviderEnabled("contacts", true)
-        } else {
-            Toast.makeText(context, "Permission required to search contacts", Toast.LENGTH_SHORT).show()
+    val contactsPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { isGranted ->
+            hasContactsPermission = isGranted
+            if (isGranted) {
+                settingsRepository.setProviderEnabled("contacts", true)
+            } else {
+                Toast.makeText(context, "Permission required to search contacts", Toast.LENGTH_SHORT).show()
+            }
         }
-    }
 
     SettingsScaffold(
         title = "Providers",
-        onBack = onBack
+        onBack = onBack,
     ) {
         if (!isDefaultAssistant) {
             item {
@@ -229,7 +239,7 @@ fun ProvidersSettingsScreen(
                     description = "Search installed apps",
                     enabled = enabledProviders["app-list"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("app-list", it) },
-                    onClick = onOpenAppSearchSettings
+                    onClick = onOpenAppSearchSettings,
                 )
                 SettingsDivider()
                 ProviderRow(
@@ -248,7 +258,7 @@ fun ProvidersSettingsScreen(
                             settingsRepository.setProviderEnabled("contacts", false)
                         }
                     },
-                    onClick = onOpenContactsSettings
+                    onClick = onOpenContactsSettings,
                 )
                 SettingsDivider()
                 ProviderRow(
@@ -257,7 +267,7 @@ fun ProvidersSettingsScreen(
                     description = "Configure engines and defaults",
                     enabled = enabledProviders["web-search"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("web-search", it) },
-                    onClick = onOpenWebSearchSettings
+                    onClick = onOpenWebSearchSettings,
                 )
                 SettingsDivider()
                 ProviderRow(
@@ -266,7 +276,7 @@ fun ProvidersSettingsScreen(
                     description = "Local device indexing",
                     enabled = enabledProviders["file-search"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("file-search", it) },
-                    onClick = onOpenFileSearchSettings
+                    onClick = onOpenFileSearchSettings,
                 )
                 SettingsDivider()
                 ProviderRow(
@@ -274,7 +284,7 @@ fun ProvidersSettingsScreen(
                     name = "Calculator",
                     description = "Solve math expressions",
                     enabled = enabledProviders["calculator"] ?: true,
-                    onToggle = { settingsRepository.setProviderEnabled("calculator", it) }
+                    onToggle = { settingsRepository.setProviderEnabled("calculator", it) },
                 )
                 SettingsDivider()
                 ProviderRow(
@@ -283,7 +293,7 @@ fun ProvidersSettingsScreen(
                     description = "Search for system settings",
                     enabled = enabledProviders["system-settings"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("system-settings", it) },
-                    onClick = onOpenSystemSettingsSettings
+                    onClick = onOpenSystemSettingsSettings,
                 )
                 SettingsDivider()
                 ProviderRow(
@@ -292,7 +302,21 @@ fun ProvidersSettingsScreen(
                     description = "Base64, URL tools",
                     enabled = enabledProviders["text-utilities"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("text-utilities", it) },
-                    onClick = onOpenTextUtilitiesSettings
+                    onClick = onOpenTextUtilitiesSettings,
+                )
+                SettingsDivider()
+                ProviderRow(
+                    id = "termux",
+                    name = "Termux Commands",
+                    description = if (isTermuxInstalled) "Run commands in Termux" else "Install Termux to enable",
+                    enabled = if (isTermuxInstalled) enabledProviders["termux"] ?: true else false,
+                    onToggle = { enabled ->
+                        if (isTermuxInstalled) {
+                            settingsRepository.setProviderEnabled("termux", enabled)
+                        }
+                    },
+                    onClick = if (isTermuxInstalled) onOpenTermuxSettings else null,
+                    toggleEnabled = isTermuxInstalled,
                 )
             }
         }
@@ -302,7 +326,7 @@ fun ProvidersSettingsScreen(
 @Composable
 fun AppearanceSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
     val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
@@ -310,7 +334,7 @@ fun AppearanceSettingsScreen(
 
     SettingsScaffold(
         title = "Appearance",
-        onBack = onBack
+        onBack = onBack,
     ) {
         item {
             SettingsCardGroup {
@@ -318,7 +342,7 @@ fun AppearanceSettingsScreen(
                     title = "Translucent results",
                     subtitle = "Make list items slightly see-through.",
                     checked = translucentResultsEnabled,
-                    onCheckedChange = { settingsRepository.setTranslucentResultsEnabled(it) }
+                    onCheckedChange = { settingsRepository.setTranslucentResultsEnabled(it) },
                 )
                 SettingsDivider()
                 SettingsSliderRow(
@@ -327,7 +351,7 @@ fun AppearanceSettingsScreen(
                     valueText = "${(backgroundOpacity * 100).roundToInt()}%",
                     value = backgroundOpacity,
                     onValueChange = { settingsRepository.setBackgroundOpacity(it) },
-                    steps = 19
+                    steps = 19,
                 )
                 SettingsDivider()
                 SettingsSliderRow(
@@ -336,7 +360,7 @@ fun AppearanceSettingsScreen(
                     valueText = "${(backgroundBlurStrength * 100).roundToInt()}%",
                     value = backgroundBlurStrength,
                     onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
-                    steps = 19
+                    steps = 19,
                 )
             }
         }
@@ -346,14 +370,14 @@ fun AppearanceSettingsScreen(
 @Composable
 fun BehaviorSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val motionPreferences by settingsRepository.motionPreferences.collectAsState()
     val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
 
     SettingsScaffold(
         title = "Behavior",
-        onBack = onBack
+        onBack = onBack,
     ) {
         item {
             SettingsCardGroup {
@@ -361,17 +385,17 @@ fun BehaviorSettingsScreen(
                     title = "Enable animations",
                     subtitle = "Turn off to remove most in-app transitions.",
                     checked = motionPreferences.animationsEnabled,
-                    onCheckedChange = { settingsRepository.setAnimationsEnabled(it) }
+                    onCheckedChange = { settingsRepository.setAnimationsEnabled(it) },
                 )
                 SettingsDivider()
                 SettingsSliderRow(
                     title = "Activity indicator delay",
                     subtitle = "Wait time before showing the loading spinner.",
-                    valueText = "${activityIndicatorDelayMs} ms",
+                    valueText = "$activityIndicatorDelayMs ms",
                     value = activityIndicatorDelayMs.toFloat(),
                     onValueChange = { settingsRepository.setActivityIndicatorDelayMs(it.roundToInt()) },
                     valueRange = 0f..1000f,
-                    steps = 19
+                    steps = 19,
                 )
             }
         }
@@ -381,13 +405,13 @@ fun BehaviorSettingsScreen(
 @Composable
 fun AliasesSettingsScreen(
     aliasRepository: AliasRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val aliasEntries by aliasRepository.aliases.collectAsState()
 
     SettingsScaffold(
         title = "Aliases",
-        onBack = onBack
+        onBack = onBack,
     ) {
         item {
             SettingsCardGroup {
@@ -396,7 +420,7 @@ fun AliasesSettingsScreen(
                         modifier = Modifier.padding(20.dp),
                         text = "No aliases yet. Long press a result in search to save one.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
                     Column {
@@ -404,7 +428,7 @@ fun AliasesSettingsScreen(
                             AliasRow(
                                 alias = entry.alias,
                                 summary = entry.target.summary,
-                                onRemove = { aliasRepository.removeAlias(entry.alias) }
+                                onRemove = { aliasRepository.removeAlias(entry.alias) },
                             )
                             if (index < aliasEntries.lastIndex) {
                                 SettingsDivider()
@@ -421,18 +445,18 @@ fun AliasesSettingsScreen(
 fun ResultRankingSettingsScreen(
     rankingRepository: ProviderRankingRepository,
     settingsRepository: ProviderSettingsRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()
 
     SettingsScaffold(
         title = "Result ranking",
-        onBack = onBack
+        onBack = onBack,
     ) {
         item {
             ProviderRankingSection(
                 rankingRepository = rankingRepository,
-                enabledProviders = enabledProviders
+                enabledProviders = enabledProviders,
             )
         }
     }
@@ -443,20 +467,20 @@ private fun SettingsHomeHeader(onClose: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
             Text(
                 text = "Settings",
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
         IconButton(onClick = onClose) {
             Icon(
                 imageVector = Icons.Rounded.Close,
                 contentDescription = "Close settings",
-                tint = MaterialTheme.colorScheme.onBackground
+                tint = MaterialTheme.colorScheme.onBackground,
             )
         }
     }
@@ -465,13 +489,13 @@ private fun SettingsHomeHeader(onClose: () -> Unit) {
 @Composable
 private fun SettingsTileGroup(
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 3.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Column(content = content)
     }
@@ -482,45 +506,47 @@ private fun SettingsTile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
-                modifier = Modifier
-                    .padding(end = 16.dp)
-                    .clip(MaterialTheme.shapes.medium),
+                modifier =
+                    Modifier
+                        .padding(end = 16.dp)
+                        .clip(MaterialTheme.shapes.medium),
                 tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.padding(10.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
             Column {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -531,50 +557,51 @@ private fun SettingsTile(
 private fun SettingsScaffold(
     title: String,
     onBack: () -> Unit,
-    content: LazyListScope.() -> Unit
+    content: LazyListScope.() -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
         content = {
             item {
                 SectionHeader(title = title, onBack = onBack)
             }
             content()
-        }
+        },
     )
 }
 
 @Composable
 private fun SectionHeader(
     title: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+        horizontalArrangement = Arrangement.Start,
     ) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 2.dp,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(40.dp),
         ) {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(36.dp),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -583,7 +610,7 @@ private fun SectionHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
     }
@@ -592,13 +619,13 @@ private fun SectionHeader(
 @Composable
 private fun SettingsCardGroup(
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Column(content = content)
     }
@@ -611,52 +638,57 @@ private fun ProviderRow(
     description: String,
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    toggleEnabled: Boolean = true,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.extraLarge)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.extraLarge)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 16.dp)
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(end = 16.dp),
         ) {
             Text(
                 text = name,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (onClick != null) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(28.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant, shape = MaterialTheme.shapes.extraSmall)
+                    modifier =
+                        Modifier
+                            .width(1.dp)
+                            .height(28.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant, shape = MaterialTheme.shapes.extraSmall),
                 )
             }
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = onToggle,
+                enabled = toggleEnabled,
             )
         }
     }
@@ -667,29 +699,30 @@ private fun SettingsToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }
@@ -702,42 +735,44 @@ private fun SettingsSliderRow(
     value: Float,
     onValueChange: (Float) -> Unit,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
-    steps: Int = 9
+    steps: Int = 9,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
                 text = valueText,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelLarge,
             )
         }
         androidx.compose.material3.Slider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
-            steps = steps
+            steps = steps,
         )
     }
 }
@@ -746,26 +781,27 @@ private fun SettingsSliderRow(
 private fun AliasRow(
     alias: String,
     summary: String,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = alias,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
             Text(
                 text = summary,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
         TextButton(onClick = onRemove) {
@@ -778,33 +814,33 @@ private fun AliasRow(
 private fun SettingsDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = 20.dp),
-        color = MaterialTheme.colorScheme.outlineVariant
+        color = MaterialTheme.colorScheme.outlineVariant,
     )
 }
 
 @Composable
 private fun DefaultAssistantCard(
     appName: String,
-    onRequestSetDefaultAssistant: () -> Unit
+    onRequestSetDefaultAssistant: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 4.dp,
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = "Set $appName as the default assistant",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
             )
             Text(
                 text = "$appName opens instantly from the system assistant gesture.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onRequestSetDefaultAssistant) {
                 Text(text = "Set as default")
@@ -816,30 +852,31 @@ private fun DefaultAssistantCard(
 @Composable
 private fun CompactAssistantCard(
     appName: String,
-    onRequestSetDefaultAssistant: () -> Unit
+    onRequestSetDefaultAssistant: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 3.dp,
-        color = MaterialTheme.colorScheme.surfaceVariant
+        color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Set $appName as default assistant",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
                     text = "Enable the system gesture for quicker launch.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             TextButton(onClick = onRequestSetDefaultAssistant) {
