@@ -72,7 +72,7 @@ fun RecentAppsList(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     displayApps.forEach { app ->
@@ -82,7 +82,6 @@ fun RecentAppsList(
                                 contentDescription = app.label,
                                 modifier =
                                     Modifier
-                                        .padding(end = 8.dp)
                                         .size(iconSizeDp)
                                         .clip(CircleShape)
                                         .clickable {
