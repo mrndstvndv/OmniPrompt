@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,21 +33,23 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 @Composable
 fun AppSearchSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val appSearchSettings by settingsRepository.appSearchSettings.collectAsState()
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
     ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+            verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
                 SettingsHeader(onBack = onBack)
@@ -57,11 +61,11 @@ fun AppSearchSettingsScreen(
                         title = "Include package name",
                         subtitle = "Search apps by their package name (e.g. com.android.settings).",
                         checked = appSearchSettings.includePackageName,
-                        onCheckedChange = { 
+                        onCheckedChange = {
                             settingsRepository.saveAppSearchSettings(
-                                appSearchSettings.copy(includePackageName = it)
+                                appSearchSettings.copy(includePackageName = it),
                             )
-                        }
+                        },
                     )
                     SettingsToggleRow(
                         title = "AI Assistant queries",
@@ -69,10 +73,50 @@ fun AppSearchSettingsScreen(
                         checked = appSearchSettings.aiAssistantQueriesEnabled,
                         onCheckedChange = {
                             settingsRepository.saveAppSearchSettings(
-                                appSearchSettings.copy(aiAssistantQueriesEnabled = it)
+                                appSearchSettings.copy(aiAssistantQueriesEnabled = it),
                             )
-                        }
+                        },
                     )
+                }
+            }
+
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Recent Apps",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    Text(
+                        text = "Configure how recent apps appear.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    SettingsCardGroup {
+                        SettingsToggleRow(
+                            title = "Show recent apps",
+                            subtitle = "Display recently used apps on the home screen.",
+                            checked = appSearchSettings.showRecentApps,
+                            onCheckedChange = {
+                                settingsRepository.saveAppSearchSettings(
+                                    appSearchSettings.copy(showRecentApps = it),
+                                )
+                            },
+                        )
+
+                        SettingsToggleRow(
+                            title = "Reverse order",
+                            subtitle = "Place the most recently used app on the right side.",
+                            checked = appSearchSettings.reverseRecentAppsOrder,
+                            onCheckedChange = {
+                                settingsRepository.saveAppSearchSettings(
+                                    appSearchSettings.copy(reverseRecentAppsOrder = it),
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -84,25 +128,25 @@ private fun SettingsHeader(onBack: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
             Text(
                 text = "Applications",
                 style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
                 text = "Configure app search.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         IconButton(onClick = onBack) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground
+                tint = MaterialTheme.colorScheme.onBackground,
             )
         }
     }
@@ -111,13 +155,13 @@ private fun SettingsHeader(onBack: () -> Unit) {
 @Composable
 private fun SettingsCardGroup(
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Column(content = content)
     }
@@ -128,29 +172,30 @@ private fun SettingsToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
         )
     }
 }

@@ -1004,12 +1004,16 @@ enum class FileSearchSortMode {
 data class AppSearchSettings(
     val includePackageName: Boolean,
     val aiAssistantQueriesEnabled: Boolean = true,
+    val showRecentApps: Boolean = false,
+    val reverseRecentAppsOrder: Boolean = false,
 ) {
     companion object {
         fun default(): AppSearchSettings =
             AppSearchSettings(
                 includePackageName = false,
                 aiAssistantQueriesEnabled = true,
+                showRecentApps = false,
+                reverseRecentAppsOrder = false,
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
@@ -1017,6 +1021,8 @@ data class AppSearchSettings(
             return AppSearchSettings(
                 includePackageName = json.optBoolean("includePackageName", false),
                 aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true),
+                showRecentApps = json.optBoolean("showRecentApps", false),
+                reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
             )
         }
     }
@@ -1025,6 +1031,8 @@ data class AppSearchSettings(
         JSONObject().apply {
             put("includePackageName", includePackageName)
             put("aiAssistantQueriesEnabled", aiAssistantQueriesEnabled)
+            put("showRecentApps", showRecentApps)
+            put("reverseRecentAppsOrder", reverseRecentAppsOrder)
         }
 
     fun toJsonString(): String = toJson().toString()

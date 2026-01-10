@@ -54,6 +54,7 @@ import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListProvider
+import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.calculator.CalculatorProvider
 import com.mrndstvndv.search.provider.contacts.ContactsProvider
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
@@ -73,6 +74,7 @@ import com.mrndstvndv.search.provider.web.WebSearchProvider
 import com.mrndstvndv.search.ui.components.ContactActionData
 import com.mrndstvndv.search.ui.components.ContactActionSheet
 import com.mrndstvndv.search.ui.components.ItemsList
+import com.mrndstvndv.search.ui.components.RecentAppsList
 import com.mrndstvndv.search.ui.components.SearchField
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
@@ -107,6 +109,7 @@ class MainActivity : ComponentActivity() {
             val aliasRepository = remember(this@MainActivity) { AliasRepository(this@MainActivity, coroutineScope) }
             val aliasEntries by aliasRepository.aliases.collectAsState()
             val webSearchSettings by settingsRepository.webSearchSettings.collectAsState()
+            val appSearchSettings by settingsRepository.appSearchSettings.collectAsState()
             val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
             val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
@@ -122,6 +125,10 @@ class MainActivity : ComponentActivity() {
             val fileThumbnailRepository = remember(this@MainActivity) { FileThumbnailRepository.getInstance(this@MainActivity) }
             val contactsRepository = remember(this@MainActivity) { ContactsRepository.getInstance(this@MainActivity) }
             val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
+            val recentAppsRepository =
+                remember(this@MainActivity) {
+                    RecentAppsRepository(this@MainActivity, defaultAppIconSize)
+                }
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
@@ -402,7 +409,18 @@ class MainActivity : ComponentActivity() {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                if (appSearchSettings.showRecentApps) {
+                                    RecentAppsList(
+                                        repository = recentAppsRepository,
+                                        isReversed = appSearchSettings.reverseRecentAppsOrder,
+                                        modifier =
+                                            Modifier
+                                                .weight(1f)
+                                                .padding(end = 8.dp),
+                                    )
+                                }
                                 TextButton(onClick = {
                                     val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                                     startActivity(intent)
