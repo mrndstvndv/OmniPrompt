@@ -1,1 +1,2 @@
 - you should run ./gradlew :app:compileDebugKotlin everytime you make a code change to a kotlin file, requesting escalated permissions the first time you run it in a session so gradle can access ~/.gradle without failure.
+- when launching the coder subagent, give clear, exact, and detailed instructions so that there is no room for misconception.
