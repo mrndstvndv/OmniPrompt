@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
+            val showSettingsIcon by settingsRepository.showSettingsIcon.collectAsState()
             val enabledProviders by settingsRepository.enabledProviders.collectAsState()
 
             LaunchedEffect(backgroundBlurStrength) {
@@ -433,7 +434,7 @@ class MainActivity : ComponentActivity() {
                                                 modifier =
                                                     Modifier
                                                         .weight(1f)
-                                                        .padding(end = 4.dp),
+                                                        .padding(horizontal = 4.dp, vertical = 4.dp),
                                             )
                                         }
 
@@ -446,29 +447,34 @@ class MainActivity : ComponentActivity() {
                                                     modifier =
                                                         Modifier
                                                             .weight(1f)
-                                                            .padding(end = 4.dp),
+                                                            .padding(horizontal = 4.dp, vertical = 4.dp),
                                                 )
                                             }
                                         }
                                     }
-                                    VerticalDivider(
-                                        modifier =
-                                            Modifier
-                                                .height(24.dp)
-                                                .padding(horizontal = 4.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant,
-                                    )
                                 }
 
-                                IconButton(onClick = {
-                                    val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                    startActivity(intent)
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Settings,
-                                        contentDescription = "Settings",
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
+                                if (showSettingsIcon) {
+                                    if (appSearchSettings.appListEnabled) {
+                                        VerticalDivider(
+                                            modifier =
+                                                Modifier
+                                                    .height(24.dp)
+                                                    .padding(horizontal = 4.dp),
+                                            color = MaterialTheme.colorScheme.outlineVariant,
+                                        )
+                                    }
+
+                                    IconButton(onClick = {
+                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                        startActivity(intent)
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Settings,
+                                            contentDescription = "Settings",
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        )
+                                    }
                                 }
                             }
                             Spacer(modifier = Modifier.height(6.dp))

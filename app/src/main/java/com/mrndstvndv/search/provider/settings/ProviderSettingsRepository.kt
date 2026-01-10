@@ -42,6 +42,7 @@ class ProviderSettingsRepository(
         private const val KEY_SYSTEM_SETTINGS = "system_settings"
         private const val KEY_CONTACTS = "contacts"
         private const val KEY_TERMUX = "termux"
+        private const val KEY_SHOW_SETTINGS_ICON = "show_settings_icon"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -98,6 +99,9 @@ class ProviderSettingsRepository(
     private val _termuxSettings = MutableStateFlow(TermuxSettings.default())
     val termuxSettings: StateFlow<TermuxSettings> = _termuxSettings
 
+    private val _showSettingsIcon = MutableStateFlow(true)
+    val showSettingsIcon: StateFlow<Boolean> = _showSettingsIcon
+
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
         // Load persisted settings off the main thread if scope provided
@@ -116,6 +120,7 @@ class ProviderSettingsRepository(
                 _systemSettingsSettings.value = loadSystemSettingsSettings()
                 _contactsSettings.value = loadContactsSettings()
                 _termuxSettings.value = loadTermuxSettings()
+                _showSettingsIcon.value = loadShowSettingsIcon()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
@@ -132,6 +137,7 @@ class ProviderSettingsRepository(
             _systemSettingsSettings.value = loadSystemSettingsSettings()
             _contactsSettings.value = loadContactsSettings()
             _termuxSettings.value = loadTermuxSettings()
+            _showSettingsIcon.value = loadShowSettingsIcon()
         }
     }
 
@@ -514,6 +520,13 @@ class ProviderSettingsRepository(
         preferences.edit { putString(KEY_TERMUX, settings.toJsonString()) }
         _termuxSettings.value = settings
     }
+
+    fun setShowSettingsIcon(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_SHOW_SETTINGS_ICON, enabled) }
+        _showSettingsIcon.value = enabled
+    }
+
+    private fun loadShowSettingsIcon(): Boolean = preferences.getBoolean(KEY_SHOW_SETTINGS_ICON, true)
 }
 
 data class WebSearchSettings(

@@ -363,6 +363,7 @@ fun AppearanceSettingsScreen(
     val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
     val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
     val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
+    val showSettingsIcon by settingsRepository.showSettingsIcon.collectAsState()
 
     SettingsScaffold(
         title = "Appearance",
@@ -393,6 +394,13 @@ fun AppearanceSettingsScreen(
                     value = backgroundBlurStrength,
                     onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
                     steps = 19,
+                )
+                SettingsDivider()
+                SettingsSwitch(
+                    title = "Show settings icon",
+                    subtitle = "Display the settings icon in the main search UI.",
+                    checked = showSettingsIcon,
+                    onCheckedChange = { settingsRepository.setShowSettingsIcon(it) },
                 )
             }
         }
