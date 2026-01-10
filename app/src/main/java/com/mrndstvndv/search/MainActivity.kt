@@ -426,15 +426,14 @@ class MainActivity : ComponentActivity() {
                                                 .weight(1f)
                                                 .padding(end = 4.dp),
                                     )
+                                    VerticalDivider(
+                                        modifier =
+                                            Modifier
+                                                .height(24.dp)
+                                                .padding(horizontal = 4.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
                                 }
-
-                                VerticalDivider(
-                                    modifier =
-                                        Modifier
-                                            .height(24.dp)
-                                            .padding(horizontal = 4.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
 
                                 IconButton(onClick = {
                                     val intent = Intent(this@MainActivity, SettingsActivity::class.java)
@@ -443,6 +442,7 @@ class MainActivity : ComponentActivity() {
                                     Icon(
                                         imageVector = Icons.Outlined.Settings,
                                         contentDescription = "Settings",
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                     )
                                 }
                             }
