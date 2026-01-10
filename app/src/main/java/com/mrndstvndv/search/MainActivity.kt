@@ -31,6 +31,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -423,10 +424,19 @@ class MainActivity : ComponentActivity() {
                                         modifier =
                                             Modifier
                                                 .weight(1f)
-                                                .padding(end = 8.dp),
+                                                .padding(end = 4.dp),
                                     )
                                 }
-                                FilledTonalIconButton(onClick = {
+
+                                VerticalDivider(
+                                    modifier =
+                                        Modifier
+                                            .height(24.dp)
+                                            .padding(horizontal = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+
+                                IconButton(onClick = {
                                     val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                                     startActivity(intent)
                                 }) {
