@@ -16,11 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -40,6 +37,9 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.ui.components.ScrimDialog
 import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 
 @Composable
 fun ProviderListScreen(
@@ -90,11 +90,11 @@ fun ProviderListScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(onBack = onBack)
+                SettingsHeader(title = "Providers", subtitle = "Manage search sources.", onBack = onBack)
             }
 
             item {
-                SettingsCardGroup {
+                SettingsGroup {
                     ProviderRow(
                         id = "app-list",
                         name = "Applications",
@@ -164,50 +164,6 @@ fun ProviderListScreen(
 }
 
 @Composable
-private fun SettingsHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(
-                text = "Providers",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = "Manage search sources.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsCardGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
 private fun ProviderRow(
     id: String,
     name: String,
@@ -252,12 +208,4 @@ private fun ProviderRow(
             }
         }
     }
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
 }

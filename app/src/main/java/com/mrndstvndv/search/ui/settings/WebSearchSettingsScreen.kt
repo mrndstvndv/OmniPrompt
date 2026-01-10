@@ -3,8 +3,8 @@ package com.mrndstvndv.search.ui.settings
 import android.graphics.Bitmap
 import android.util.Patterns
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +61,9 @@ import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSite
 import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
+import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import com.mrndstvndv.search.util.FaviconLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -71,7 +74,7 @@ import java.util.UUID
 fun WebSearchSettingsScreen(
     initialSettings: WebSearchSettings,
     onBack: () -> Unit,
-    onSave: (WebSearchSettings) -> Unit
+    onSave: (WebSearchSettings) -> Unit,
 ) {
     var sites by remember { mutableStateOf(initialSettings.sites) }
     var defaultSiteId by remember { mutableStateOf(initialSettings.defaultSiteId) }
@@ -92,15 +95,19 @@ fun WebSearchSettingsScreen(
     val allTemplatesValid = sites.all { it.urlTemplate.contains(placeholder) }
 
     fun saveSettings() {
-        val resolvedDefault = sites.firstOrNull { it.id == defaultSiteId }?.id
-            ?: sites.firstOrNull()?.id
-            ?: ""
+        val resolvedDefault =
+            sites.firstOrNull { it.id == defaultSiteId }?.id
+                ?: sites.firstOrNull()?.id
+                ?: ""
         if (resolvedDefault.isNotBlank() && allTemplatesValid) {
             onSave(WebSearchSettings(resolvedDefault, sites, quicklinks))
         }
     }
 
-    fun updateSite(index: Int, updater: (WebSearchSite) -> WebSearchSite) {
+    fun updateSite(
+        index: Int,
+        updater: (WebSearchSite) -> WebSearchSite,
+    ) {
         val mutable = sites.toMutableList()
         mutable[index] = updater(mutable[index])
         sites = mutable
@@ -118,7 +125,11 @@ fun WebSearchSettingsScreen(
         saveSettings()
     }
 
-    fun addCustomSite(name: String, template: String, onError: (String) -> Unit): Boolean {
+    fun addCustomSite(
+        name: String,
+        template: String,
+        onError: (String) -> Unit,
+    ): Boolean {
         val trimmedName = name.trim()
         val trimmedTemplate = template.trim()
         if (trimmedName.isBlank() || trimmedTemplate.isBlank()) {
@@ -129,10 +140,12 @@ fun WebSearchSettingsScreen(
             onError("Template must include $placeholder")
             return false
         }
-        val candidateId = trimmedName.lowercase()
-            .replace("[^a-z0-9]+".toRegex(), "-")
-            .trim('-')
-            .ifBlank { trimmedName.lowercase() }
+        val candidateId =
+            trimmedName
+                .lowercase()
+                .replace("[^a-z0-9]+".toRegex(), "-")
+                .trim('-')
+                .ifBlank { trimmedName.lowercase() }
         if (sites.any { it.id == candidateId }) {
             onError("A site with that name already exists")
             return false
@@ -148,7 +161,10 @@ fun WebSearchSettingsScreen(
         saveSettings()
     }
 
-    fun updateQuicklink(index: Int, quicklink: Quicklink) {
+    fun updateQuicklink(
+        index: Int,
+        quicklink: Quicklink,
+    ) {
         val mutable = quicklinks.toMutableList()
         mutable[index] = quicklink
         quicklinks = mutable
@@ -176,7 +192,7 @@ fun WebSearchSettingsScreen(
             onRemove = {
                 removeSite(index)
                 editingSite = null
-            }
+            },
         )
     }
 
@@ -189,7 +205,7 @@ fun WebSearchSettingsScreen(
                 if (addCustomSite(name, template, onError)) {
                     isAddDialogOpen = false
                 }
-            }
+            },
         )
     }
 
@@ -200,7 +216,7 @@ fun WebSearchSettingsScreen(
             onAdd = { quicklink ->
                 addQuicklink(quicklink)
                 isAddQuicklinkDialogOpen = false
-            }
+            },
         )
     }
 
@@ -216,63 +232,66 @@ fun WebSearchSettingsScreen(
             onRemove = {
                 removeQuicklink(index)
                 editingQuicklink = null
-            }
+            },
         )
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
     ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+            verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                WebSearchHeader(onBack = onBack)
+                SettingsHeader(title = "Web Search", subtitle = "Configure search providers.", onBack = onBack)
             }
 
             // Quicklinks section
             item {
                 SettingsSection(
                     title = "Quicklinks",
-                    subtitle = "Direct links to your favorite sites."
+                    subtitle = "Direct links to your favorite sites.",
                 ) {
-                    SettingsCardGroup {
+                    SettingsGroup {
                         if (quicklinks.isEmpty()) {
                             Text(
                                 text = "No quicklinks yet. Add your favorite sites for quick access.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(20.dp)
+                                modifier = Modifier.padding(20.dp),
                             )
                         } else {
                             quicklinks.forEachIndexed { index, quicklink ->
                                 QuicklinkRow(
                                     quicklink = quicklink,
-                                    onClick = { editingQuicklink = index to quicklink }
+                                    onClick = { editingQuicklink = index to quicklink },
                                 )
                                 if (index < quicklinks.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(horizontal = 20.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant
+                                        color = MaterialTheme.colorScheme.outlineVariant,
                                     )
                                 }
                             }
                         }
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
+                            color = MaterialTheme.colorScheme.outlineVariant,
                         )
                         TextButton(
                             onClick = { isAddQuicklinkDialogOpen = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
                         ) {
                             Text(text = "Add Quicklink")
                         }
@@ -284,9 +303,9 @@ fun WebSearchSettingsScreen(
             item {
                 SettingsSection(
                     title = "Search Engines",
-                    subtitle = "Manage your search providers. Use $placeholder as the query placeholder."
+                    subtitle = "Manage your search providers. Use $placeholder as the query placeholder.",
                 ) {
-                    SettingsCardGroup {
+                    SettingsGroup {
                         sites.forEachIndexed { index, site ->
                             WebSearchSiteRow(
                                 site = site,
@@ -295,22 +314,22 @@ fun WebSearchSettingsScreen(
                                     defaultSiteId = site.id
                                     saveSettings()
                                 },
-                                onEdit = { editingSite = index to site }
+                                onEdit = { editingSite = index to site },
                             )
                             if (index < sites.lastIndex) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 20.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant
+                                    color = MaterialTheme.colorScheme.outlineVariant,
                                 )
                             }
                         }
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
+                            color = MaterialTheme.colorScheme.outlineVariant,
                         )
                         TextButton(
                             onClick = { isAddDialogOpen = true },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                         ) {
                             Text(text = "Add Search Engine")
                         }
@@ -324,7 +343,7 @@ fun WebSearchSettingsScreen(
                         text = "Every template needs $placeholder",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 20.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp),
                     )
                 }
             }
@@ -333,79 +352,53 @@ fun WebSearchSettingsScreen(
 }
 
 @Composable
-private fun WebSearchHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Web Search",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Configure search providers.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground
-            )
-        }
-    }
-}
-
-@Composable
 private fun QuicklinkRow(
     quicklink: Quicklink,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     var favicon by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
 
     LaunchedEffect(quicklink.id, quicklink.hasFavicon) {
         if (quicklink.hasFavicon) {
-            favicon = withContext(Dispatchers.IO) {
-                FaviconLoader.loadFavicon(context, quicklink.id)
-            }
+            favicon =
+                withContext(Dispatchers.IO) {
+                    FaviconLoader.loadFavicon(context, quicklink.id)
+                }
         } else {
             favicon = null
         }
     }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // Favicon or fallback icon
         Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .size(40.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
         ) {
             if (favicon != null) {
                 Image(
                     bitmap = favicon!!.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
                 )
             } else {
                 Icon(
                     imageVector = Icons.Outlined.Link,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
                 )
             }
         }
@@ -418,7 +411,7 @@ private fun QuicklinkRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -426,7 +419,7 @@ private fun QuicklinkRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -435,7 +428,7 @@ private fun QuicklinkRow(
 @Composable
 private fun QuicklinkAddDialog(
     onDismiss: () -> Unit,
-    onAdd: (Quicklink) -> Unit
+    onAdd: (Quicklink) -> Unit,
 ) {
     var title by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
@@ -447,13 +440,14 @@ private fun QuicklinkAddDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val isValidUrl = remember(url) {
-        val trimmed = url.trim()
-        trimmed.isNotBlank() && (
-            Patterns.WEB_URL.matcher(trimmed).matches() ||
-            Patterns.WEB_URL.matcher("https://$trimmed").matches()
-        )
-    }
+    val isValidUrl =
+        remember(url) {
+            val trimmed = url.trim()
+            trimmed.isNotBlank() && (
+                Patterns.WEB_URL.matcher(trimmed).matches() ||
+                    Patterns.WEB_URL.matcher("https://$trimmed").matches()
+            )
+        }
     val canSave = title.isNotBlank() && isValidUrl
     val canFetchFavicon = isValidUrl
 
@@ -473,21 +467,24 @@ private fun QuicklinkAddDialog(
         errorMessage = null
 
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                FaviconLoader.fetchFavicon(normalizedUrl, context)
-            }
+            val result =
+                withContext(Dispatchers.IO) {
+                    FaviconLoader.fetchFavicon(normalizedUrl, context)
+                }
 
             if (isFetchingFavicon) { // Check if not cancelled
-                result.onSuccess { bitmap ->
-                    val saved = withContext(Dispatchers.IO) {
-                        FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
+                result
+                    .onSuccess { bitmap ->
+                        val saved =
+                            withContext(Dispatchers.IO) {
+                                FaviconLoader.saveFavicon(context, quicklinkId, bitmap)
+                            }
+                        if (saved) {
+                            fetchedFavicon = bitmap
+                        }
+                    }.onFailure { error ->
+                        fetchErrorDialog = error.message ?: "Unknown error"
                     }
-                    if (saved) {
-                        fetchedFavicon = bitmap
-                    }
-                }.onFailure { error ->
-                    fetchErrorDialog = error.message ?: "Unknown error"
-                }
                 isFetchingFavicon = false
             }
         }
@@ -501,19 +498,20 @@ private fun QuicklinkAddDialog(
         if (!canSave) return
 
         val normalizedUrl = normalizeUrl(url)
-        val quicklink = Quicklink(
-            id = quicklinkId,
-            title = title.trim(),
-            url = normalizedUrl,
-            hasFavicon = fetchedFavicon != null
-        )
+        val quicklink =
+            Quicklink(
+                id = quicklinkId,
+                title = title.trim(),
+                url = normalizedUrl,
+                hasFavicon = fetchedFavicon != null,
+            )
         onAdd(quicklink)
     }
 
     if (fetchErrorDialog != null) {
         ErrorDialog(
             error = fetchErrorDialog!!,
-            onDismiss = { fetchErrorDialog = null }
+            onDismiss = { fetchErrorDialog = null },
         )
     }
 
@@ -521,7 +519,7 @@ private fun QuicklinkAddDialog(
         Column(modifier = Modifier.padding(24.dp)) {
             Text(
                 text = "Add Quicklink",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -531,10 +529,11 @@ private fun QuicklinkAddDialog(
                 label = { Text("Title") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -553,14 +552,18 @@ private fun QuicklinkAddDialog(
                 placeholder = { Text("example.com") },
                 singleLine = true,
                 isError = url.isNotBlank() && !isValidUrl,
-                supportingText = if (url.isNotBlank() && !isValidUrl) {
-                    { Text("Please enter a valid URL") }
-                } else null,
+                supportingText =
+                    if (url.isNotBlank() && !isValidUrl) {
+                        { Text("Please enter a valid URL") }
+                    } else {
+                        null
+                    },
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -569,28 +572,29 @@ private fun QuicklinkAddDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Favicon preview
                 Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
                 ) {
                     if (fetchedFavicon != null) {
                         Image(
                             bitmap = fetchedFavicon!!.asImageBitmap(),
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(32.dp),
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.Link,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
@@ -599,12 +603,12 @@ private fun QuicklinkAddDialog(
                     Text(
                         text = if (fetchedFavicon != null) "Favicon loaded" else "No favicon",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = if (fetchedFavicon != null) "Tap to refresh" else "Tap to fetch",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
@@ -612,19 +616,19 @@ private fun QuicklinkAddDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
                         )
                         IconButton(onClick = { cancelFaviconFetch() }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Cancel"
+                                contentDescription = "Cancel",
                             )
                         }
                     }
                 } else {
                     TextButton(
                         onClick = { fetchFavicon() },
-                        enabled = canFetchFavicon
+                        enabled = canFetchFavicon,
                     ) {
                         Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
                     }
@@ -636,7 +640,7 @@ private fun QuicklinkAddDialog(
                 Text(
                     text = errorMessage!!,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
 
@@ -645,7 +649,7 @@ private fun QuicklinkAddDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onDismiss) {
                     Text("Cancel")
@@ -653,7 +657,7 @@ private fun QuicklinkAddDialog(
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = { save() },
-                    enabled = canSave
+                    enabled = canSave,
                 ) {
                     Text("Save")
                 }
@@ -667,7 +671,7 @@ private fun QuicklinkEditDialog(
     quicklink: Quicklink,
     onDismiss: () -> Unit,
     onSave: (Quicklink) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
 ) {
     var title by remember { mutableStateOf(quicklink.title) }
     var url by remember { mutableStateOf(quicklink.url) }
@@ -681,19 +685,21 @@ private fun QuicklinkEditDialog(
     // Load existing favicon on first composition
     LaunchedEffect(quicklink.id, quicklink.hasFavicon) {
         if (quicklink.hasFavicon) {
-            fetchedFavicon = withContext(Dispatchers.IO) {
-                FaviconLoader.loadFavicon(context, quicklink.id)
-            }
+            fetchedFavicon =
+                withContext(Dispatchers.IO) {
+                    FaviconLoader.loadFavicon(context, quicklink.id)
+                }
         }
     }
 
-    val isValidUrl = remember(url) {
-        val trimmed = url.trim()
-        trimmed.isNotBlank() && (
-            Patterns.WEB_URL.matcher(trimmed).matches() ||
-            Patterns.WEB_URL.matcher("https://$trimmed").matches()
-        )
-    }
+    val isValidUrl =
+        remember(url) {
+            val trimmed = url.trim()
+            trimmed.isNotBlank() && (
+                Patterns.WEB_URL.matcher(trimmed).matches() ||
+                    Patterns.WEB_URL.matcher("https://$trimmed").matches()
+            )
+        }
     val canSave = title.isNotBlank() && isValidUrl
     val canFetchFavicon = isValidUrl
 
@@ -717,27 +723,30 @@ private fun QuicklinkEditDialog(
                 FaviconLoader.deleteFavicon(context, quicklink.id)
             }
 
-            val result = withContext(Dispatchers.IO) {
-                FaviconLoader.fetchFavicon(normalizedUrl, context)
-            }
+            val result =
+                withContext(Dispatchers.IO) {
+                    FaviconLoader.fetchFavicon(normalizedUrl, context)
+                }
 
             if (isFetchingFavicon) { // check if not cancelled
-                result.onSuccess { bitmap ->
-                    val saved = withContext(Dispatchers.IO) {
-                        FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
-                    }
-                    if (saved) {
-                        fetchedFavicon = bitmap
-                        currentHasFavicon = true
-                    } else {
+                result
+                    .onSuccess { bitmap ->
+                        val saved =
+                            withContext(Dispatchers.IO) {
+                                FaviconLoader.saveFavicon(context, quicklink.id, bitmap)
+                            }
+                        if (saved) {
+                            fetchedFavicon = bitmap
+                            currentHasFavicon = true
+                        } else {
+                            fetchedFavicon = null
+                            currentHasFavicon = false
+                        }
+                    }.onFailure { error ->
                         fetchedFavicon = null
                         currentHasFavicon = false
+                        fetchErrorDialog = error.message ?: "Unknown error"
                     }
-                }.onFailure { error ->
-                    fetchedFavicon = null
-                    currentHasFavicon = false
-                    fetchErrorDialog = error.message ?: "Unknown error"
-                }
                 isFetchingFavicon = false
             }
         }
@@ -751,17 +760,19 @@ private fun QuicklinkEditDialog(
         if (!canSave) return
 
         val normalizedUrl = normalizeUrl(url)
-        onSave(quicklink.copy(
-            title = title.trim(),
-            url = normalizedUrl,
-            hasFavicon = currentHasFavicon
-        ))
+        onSave(
+            quicklink.copy(
+                title = title.trim(),
+                url = normalizedUrl,
+                hasFavicon = currentHasFavicon,
+            ),
+        )
     }
 
     if (fetchErrorDialog != null) {
         ErrorDialog(
             error = fetchErrorDialog!!,
-            onDismiss = { fetchErrorDialog = null }
+            onDismiss = { fetchErrorDialog = null },
         )
     }
 
@@ -769,7 +780,7 @@ private fun QuicklinkEditDialog(
         Column(modifier = Modifier.padding(24.dp)) {
             Text(
                 text = "Edit Quicklink",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -779,10 +790,11 @@ private fun QuicklinkEditDialog(
                 label = { Text("Title") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -800,14 +812,18 @@ private fun QuicklinkEditDialog(
                 label = { Text("URL") },
                 singleLine = true,
                 isError = url.isNotBlank() && !isValidUrl,
-                supportingText = if (url.isNotBlank() && !isValidUrl) {
-                    { Text("Please enter a valid URL") }
-                } else null,
+                supportingText =
+                    if (url.isNotBlank() && !isValidUrl) {
+                        { Text("Please enter a valid URL") }
+                    } else {
+                        null
+                    },
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -816,28 +832,29 @@ private fun QuicklinkEditDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Favicon preview
                 Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
                 ) {
                     if (fetchedFavicon != null) {
                         Image(
                             bitmap = fetchedFavicon!!.asImageBitmap(),
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(32.dp),
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.Link,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
@@ -846,12 +863,12 @@ private fun QuicklinkEditDialog(
                     Text(
                         text = if (fetchedFavicon != null) "Favicon loaded" else "No favicon",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = if (fetchedFavicon != null) "Tap to refresh" else "Tap to fetch",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
@@ -859,19 +876,19 @@ private fun QuicklinkEditDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
                         )
                         IconButton(onClick = { cancelFaviconFetch() }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Cancel"
+                                contentDescription = "Cancel",
                             )
                         }
                     }
                 } else {
                     TextButton(
                         onClick = { fetchFavicon() },
-                        enabled = canFetchFavicon
+                        enabled = canFetchFavicon,
                     ) {
                         Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
                     }
@@ -883,12 +900,12 @@ private fun QuicklinkEditDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onRemove) {
                     Text(
                         text = "Remove",
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
 
@@ -899,7 +916,7 @@ private fun QuicklinkEditDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { save() },
-                        enabled = canSave
+                        enabled = canSave,
                     ) {
                         Text("Save")
                     }
@@ -914,27 +931,29 @@ private fun WebSearchSiteRow(
     site: WebSearchSite,
     isDefault: Boolean,
     onSetDefault: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // Tap area with display name and URL template
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .clickable(onClick = onEdit)
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .clickable(onClick = onEdit)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
             Text(
                 text = site.displayName,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -942,23 +961,24 @@ private fun WebSearchSiteRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
 
         // Vertical divider
         VerticalDivider(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(vertical = 8.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .padding(vertical = 8.dp),
+            color = MaterialTheme.colorScheme.outlineVariant,
         )
 
         // RadioButton for setting default
         RadioButton(
             selected = isDefault,
             onClick = onSetDefault,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).padding(end = 12.dp)
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).padding(end = 12.dp),
         )
     }
 }
@@ -969,7 +989,7 @@ private fun WebSearchSiteEditDialog(
     canRemove: Boolean,
     onDismiss: () -> Unit,
     onSave: (WebSearchSite) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
 ) {
     var displayName by remember { mutableStateOf(site.displayName) }
     var urlTemplate by remember { mutableStateOf(site.urlTemplate) }
@@ -977,14 +997,14 @@ private fun WebSearchSiteEditDialog(
     val isValid = displayName.isNotBlank() && urlTemplate.contains(placeholder)
 
     ScrimDialog(
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
     ) {
         Column(
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(24.dp),
         ) {
             Text(
                 text = "Edit Search Engine",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -994,10 +1014,11 @@ private fun WebSearchSiteEditDialog(
                 label = { Text("Display name") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -1008,10 +1029,11 @@ private fun WebSearchSiteEditDialog(
                 supportingText = { Text(text = "Include $placeholder") },
                 isError = !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
 
             if (!urlTemplate.contains(placeholder)) {
@@ -1019,7 +1041,7 @@ private fun WebSearchSiteEditDialog(
                     text = "Missing $placeholder",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
 
@@ -1028,15 +1050,15 @@ private fun WebSearchSiteEditDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (canRemove) {
                     TextButton(
-                        onClick = onRemove
+                        onClick = onRemove,
                     ) {
                         Text(
                             text = "Remove",
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
                         )
                     }
                 } else {
@@ -1052,7 +1074,7 @@ private fun WebSearchSiteEditDialog(
                         onClick = {
                             onSave(site.copy(displayName = displayName.trim(), urlTemplate = urlTemplate.trim()))
                         },
-                        enabled = isValid
+                        enabled = isValid,
                     ) {
                         Text(text = "Save")
                     }
@@ -1062,12 +1084,11 @@ private fun WebSearchSiteEditDialog(
     }
 }
 
-
 @Composable
 private fun WebSearchSiteAddDialog(
     placeholder: String,
     onDismiss: () -> Unit,
-    onAdd: (name: String, template: String, onError: (String) -> Unit) -> Unit
+    onAdd: (name: String, template: String, onError: (String) -> Unit) -> Unit,
 ) {
     var displayName by remember { mutableStateOf("") }
     var urlTemplate by remember { mutableStateOf("") }
@@ -1075,14 +1096,14 @@ private fun WebSearchSiteAddDialog(
     val isValid = displayName.isNotBlank() && urlTemplate.contains(placeholder)
 
     ScrimDialog(
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
     ) {
         Column(
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(24.dp),
         ) {
             Text(
                 text = "Add Search Engine",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1092,10 +1113,11 @@ private fun WebSearchSiteAddDialog(
                 label = { Text("Display name") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -1106,10 +1128,11 @@ private fun WebSearchSiteAddDialog(
                 supportingText = { Text(text = "Include $placeholder") },
                 isError = urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                )
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
             )
 
             if (urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder)) {
@@ -1117,7 +1140,7 @@ private fun WebSearchSiteAddDialog(
                     text = "Missing $placeholder",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
 
@@ -1126,7 +1149,7 @@ private fun WebSearchSiteAddDialog(
                 Text(
                     text = errorMessage!!,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
 
@@ -1135,7 +1158,7 @@ private fun WebSearchSiteAddDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onDismiss) {
                     Text(text = "Cancel")
@@ -1147,60 +1170,11 @@ private fun WebSearchSiteAddDialog(
                             errorMessage = error
                         }
                     },
-                    enabled = isValid
+                    enabled = isValid,
                 ) {
                     Text(text = "Add")
                 }
             }
         }
-    }
-}
-
-
-@Composable
-private fun SettingsSection(
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            tonalElevation = 4.dp,
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Column {
-                content()
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsCardGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
-    ) {
-        Column(content = content)
     }
 }

@@ -22,14 +22,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -59,6 +56,10 @@ import com.mrndstvndv.search.provider.termux.TermuxCommand
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
 import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
+import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import java.util.UUID
 
 @Composable
@@ -146,7 +147,7 @@ fun TermuxSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                TermuxSettingsHeader(onBack = onBack)
+                SettingsHeader(title = "Termux Commands", subtitle = "Run commands in Termux.", onBack = onBack)
             }
 
             // Warning if Termux not installed
@@ -181,7 +182,7 @@ fun TermuxSettingsScreen(
                     title = "Commands",
                     subtitle = "Define commands to run in Termux.",
                 ) {
-                    SettingsCardGroup {
+                    SettingsGroup {
                         if (commands.isEmpty()) {
                             Text(
                                 text =
@@ -206,19 +207,13 @@ fun TermuxSettingsScreen(
                                     },
                                 )
                                 if (index < commands.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 20.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant,
-                                    )
+                                    SettingsDivider()
                                 }
                             }
                         }
 
                         if (isTermuxInstalled) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                            )
+                            SettingsDivider()
                             TextButton(
                                 onClick = { isAddDialogOpen = true },
                                 modifier =
@@ -239,7 +234,7 @@ fun TermuxSettingsScreen(
                     title = "About",
                     subtitle = "How Termux commands work.",
                 ) {
-                    SettingsCardGroup {
+                    SettingsGroup {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(
                                 text = "Commands are executed via Termux's RUN_COMMAND intent.",
@@ -277,35 +272,6 @@ fun TermuxSettingsScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun TermuxSettingsHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Termux Commands",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = "Run commands in Termux.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground,
-            )
         }
     }
 }
@@ -809,54 +775,5 @@ private fun SessionActionOption(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
         )
-    }
-}
-
-@Composable
-private fun SettingsSection(
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
-) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.secondary,
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-            tonalElevation = 4.dp,
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-        ) {
-            Column {
-                content()
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsCardGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(content = content)
     }
 }

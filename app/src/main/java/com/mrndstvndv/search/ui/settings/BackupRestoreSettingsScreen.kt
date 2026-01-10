@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,16 +20,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +52,9 @@ import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.settings.BackupRestoreManager
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -65,7 +63,7 @@ fun BackupRestoreSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
     rankingRepository: ProviderRankingRepository,
     aliasRepository: AliasRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -87,87 +85,93 @@ fun BackupRestoreSettingsScreen(
     var pendingPermissionRootId by remember { mutableStateOf<String?>(null) }
 
     // SAF Create Document launcher (for backup)
-    val createDocumentLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(BackupRestoreManager.MIME_TYPE_JSON)
-    ) { uri ->
-        if (uri != null) {
-            isExporting = true
-            coroutineScope.launch {
-                val backupJson = backupManager.createBackup(
-                    settingsRepository,
-                    rankingRepository,
-                    aliasRepository
-                )
-                when (val result = backupManager.writeBackupToUri(uri, backupJson)) {
-                    is BackupRestoreManager.BackupResult.Success -> {
-                        val sizeKb = result.sizeBytes / 1024.0
-                        Toast.makeText(
-                            context,
-                            "Backup saved (${String.format("%.1f", sizeKb)} KB)",
-                            Toast.LENGTH_SHORT
-                        ).show()
+    val createDocumentLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument(BackupRestoreManager.MIME_TYPE_JSON),
+        ) { uri ->
+            if (uri != null) {
+                isExporting = true
+                coroutineScope.launch {
+                    val backupJson =
+                        backupManager.createBackup(
+                            settingsRepository,
+                            rankingRepository,
+                            aliasRepository,
+                        )
+                    when (val result = backupManager.writeBackupToUri(uri, backupJson)) {
+                        is BackupRestoreManager.BackupResult.Success -> {
+                            val sizeKb = result.sizeBytes / 1024.0
+                            Toast
+                                .makeText(
+                                    context,
+                                    "Backup saved (${String.format("%.1f", sizeKb)} KB)",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                        }
+
+                        is BackupRestoreManager.BackupResult.Error -> {
+                            Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                        }
                     }
-                    is BackupRestoreManager.BackupResult.Error -> {
-                        Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
-                    }
+                    isExporting = false
                 }
-                isExporting = false
             }
         }
-    }
 
     // SAF Open Document launcher (for restore)
-    val openDocumentLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            coroutineScope.launch {
-                val result = backupManager.readBackupFromUri(uri)
-                result.fold(
-                    onSuccess = { json ->
-                        val preview = backupManager.parseBackupPreview(json)
-                        if (preview != null) {
-                            backupPreview = preview
-                            pendingRestoreJson = json
-                            showRestorePreviewDialog = true
-                        } else {
-                            Toast.makeText(context, "Invalid backup file", Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    onFailure = { error ->
-                        Toast.makeText(context, error.message, Toast.LENGTH_LONG).show()
-                    }
-                )
+    val openDocumentLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            if (uri != null) {
+                coroutineScope.launch {
+                    val result = backupManager.readBackupFromUri(uri)
+                    result.fold(
+                        onSuccess = { json ->
+                            val preview = backupManager.parseBackupPreview(json)
+                            if (preview != null) {
+                                backupPreview = preview
+                                pendingRestoreJson = json
+                                showRestorePreviewDialog = true
+                            } else {
+                                Toast.makeText(context, "Invalid backup file", Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        onFailure = { error ->
+                            Toast.makeText(context, error.message, Toast.LENGTH_LONG).show()
+                        },
+                    )
+                }
             }
         }
-    }
 
     // SAF Open Document Tree launcher (for folder permission)
-    val openDocumentTreeLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null && pendingPermissionRootId != null) {
-            // Take persistable permission
-            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            try {
-                context.contentResolver.takePersistableUriPermission(uri, takeFlags)
-                
-                // Update the root with the new URI
-                val currentRoot = fileSearchSettings.roots.find { it.id == pendingPermissionRootId }
-                if (currentRoot != null) {
-                    // Remove old root and add new one with updated URI
-                    settingsRepository.removeFileSearchRoot(currentRoot.id)
-                    val newRoot = currentRoot.copy(uri = uri)
-                    settingsRepository.addFileSearchRoot(newRoot)
+    val openDocumentTreeLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocumentTree(),
+        ) { uri ->
+            if (uri != null && pendingPermissionRootId != null) {
+                // Take persistable permission
+                val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                try {
+                    context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+
+                    // Update the root with the new URI
+                    val currentRoot = fileSearchSettings.roots.find { it.id == pendingPermissionRootId }
+                    if (currentRoot != null) {
+                        // Remove old root and add new one with updated URI
+                        settingsRepository.removeFileSearchRoot(currentRoot.id)
+                        val newRoot = currentRoot.copy(uri = uri)
+                        settingsRepository.addFileSearchRoot(newRoot)
+                    }
+
+                    Toast.makeText(context, "Permission granted", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to save permission", Toast.LENGTH_LONG).show()
                 }
-                
-                Toast.makeText(context, "Permission granted", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Failed to save permission", Toast.LENGTH_LONG).show()
             }
+            pendingPermissionRootId = null
         }
-        pendingPermissionRootId = null
-    }
 
     // Restore Preview Dialog
     if (showRestorePreviewDialog && backupPreview != null) {
@@ -183,24 +187,28 @@ fun BackupRestoreSettingsScreen(
                 isRestoring = true
                 coroutineScope.launch {
                     pendingRestoreJson?.let { json ->
-                        when (val result = backupManager.restoreFromBackup(
-                            json,
-                            settingsRepository,
-                            rankingRepository,
-                            aliasRepository
-                        )) {
+                        when (
+                            val result =
+                                backupManager.restoreFromBackup(
+                                    json,
+                                    settingsRepository,
+                                    rankingRepository,
+                                    aliasRepository,
+                                )
+                        ) {
                             is BackupRestoreManager.RestoreResult.Success -> {
-                                restoreSuccessMessage = buildString {
-                                    append("Restored ")
-                                    val parts = mutableListOf<String>()
-                                    if (result.settingsRestored > 0) {
-                                        parts.add("${result.settingsRestored} setting group(s)")
+                                restoreSuccessMessage =
+                                    buildString {
+                                        append("Restored ")
+                                        val parts = mutableListOf<String>()
+                                        if (result.settingsRestored > 0) {
+                                            parts.add("${result.settingsRestored} setting group(s)")
+                                        }
+                                        if (result.aliasesRestored > 0) {
+                                            parts.add("${result.aliasesRestored} alias(es)")
+                                        }
+                                        append(parts.joinToString(", "))
                                     }
-                                    if (result.aliasesRestored > 0) {
-                                        parts.add("${result.aliasesRestored} alias(es)")
-                                    }
-                                    append(parts.joinToString(", "))
-                                }
                                 if (result.warnings.isNotEmpty()) {
                                     restoreWarnings = result.warnings
                                     showWarningsDialog = true
@@ -208,6 +216,7 @@ fun BackupRestoreSettingsScreen(
                                     Toast.makeText(context, restoreSuccessMessage, Toast.LENGTH_SHORT).show()
                                 }
                             }
+
                             is BackupRestoreManager.RestoreResult.Error -> {
                                 Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
                             }
@@ -217,7 +226,7 @@ fun BackupRestoreSettingsScreen(
                     pendingRestoreJson = null
                     backupPreview = null
                 }
-            }
+            },
         )
     }
 
@@ -230,22 +239,23 @@ fun BackupRestoreSettingsScreen(
                 showWarningsDialog = false
                 restoreWarnings = emptyList()
                 restoreSuccessMessage = ""
-            }
+            },
         )
     }
 
     // Main UI
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            BackupRestoreHeader(onBack = onBack)
+            SettingsHeader(title = "Backup & Restore", onBack = onBack)
         }
 
         // Backup Section
@@ -254,17 +264,39 @@ fun BackupRestoreSettingsScreen(
         }
 
         item {
-            BackupRestoreCardGroup {
-                ActionRow(
-                    title = "Export Settings",
-                    subtitle = "Save all settings to a file",
-                    isLoading = isExporting,
-                    onClick = {
-                        if (!isExporting) {
-                            createDocumentLauncher.launch(backupManager.generateBackupFilename())
+            SettingsGroup {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                ) {
+                    Text(
+                        text = "Export Settings",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = "Save all settings to a file",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            if (!isExporting) {
+                                createDocumentLauncher.launch(backupManager.generateBackupFilename())
+                            }
+                        },
+                        enabled = !isExporting,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (isExporting) {
+                            Text("Exporting...")
+                        } else {
+                            Text("Export")
                         }
                     }
-                )
+                }
             }
         }
 
@@ -274,17 +306,39 @@ fun BackupRestoreSettingsScreen(
         }
 
         item {
-            BackupRestoreCardGroup {
-                ActionRow(
-                    title = "Import Settings",
-                    subtitle = "Load settings from a backup file",
-                    isLoading = isRestoring,
-                    onClick = {
-                        if (!isRestoring) {
-                            openDocumentLauncher.launch(arrayOf(BackupRestoreManager.MIME_TYPE_JSON, "application/octet-stream", "*/*"))
+            SettingsGroup {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                ) {
+                    Text(
+                        text = "Import Settings",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = "Load settings from a backup file",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            if (!isRestoring) {
+                                openDocumentLauncher.launch(arrayOf(BackupRestoreManager.MIME_TYPE_JSON, "application/octet-stream", "*/*"))
+                            }
+                        },
+                        enabled = !isRestoring,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (isRestoring) {
+                            Text("Importing...")
+                        } else {
+                            Text("Import")
                         }
                     }
-                )
+                }
             }
         }
 
@@ -295,57 +349,21 @@ fun BackupRestoreSettingsScreen(
             }
 
             item {
-                BackupRestoreCardGroup {
+                SettingsGroup {
                     fileSearchSettings.roots.forEachIndexed { index, root ->
                         FileSearchRootRow(
                             root = root,
                             onRequestPermission = {
                                 pendingPermissionRootId = root.id
                                 openDocumentTreeLauncher.launch(root.uri)
-                            }
+                            },
                         )
                         if (index < fileSearchSettings.roots.lastIndex) {
-                            BackupRestoreDivider()
+                            SettingsDivider()
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun BackupRestoreHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 2.dp,
-            modifier = Modifier.size(40.dp)
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Backup & Restore",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
         }
     }
 }
@@ -356,128 +374,68 @@ private fun SectionTitle(title: String) {
         text = title,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
     )
-}
-
-@Composable
-private fun BackupRestoreCardGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
-private fun ActionRow(
-    title: String,
-    subtitle: String,
-    isLoading: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.extraLarge)
-            .clickable(enabled = !isLoading, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp
-            )
-        } else {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
 }
 
 @Composable
 private fun FileSearchRootRow(
     root: FileSearchRoot,
-    onRequestPermission: () -> Unit
+    onRequestPermission: () -> Unit,
 ) {
     val context = LocalContext.current
-    val hasPermission = remember(root.uri) {
-        try {
-            val docFile = DocumentFile.fromTreeUri(context, root.uri)
-            docFile?.canRead() == true
-        } catch (e: Exception) {
-            // For file:// URIs (like Downloads), check differently
+    val hasPermission =
+        remember(root.uri) {
             try {
-                val docFile = DocumentFile.fromFile(java.io.File(root.uri.path ?: ""))
-                docFile.canRead()
-            } catch (e2: Exception) {
-                false
+                val docFile = DocumentFile.fromTreeUri(context, root.uri)
+                docFile?.canRead() == true
+            } catch (e: Exception) {
+                // For file:// URIs (like Downloads), check differently
+                try {
+                    val docFile = DocumentFile.fromFile(java.io.File(root.uri.path ?: ""))
+                    docFile.canRead()
+                } catch (e2: Exception) {
+                    false
+                }
             }
         }
-    }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.extraLarge)
-            .then(
-                if (!hasPermission) {
-                    Modifier.clickable(onClick = onRequestPermission)
-                } else {
-                    Modifier
-                }
-            )
-            .padding(horizontal = 20.dp, vertical = 18.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.extraLarge)
+                .then(
+                    if (!hasPermission) {
+                        Modifier.clickable(onClick = onRequestPermission)
+                    } else {
+                        Modifier
+                    },
+                ).padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
             modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.Rounded.Folder,
                 contentDescription = null,
                 tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = root.displayName,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 if (root.parentDisplayName != null) {
                     Text(
                         text = root.parentDisplayName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -486,41 +444,33 @@ private fun FileSearchRootRow(
             imageVector = if (hasPermission) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
             contentDescription = if (hasPermission) "Has permission" else "Needs permission",
             tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(24.dp),
         )
     }
-}
-
-@Composable
-private fun BackupRestoreDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
 }
 
 @Composable
 private fun RestorePreviewDialog(
     preview: BackupRestoreManager.BackupPreview,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
                 text = "Restore from Backup?",
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall,
             )
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
                     text = "Backup from: ${preview.formattedTimestamp()}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -528,12 +478,12 @@ private fun RestorePreviewDialog(
                 Text(
                     text = "This will restore:",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
                 )
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp),
                 ) {
                     if (preview.webSearchSitesCount > 0) {
                         BulletPoint("${preview.webSearchSitesCount} web search engine(s)")
@@ -563,13 +513,13 @@ private fun RestorePreviewDialog(
                     Surface(
                         shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
                             text = "File search folders may require permission requests after restore.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(12.dp)
+                            modifier = Modifier.padding(12.dp),
                         )
                     }
                 }
@@ -584,7 +534,7 @@ private fun RestorePreviewDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
     )
 }
 
@@ -592,33 +542,33 @@ private fun RestorePreviewDialog(
 private fun RestoreWarningsDialog(
     successMessage: String,
     warnings: List<String>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
                 text = "Restore Completed",
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall,
             )
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.CheckCircle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                     Text(
                         text = successMessage,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
 
@@ -628,16 +578,16 @@ private fun RestoreWarningsDialog(
                         text = "Some items had issues:",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(start = 8.dp)
+                        modifier = Modifier.padding(start = 8.dp),
                     ) {
                         warnings.forEach { warning ->
                             BulletPoint(
                                 text = warning,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -648,28 +598,28 @@ private fun RestoreWarningsDialog(
             Button(onClick = onDismiss) {
                 Text("OK")
             }
-        }
+        },
     )
 }
 
 @Composable
 private fun BulletPoint(
     text: String,
-    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
 ) {
     Row(
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             text = "\u2022",
             style = MaterialTheme.typography.bodyMedium,
-            color = color
+            color = color,
         )
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = color
+            color = color,
         )
     }
 }

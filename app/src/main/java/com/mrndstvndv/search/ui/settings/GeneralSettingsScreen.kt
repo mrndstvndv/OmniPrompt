@@ -26,21 +26,16 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -64,6 +59,12 @@ import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
+import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
+import com.mrndstvndv.search.ui.components.settings.SettingsSliderRow
+import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 import kotlin.math.roundToInt
 
 @Composable
@@ -115,7 +116,7 @@ fun GeneralSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
-                SettingsHomeHeader(onClose = onClose)
+                SettingsHeader(title = "Settings", onBack = onClose)
             }
 
             if (!isDefaultAssistant) {
@@ -125,15 +126,15 @@ fun GeneralSettingsScreen(
             }
 
             item {
-                SettingsTileGroup {
-                    SettingsTile(
+                SettingsGroup {
+                    SettingsNavigationRow(
                         icon = Icons.Rounded.Apps,
                         title = "Providers",
                         subtitle = providerSubtitle.ifEmpty { "Manage search sources" },
                         onClick = onOpenProviders,
                     )
                     SettingsDivider()
-                    SettingsTile(
+                    SettingsNavigationRow(
                         icon = Icons.Rounded.Palette,
                         title = "Appearance",
                         subtitle = appearanceSubtitle,
@@ -143,22 +144,22 @@ fun GeneralSettingsScreen(
             }
 
             item {
-                SettingsTileGroup {
-                    SettingsTile(
+                SettingsGroup {
+                    SettingsNavigationRow(
                         icon = Icons.Rounded.Speed,
                         title = "Behavior",
                         subtitle = behaviorSubtitle,
                         onClick = onOpenBehavior,
                     )
                     SettingsDivider()
-                    SettingsTile(
+                    SettingsNavigationRow(
                         icon = Icons.AutoMirrored.Rounded.Label,
                         title = "Aliases",
                         subtitle = aliasesSubtitle,
                         onClick = onOpenAliases,
                     )
                     SettingsDivider()
-                    SettingsTile(
+                    SettingsNavigationRow(
                         icon = Icons.Rounded.BarChart,
                         title = "Result ranking",
                         subtitle = rankingSubtitle,
@@ -168,8 +169,8 @@ fun GeneralSettingsScreen(
             }
 
             item {
-                SettingsTileGroup {
-                    SettingsTile(
+                SettingsGroup {
+                    SettingsNavigationRow(
                         icon = Icons.Rounded.CloudUpload,
                         title = "Backup & Restore",
                         subtitle = "Export or import your settings",
@@ -258,7 +259,7 @@ fun ProvidersSettingsScreen(
         }
 
         item {
-            SettingsCardGroup {
+            SettingsGroup {
                 ProviderRow(
                     id = "app-list",
                     name = "Applications",
@@ -338,7 +339,6 @@ fun ProvidersSettingsScreen(
                     enabled = if (isTermuxInstalled) enabledProviders["termux"] ?: true else false,
                     onToggle = { enabled ->
                         if (isTermuxInstalled) {
-                            // Refresh permission state
                             hasTermuxPermission = TermuxProvider.hasRunCommandPermission(context)
                             if (enabled && !hasTermuxPermission) {
                                 showTermuxPermissionDialog = true
@@ -369,8 +369,8 @@ fun AppearanceSettingsScreen(
         onBack = onBack,
     ) {
         item {
-            SettingsCardGroup {
-                SettingsToggleRow(
+            SettingsGroup {
+                SettingsSwitch(
                     title = "Translucent results",
                     subtitle = "Make list items slightly see-through.",
                     checked = translucentResultsEnabled,
@@ -412,8 +412,8 @@ fun BehaviorSettingsScreen(
         onBack = onBack,
     ) {
         item {
-            SettingsCardGroup {
-                SettingsToggleRow(
+            SettingsGroup {
+                SettingsSwitch(
                     title = "Enable animations",
                     subtitle = "Turn off to remove most in-app transitions.",
                     checked = motionPreferences.animationsEnabled,
@@ -446,7 +446,7 @@ fun AliasesSettingsScreen(
         onBack = onBack,
     ) {
         item {
-            SettingsCardGroup {
+            SettingsGroup {
                 if (aliasEntries.isEmpty()) {
                     Text(
                         modifier = Modifier.padding(20.dp),
@@ -495,97 +495,6 @@ fun ResultRankingSettingsScreen(
 }
 
 @Composable
-private fun SettingsHomeHeader(onClose: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        IconButton(onClick = onClose) {
-            Icon(
-                imageVector = Icons.Rounded.Close,
-                contentDescription = "Close settings",
-                tint = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsTileGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 3.dp,
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
-private fun SettingsTile(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(
-                modifier =
-                    Modifier
-                        .padding(end = 16.dp)
-                        .clip(MaterialTheme.shapes.medium),
-                tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.padding(10.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun SettingsScaffold(
     title: String,
     onBack: () -> Unit,
@@ -602,65 +511,11 @@ private fun SettingsScaffold(
         verticalArrangement = Arrangement.spacedBy(18.dp),
         content = {
             item {
-                SectionHeader(title = title, onBack = onBack)
+                SettingsHeader(title = title, onBack = onBack)
             }
             content()
         },
     )
-}
-
-@Composable
-private fun SectionHeader(
-    title: String,
-    onBack: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 2.dp,
-            modifier = Modifier.size(40.dp),
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(36.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsCardGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(content = content)
-    }
 }
 
 @Composable
@@ -727,89 +582,6 @@ private fun ProviderRow(
 }
 
 @Composable
-private fun SettingsToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
-    }
-}
-
-@Composable
-private fun SettingsSliderRow(
-    title: String,
-    subtitle: String,
-    valueText: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
-    steps: Int = 9,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = valueText,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-        androidx.compose.material3.Slider(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            steps = steps,
-        )
-    }
-}
-
-@Composable
 private fun AliasRow(
     alias: String,
     summary: String,
@@ -840,14 +612,6 @@ private fun AliasRow(
             Text(text = "Remove")
         }
     }
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
 }
 
 @Composable

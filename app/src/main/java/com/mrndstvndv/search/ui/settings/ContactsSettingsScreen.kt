@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.HorizontalDivider
@@ -46,12 +45,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
+import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun ContactsSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
     contactsRepository: ContactsRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val contactsSettings by settingsRepository.contactsSettings.collectAsState()
@@ -65,32 +67,35 @@ fun ContactsSettingsScreen(
     }
 
     // Permission launchers
-    val contactsPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasContactsPermission = isGranted
-    }
-
-    val phoneStatePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        hasPhoneStatePermission = permissions.values.all { it }
-        if (hasPhoneStatePermission) {
-            settingsRepository.setContactsShowSimNumbers(true)
+    val contactsPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { isGranted ->
+            hasContactsPermission = isGranted
         }
-    }
+
+    val phoneStatePermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { permissions ->
+            hasPhoneStatePermission = permissions.values.all { it }
+            if (hasPhoneStatePermission) {
+                settingsRepository.setContactsShowSimNumbers(true)
+            }
+        }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            ContactsSettingsHeader(onBack = onBack)
+            SettingsHeader(title = "Contacts", onBack = onBack)
         }
 
         // Permission status card
@@ -99,7 +104,7 @@ fun ContactsSettingsScreen(
                 hasContactsPermission = hasContactsPermission,
                 onRequestPermission = {
                     contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-                }
+                },
             )
         }
 
@@ -114,57 +119,22 @@ fun ContactsSettingsScreen(
                     onShowSimNumbersChange = { enabled ->
                         if (enabled && !hasPhoneStatePermission) {
                             // Request phone state permissions
-                            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                arrayOf(
-                                    Manifest.permission.READ_PHONE_STATE,
-                                    Manifest.permission.READ_PHONE_NUMBERS
-                                )
-                            } else {
-                                arrayOf(Manifest.permission.READ_PHONE_STATE)
-                            }
+                            val permissions =
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    arrayOf(
+                                        Manifest.permission.READ_PHONE_STATE,
+                                        Manifest.permission.READ_PHONE_NUMBERS,
+                                    )
+                                } else {
+                                    arrayOf(Manifest.permission.READ_PHONE_STATE)
+                                }
                             phoneStatePermissionLauncher.launch(permissions)
                         } else {
                             settingsRepository.setContactsShowSimNumbers(enabled)
                         }
-                    }
+                    },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun ContactsSettingsHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            tonalElevation = 2.dp,
-            modifier = Modifier.size(40.dp)
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Contacts",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
         }
     }
 }
@@ -172,49 +142,52 @@ private fun ContactsSettingsHeader(onBack: () -> Unit) {
 @Composable
 private fun PermissionStatusCard(
     hasContactsPermission: Boolean,
-    onRequestPermission: () -> Unit
+    onRequestPermission: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     imageVector = if (hasContactsPermission) Icons.Outlined.CheckCircle else Icons.Outlined.Warning,
                     contentDescription = null,
-                    tint = if (hasContactsPermission) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-                    modifier = Modifier.size(24.dp)
+                    tint =
+                        if (hasContactsPermission) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                    modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
                         text = if (hasContactsPermission) "Permission granted" else "Permission required",
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = if (hasContactsPermission) {
-                            "Contacts can be searched"
-                        } else {
-                            "Allow access to search your contacts"
-                        },
+                        text =
+                            if (hasContactsPermission) {
+                                "Contacts can be searched"
+                            } else {
+                                "Allow access to search your contacts"
+                            },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -233,94 +206,60 @@ private fun ContactsSettingsCard(
     onIncludePhoneNumbersChange: (Boolean) -> Unit,
     showSimNumbers: Boolean,
     hasPhoneStatePermission: Boolean,
-    onShowSimNumbersChange: (Boolean) -> Unit
+    onShowSimNumbersChange: (Boolean) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Column {
             // Include phone numbers in search
-            SettingsToggleRow(
+            SettingsSwitch(
                 title = "Search phone numbers",
                 subtitle = "Include phone numbers when searching contacts",
                 checked = includePhoneNumbers,
-                onCheckedChange = onIncludePhoneNumbersChange
+                onCheckedChange = onIncludePhoneNumbersChange,
             )
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 20.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+            SettingsDivider()
 
             // Show SIM numbers
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Show my SIM numbers",
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
                             text = "Display your own phone numbers in search",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Switch(
                         checked = showSimNumbers && hasPhoneStatePermission,
-                        onCheckedChange = onShowSimNumbersChange
+                        onCheckedChange = onShowSimNumbersChange,
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Note: SIM card numbers may not be available depending on your carrier.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SettingsToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
     }
 }

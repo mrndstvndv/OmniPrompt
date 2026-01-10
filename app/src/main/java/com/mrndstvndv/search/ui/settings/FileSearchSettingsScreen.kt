@@ -54,11 +54,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
@@ -67,6 +67,10 @@ import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.FileSearchSortMode
 import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsHeader
+import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -75,21 +79,22 @@ import java.util.UUID
 fun FileSearchSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
     fileSearchRepository: FileSearchRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val fileSearchSettings by settingsRepository.fileSearchSettings.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val addFileRootLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            handleFolderSelection(
-                uri = uri,
-                context = context,
-                settingsRepository = settingsRepository,
-                fileSearchRepository = fileSearchRepository
-            )
+    val addFileRootLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                handleFolderSelection(
+                    uri = uri,
+                    context = context,
+                    settingsRepository = settingsRepository,
+                    fileSearchRepository = fileSearchRepository,
+                )
+            }
         }
-    }
     val downloadsMetadata = fileSearchSettings.scanMetadata[FileSearchSettings.DOWNLOADS_ROOT_ID]
     var downloadsPermissionGranted by remember { mutableStateOf(hasAllFilesAccess()) }
     var showDownloadsPermissionDialog by remember { mutableStateOf(false) }
@@ -104,7 +109,7 @@ fun FileSearchSettingsScreen(
                     rootId = root.id,
                     state = FileSearchScanState.INDEXING,
                     itemCount = 0,
-                    errorMessage = null
+                    errorMessage = null,
                 )
                 fileSearchRepository.scheduleFullIndex(root)
             }
@@ -125,7 +130,7 @@ fun FileSearchSettingsScreen(
                     rootId = root.id,
                     state = FileSearchScanState.INDEXING,
                     itemCount = 0,
-                    errorMessage = null
+                    errorMessage = null,
                 )
                 fileSearchRepository.scheduleFullIndex(root)
             }
@@ -133,17 +138,18 @@ fun FileSearchSettingsScreen(
     }
 
     DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                val granted = hasAllFilesAccess()
-                val previouslyPending = pendingEnableDownloads
-                downloadsPermissionGranted = granted
-                if (granted && previouslyPending) {
-                    pendingEnableDownloads = false
-                    enableDownloadsIndexing()
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    val granted = hasAllFilesAccess()
+                    val previouslyPending = pendingEnableDownloads
+                    downloadsPermissionGranted = granted
+                    if (granted && previouslyPending) {
+                        pendingEnableDownloads = false
+                        enableDownloadsIndexing()
+                    }
                 }
             }
-        }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
@@ -164,51 +170,54 @@ fun FileSearchSettingsScreen(
         }
     }
 
-    val manageAllFilesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        val granted = hasAllFilesAccess()
-        downloadsPermissionGranted = granted
-        if (granted && pendingEnableDownloads) {
-            pendingEnableDownloads = false
-            enableDownloadsIndexing()
+    val manageAllFilesLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            val granted = hasAllFilesAccess()
+            downloadsPermissionGranted = granted
+            if (granted && pendingEnableDownloads) {
+                pendingEnableDownloads = false
+                enableDownloadsIndexing()
+            }
         }
-    }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
     ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+            verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(onBack = onBack)
+                SettingsHeader(title = "Files & folders", subtitle = "Pick which directories are indexed.", onBack = onBack)
             }
 
             item {
-                SettingsCardGroup {
-                    SettingsToggleRow(
+                SettingsGroup {
+                    SettingsSwitch(
                         title = "Load thumbnails",
                         subtitle = "Show previews for images, videos, and audio files in search results.",
                         checked = fileSearchSettings.loadThumbnails,
-                        onCheckedChange = { settingsRepository.setFileSearchThumbnailsEnabled(it) }
+                        onCheckedChange = { settingsRepository.setFileSearchThumbnailsEnabled(it) },
                     )
                     SettingsDivider()
                     ThumbnailCropModeRow(
                         selectedMode = fileSearchSettings.thumbnailCropMode,
                         enabled = fileSearchSettings.loadThumbnails,
-                        onModeSelected = { settingsRepository.setFileSearchThumbnailCropMode(it) }
+                        onModeSelected = { settingsRepository.setFileSearchThumbnailCropMode(it) },
                     )
                     SettingsDivider()
                     FileSearchSortRow(
                         sortMode = fileSearchSettings.sortMode,
                         sortAscending = fileSearchSettings.sortAscending,
                         onModeSelected = { settingsRepository.setFileSearchSortMode(it) },
-                        onToggleAscending = { settingsRepository.setFileSearchSortAscending(it) }
+                        onToggleAscending = { settingsRepository.setFileSearchSortAscending(it) },
                     )
                     SettingsDivider()
                     SyncIntervalRow(
@@ -216,14 +225,14 @@ fun FileSearchSettingsScreen(
                         onIntervalSelected = {
                             settingsRepository.setFileSearchSyncInterval(it)
                             fileSearchRepository.schedulePeriodicSync(it)
-                        }
+                        },
                     )
                     SettingsDivider()
-                    SettingsToggleRow(
+                    SettingsSwitch(
                         title = "Sync on app open",
                         subtitle = "Check for file changes when Search opens.",
                         checked = fileSearchSettings.syncOnAppOpen,
-                        onCheckedChange = { settingsRepository.setFileSearchSyncOnAppOpen(it) }
+                        onCheckedChange = { settingsRepository.setFileSearchSyncOnAppOpen(it) },
                     )
                     SettingsDivider()
                     FileSearchRootsCard(
@@ -247,7 +256,7 @@ fun FileSearchSettingsScreen(
                             coroutineScope.launch(Dispatchers.IO) {
                                 fileSearchRepository.deleteRootEntries(root.id)
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -263,93 +272,9 @@ fun FileSearchSettingsScreen(
             onOpenSettings = {
                 showDownloadsPermissionDialog = false
                 manageAllFilesLauncher.launch(buildManageAllFilesIntent(context))
-            }
+            },
         )
     }
-}
-
-@Composable
-private fun SettingsHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = "Files & folders",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Pick which directories are indexed.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onBackground
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsCardGroup(
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surface
-    ) {
-        Column(content = content)
-    }
-}
-
-@Composable
-private fun SettingsToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
-}
-
-@Composable
-private fun SettingsDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
-        color = MaterialTheme.colorScheme.outlineVariant
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -357,33 +282,36 @@ private fun SettingsDivider() {
 private fun ThumbnailCropModeRow(
     selectedMode: FileSearchThumbnailCropMode,
     enabled: Boolean,
-    onModeSelected: (FileSearchThumbnailCropMode) -> Unit
+    onModeSelected: (FileSearchThumbnailCropMode) -> Unit,
 ) {
-    val subtitle = if (enabled) {
-        "Choose how previews fill the square icon."
-    } else {
-        "Turn on thumbnails to change how previews are cropped."
-    }
+    val subtitle =
+        if (enabled) {
+            "Choose how previews fill the square icon."
+        } else {
+            "Turn on thumbnails to change how previews are cropped."
+        }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
             text = "Thumbnail crop",
             style = MaterialTheme.typography.bodyLarge,
-            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         val options = listOf(FileSearchThumbnailCropMode.CENTER_CROP, FileSearchThumbnailCropMode.FIT)
         SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
         ) {
             options.forEachIndexed { index, mode ->
                 SegmentedButton(
@@ -394,7 +322,7 @@ private fun ThumbnailCropModeRow(
                         }
                     },
                     enabled = enabled,
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size)
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
                 ) {
                     Text(text = mode.userFacingLabel())
                 }
@@ -409,27 +337,29 @@ private fun FileSearchSortRow(
     sortMode: FileSearchSortMode,
     sortAscending: Boolean,
     onModeSelected: (FileSearchSortMode) -> Unit,
-    onToggleAscending: (Boolean) -> Unit
+    onToggleAscending: (Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
             text = "Sort order",
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
         )
         Text(
             text = "Choose how file results are ordered.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         val options = listOf(FileSearchSortMode.NAME, FileSearchSortMode.DATE)
         SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
         ) {
             options.forEachIndexed { index, mode ->
                 SegmentedButton(
@@ -439,83 +369,85 @@ private fun FileSearchSortRow(
                             onModeSelected(mode)
                         }
                     },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size)
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
                 ) {
                     Text(text = mode.userFacingLabel())
                 }
             }
         }
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Ascending order",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
                     text = "Off lists newest or Z–A first.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Switch(
                 checked = sortAscending,
-                onCheckedChange = onToggleAscending
+                onCheckedChange = onToggleAscending,
             )
         }
     }
 }
 
-private fun FileSearchThumbnailCropMode.userFacingLabel(): String {
-    return when (this) {
+private fun FileSearchThumbnailCropMode.userFacingLabel(): String =
+    when (this) {
         FileSearchThumbnailCropMode.FIT -> "Fit"
         FileSearchThumbnailCropMode.CENTER_CROP -> "Center crop"
     }
-}
 
-private fun FileSearchSortMode.userFacingLabel(): String {
-    return when (this) {
+private fun FileSearchSortMode.userFacingLabel(): String =
+    when (this) {
         FileSearchSortMode.DATE -> "Date modified"
         FileSearchSortMode.NAME -> "Name"
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SyncIntervalRow(
     selectedInterval: Int,
-    onIntervalSelected: (Int) -> Unit
+    onIntervalSelected: (Int) -> Unit,
 ) {
-    val options = listOf(
-        0 to "Off",
-        15 to "15m",
-        30 to "30m",
-        60 to "1h",
-        120 to "2h"
-    )
+    val options =
+        listOf(
+            0 to "Off",
+            15 to "15m",
+            30 to "30m",
+            60 to "1h",
+            120 to "2h",
+        )
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
             text = "Background sync",
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
         )
         Text(
             text = "Automatically check for file changes.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
         ) {
             options.forEachIndexed { index, (intervalMinutes, label) ->
                 SegmentedButton(
@@ -525,7 +457,7 @@ private fun SyncIntervalRow(
                             onIntervalSelected(intervalMinutes)
                         }
                     },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size)
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
                 ) {
                     Text(text = label)
                 }
@@ -546,7 +478,7 @@ private fun FileSearchRootsCard(
     onAddRoot: () -> Unit,
     onToggleRoot: (FileSearchRoot, Boolean) -> Unit,
     onRescanRoot: (FileSearchRoot) -> Unit,
-    onRemoveRoot: (FileSearchRoot) -> Unit
+    onRemoveRoot: (FileSearchRoot) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         DownloadsIndexRow(
@@ -554,33 +486,36 @@ private fun FileSearchRootsCard(
             permissionGranted = downloadsPermissionGranted,
             metadata = downloadsMetadata,
             onToggle = onToggleDownloads,
-            onRescan = onRescanDownloads
+            onRescan = onRescanDownloads,
         )
-        val firstErroredRoot = settings.roots.firstNotNullOfOrNull { root ->
-            val metadata = scanMetadata[root.id]
-            if (metadata?.state == FileSearchScanState.ERROR) root to metadata else null
-        }
+        val firstErroredRoot =
+            settings.roots.firstNotNullOfOrNull { root ->
+                val metadata = scanMetadata[root.id]
+                if (metadata?.state == FileSearchScanState.ERROR) root to metadata else null
+            }
         if (firstErroredRoot != null) {
             SettingsDivider()
             FileSearchErrorBanner(
                 rootName = firstErroredRoot.first.displayName,
-                metadata = firstErroredRoot.second
+                metadata = firstErroredRoot.second,
             )
         }
-        val duplicateNameIds = settings.roots
-            .groupBy { it.displayName }
-            .filterValues { it.size > 1 }
-            .flatMap { entry -> entry.value.map(FileSearchRoot::id) }
-            .toSet()
+        val duplicateNameIds =
+            settings.roots
+                .groupBy { it.displayName }
+                .filterValues { it.size > 1 }
+                .flatMap { entry -> entry.value.map(FileSearchRoot::id) }
+                .toSet()
         if (settings.roots.isEmpty()) {
             SettingsDivider()
             Text(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
                 text = "No folders have been indexed yet. Tap Add folder to pick a directory.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
             SettingsDivider()
@@ -592,7 +527,7 @@ private fun FileSearchRootsCard(
                     metadata = scanMetadata[root.id],
                     onToggle = { enabled -> onToggleRoot(root, enabled) },
                     onRescan = { onRescanRoot(root) },
-                    onRemove = { onRemoveRoot(root) }
+                    onRemove = { onRemoveRoot(root) },
                 )
                 if (index != settings.roots.lastIndex) {
                     SettingsDivider()
@@ -601,17 +536,21 @@ private fun FileSearchRootsCard(
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            onClick = onAddRoot
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+            onClick = onAddRoot,
         ) {
             Text(text = "Add folder")
         }
     }
 }
 
-private fun formatRootDisplayName(root: FileSearchRoot, requireParentLabel: Boolean): String {
+private fun formatRootDisplayName(
+    root: FileSearchRoot,
+    requireParentLabel: Boolean,
+): String {
     if (!requireParentLabel) return root.displayName
     val parent = root.parentDisplayName?.takeIf { it.isNotBlank() } ?: root.uri.deriveParentDisplayName()
     return if (parent.isNullOrBlank()) root.displayName else "${root.displayName} ($parent)"
@@ -624,63 +563,67 @@ private fun FileSearchRootRow(
     metadata: FileSearchScanMetadata?,
     onToggle: (Boolean) -> Unit,
     onRescan: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = displayName,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 val (status, detail) = resolveFileSearchStatus(root, metadata)
-                val statusColor = if (metadata?.state == FileSearchScanState.ERROR) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                val statusColor =
+                    if (metadata?.state == FileSearchScanState.ERROR) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 Text(
                     text = status,
                     style = MaterialTheme.typography.bodySmall,
-                    color = statusColor
+                    color = statusColor,
                 )
                 if (!detail.isNullOrBlank()) {
                     Text(
                         text = detail,
                         style = MaterialTheme.typography.labelSmall,
-                        color = statusColor
+                        color = statusColor,
                     )
                 }
                 if (metadata?.state == FileSearchScanState.INDEXING) {
                     LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
                     )
                 }
             }
             Switch(
                 checked = root.isEnabled,
-                onCheckedChange = onToggle
+                onCheckedChange = onToggle,
             )
         }
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             TextButton(
                 onClick = onRescan,
-                enabled = root.isEnabled
+                enabled = root.isEnabled,
             ) {
                 Text(text = "Rescan")
             }
@@ -697,64 +640,68 @@ private fun DownloadsIndexRow(
     permissionGranted: Boolean,
     metadata: FileSearchScanMetadata?,
     onToggle: (Boolean) -> Unit,
-    onRescan: () -> Unit
+    onRescan: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 18.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Downloads folder",
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 val (status, detail) = resolveDownloadsStatusText(enabled, permissionGranted, metadata)
-                val statusColor: Color = when {
-                    !permissionGranted -> MaterialTheme.colorScheme.error
-                    metadata?.state == FileSearchScanState.ERROR -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                val statusColor: Color =
+                    when {
+                        !permissionGranted -> MaterialTheme.colorScheme.error
+                        metadata?.state == FileSearchScanState.ERROR -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 Text(
                     text = status,
                     style = MaterialTheme.typography.bodySmall,
-                    color = statusColor
+                    color = statusColor,
                 )
                 if (!detail.isNullOrBlank()) {
                     Text(
                         text = detail,
                         style = MaterialTheme.typography.labelSmall,
-                        color = statusColor
+                        color = statusColor,
                     )
                 }
                 val showProgress = permissionGranted && enabled && metadata?.state == FileSearchScanState.INDEXING
                 if (showProgress) {
                     LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
                     )
                 }
             }
             Switch(
                 checked = enabled,
-                onCheckedChange = onToggle
+                onCheckedChange = onToggle,
             )
         }
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             TextButton(
                 onClick = onRescan,
-                enabled = enabled && permissionGranted
+                enabled = enabled && permissionGranted,
             ) {
                 Text(text = "Rescan")
             }
@@ -764,7 +711,7 @@ private fun DownloadsIndexRow(
 
 private fun resolveFileSearchStatus(
     root: FileSearchRoot,
-    metadata: FileSearchScanMetadata?
+    metadata: FileSearchScanMetadata?,
 ): Pair<String, String?> {
     if (!root.isEnabled) {
         return "Disabled" to "Enable to surface matches"
@@ -774,24 +721,36 @@ private fun resolveFileSearchStatus(
     }
     return when (metadata.state) {
         FileSearchScanState.INDEXING -> {
-            val detail = if (metadata.indexedItemCount > 0) {
-                "${metadata.indexedItemCount} items scanned so far"
-            } else {
-                "This may take a minute"
-            }
+            val detail =
+                if (metadata.indexedItemCount > 0) {
+                    "${metadata.indexedItemCount} items scanned so far"
+                } else {
+                    "This may take a minute"
+                }
             "Indexing…" to detail
         }
-        FileSearchScanState.ERROR -> "Index failed" to (metadata.errorMessage ?: "Check folder permissions")
+
+        FileSearchScanState.ERROR -> {
+            "Index failed" to (metadata.errorMessage ?: "Check folder permissions")
+        }
+
         FileSearchScanState.SUCCESS -> {
-            val detail = if (metadata.updatedAtMillis > 0L) {
-                "Updated ${formatRelativeTime(metadata.updatedAtMillis)}"
-            } else null
+            val detail =
+                if (metadata.updatedAtMillis > 0L) {
+                    "Updated ${formatRelativeTime(metadata.updatedAtMillis)}"
+                } else {
+                    null
+                }
             "Indexed ${metadata.indexedItemCount} items" to detail
         }
+
         FileSearchScanState.IDLE -> {
-            val detail = if (metadata.updatedAtMillis > 0L) {
-                "Updated ${formatRelativeTime(metadata.updatedAtMillis)}"
-            } else null
+            val detail =
+                if (metadata.updatedAtMillis > 0L) {
+                    "Updated ${formatRelativeTime(metadata.updatedAtMillis)}"
+                } else {
+                    null
+                }
             "Idle" to detail
         }
     }
@@ -800,7 +759,7 @@ private fun resolveFileSearchStatus(
 private fun resolveDownloadsStatusText(
     enabled: Boolean,
     permissionGranted: Boolean,
-    metadata: FileSearchScanMetadata?
+    metadata: FileSearchScanMetadata?,
 ): Pair<String, String?> {
     if (!permissionGranted) {
         return "Permission required" to "Allow \"All files access\" to index Downloads."
@@ -808,28 +767,29 @@ private fun resolveDownloadsStatusText(
     if (!enabled) {
         return "Disabled" to "Turn on to include Downloads in search results."
     }
-    val placeholderRoot = FileSearchRoot(
-        id = FileSearchSettings.DOWNLOADS_ROOT_ID,
-        uri = Uri.EMPTY,
-        displayName = "Downloads",
-        isEnabled = true,
-        addedAtMillis = 0L,
-        parentDisplayName = null
-    )
+    val placeholderRoot =
+        FileSearchRoot(
+            id = FileSearchSettings.DOWNLOADS_ROOT_ID,
+            uri = Uri.EMPTY,
+            displayName = "Downloads",
+            isEnabled = true,
+            addedAtMillis = 0L,
+            parentDisplayName = null,
+        )
     return resolveFileSearchStatus(placeholderRoot, metadata)
 }
 
 @Composable
 private fun DownloadsPermissionDialog(
     onDismiss: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Allow Downloads access") },
         text = {
             Text(
-                text = "Search needs Android's \"All files access\" permission to index the Downloads folder."
+                text = "Search needs Android's \"All files access\" permission to index the Downloads folder.",
             )
         },
         confirmButton = {
@@ -841,55 +801,54 @@ private fun DownloadsPermissionDialog(
             TextButton(onClick = onDismiss) {
                 Text(text = "Cancel")
             }
-        }
+        },
     )
 }
 
-private fun buildManageAllFilesIntent(context: Context): Intent {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+private fun buildManageAllFilesIntent(context: Context): Intent =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
             data = Uri.parse("package:${context.packageName}")
         }
     } else {
         Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
     }
-}
 
-private fun hasAllFilesAccess(): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+private fun hasAllFilesAccess(): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         Environment.isExternalStorageManager()
     } else {
         true
     }
-}
 
 @Composable
 private fun FileSearchErrorBanner(
     rootName: String,
-    metadata: FileSearchScanMetadata
+    metadata: FileSearchScanMetadata,
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.errorContainer
+        color = MaterialTheme.colorScheme.errorContainer,
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Can't index $rootName",
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Text(
                 text = metadata.errorMessage ?: "Re-grant storage permission or try again.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Text(
                 text = "Fix the issue, then tap Rescan below.",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
     }
@@ -897,11 +856,12 @@ private fun FileSearchErrorBanner(
 
 private fun formatRelativeTime(timestamp: Long): String {
     if (timestamp <= 0L) return "just now"
-    val relative = DateUtils.getRelativeTimeSpanString(
-        timestamp,
-        System.currentTimeMillis(),
-        DateUtils.MINUTE_IN_MILLIS
-    )
+    val relative =
+        DateUtils.getRelativeTimeSpanString(
+            timestamp,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+        )
     return relative.toString()
 }
 
@@ -909,18 +869,22 @@ private fun handleFolderSelection(
     uri: Uri,
     context: android.content.Context,
     settingsRepository: ProviderSettingsRepository,
-    fileSearchRepository: FileSearchRepository
+    fileSearchRepository: FileSearchRepository,
 ) {
-    val existingRoot = settingsRepository.fileSearchSettings.value.roots.firstOrNull { it.uri == uri }
+    val existingRoot =
+        settingsRepository.fileSearchSettings.value.roots
+            .firstOrNull { it.uri == uri }
     if (existingRoot != null) {
-        val folderName = existingRoot.displayName.ifBlank {
-            existingRoot.uri.lastPathSegment ?: "Folder"
-        }
-        Toast.makeText(
-            context,
-            "\"$folderName\" is already indexed",
-            Toast.LENGTH_SHORT
-        ).show()
+        val folderName =
+            existingRoot.displayName.ifBlank {
+                existingRoot.uri.lastPathSegment ?: "Folder"
+            }
+        Toast
+            .makeText(
+                context,
+                "\"$folderName\" is already indexed",
+                Toast.LENGTH_SHORT,
+            ).show()
         return
     }
 
@@ -936,14 +900,15 @@ private fun handleFolderSelection(
         return
     }
     val parentDisplayName = document.parentDisplayNameOrNull()
-    val root = FileSearchRoot(
-        id = UUID.randomUUID().toString(),
-        uri = uri,
-        displayName = document.name ?: document.uri.lastPathSegment ?: "Folder",
-        isEnabled = true,
-        addedAtMillis = System.currentTimeMillis(),
-        parentDisplayName = parentDisplayName
-    )
+    val root =
+        FileSearchRoot(
+            id = UUID.randomUUID().toString(),
+            uri = uri,
+            displayName = document.name ?: document.uri.lastPathSegment ?: "Folder",
+            isEnabled = true,
+            addedAtMillis = System.currentTimeMillis(),
+            parentDisplayName = parentDisplayName,
+        )
     settingsRepository.addFileSearchRoot(root)
     settingsRepository.updateFileSearchScanState(root.id, FileSearchScanState.INDEXING)
     fileSearchRepository.scheduleFullIndex(root)

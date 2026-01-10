@@ -1,2 +1,1 @@
 - you should run ./gradlew :app:compileDebugKotlin everytime you make a code change to a kotlin file, requesting escalated permissions the first time you run it in a session so gradle can access ~/.gradle without failure.
-- check if the user prompt is related to or is one of the items from the TODO.md. Just tell the user that it maybe related or is the one from that.
