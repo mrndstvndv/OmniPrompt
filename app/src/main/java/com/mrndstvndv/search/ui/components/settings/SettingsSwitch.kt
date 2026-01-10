@@ -25,6 +25,7 @@ fun SettingsSwitch(
     subtitle: String? = null,
     icon: ImageVector? = null,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
@@ -76,6 +77,7 @@ fun SettingsSwitch(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
         )
     }
 }

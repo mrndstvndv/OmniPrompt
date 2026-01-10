@@ -60,6 +60,7 @@ import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListProvider
+import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.calculator.CalculatorProvider
 import com.mrndstvndv.search.provider.contacts.ContactsProvider
@@ -70,6 +71,7 @@ import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
@@ -77,6 +79,7 @@ import com.mrndstvndv.search.provider.system.SettingsProvider
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.web.WebSearchProvider
+import com.mrndstvndv.search.ui.components.AppListRow
 import com.mrndstvndv.search.ui.components.ContactActionData
 import com.mrndstvndv.search.ui.components.ContactActionSheet
 import com.mrndstvndv.search.ui.components.ItemsList
@@ -134,6 +137,10 @@ class MainActivity : ComponentActivity() {
             val recentAppsRepository =
                 remember(this@MainActivity) {
                     RecentAppsRepository(this@MainActivity, defaultAppIconSize)
+                }
+            val pinnedAppsRepository =
+                remember(this@MainActivity, settingsRepository) {
+                    PinnedAppsRepository(this@MainActivity, settingsRepository, defaultAppIconSize)
                 }
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
@@ -417,15 +424,33 @@ class MainActivity : ComponentActivity() {
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                if (appSearchSettings.showRecentApps) {
-                                    RecentAppsList(
-                                        repository = recentAppsRepository,
-                                        isReversed = appSearchSettings.reverseRecentAppsOrder,
-                                        modifier =
-                                            Modifier
-                                                .weight(1f)
-                                                .padding(end = 4.dp),
-                                    )
+                                if (appSearchSettings.appListEnabled) {
+                                    when (appSearchSettings.appListType) {
+                                        AppListType.RECENT -> {
+                                            RecentAppsList(
+                                                repository = recentAppsRepository,
+                                                isReversed = appSearchSettings.reverseRecentAppsOrder,
+                                                modifier =
+                                                    Modifier
+                                                        .weight(1f)
+                                                        .padding(end = 4.dp),
+                                            )
+                                        }
+
+                                        AppListType.PINNED -> {
+                                            val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+                                            if (pinnedApps.isNotEmpty()) {
+                                                AppListRow(
+                                                    apps = pinnedApps,
+                                                    isReversed = appSearchSettings.reversePinnedAppsOrder,
+                                                    modifier =
+                                                        Modifier
+                                                            .weight(1f)
+                                                            .padding(end = 4.dp),
+                                                )
+                                            }
+                                        }
+                                    }
                                     VerticalDivider(
                                         modifier =
                                             Modifier

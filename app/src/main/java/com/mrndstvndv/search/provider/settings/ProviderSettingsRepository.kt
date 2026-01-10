@@ -145,6 +145,40 @@ class ProviderSettingsRepository(
         _appSearchSettings.value = settings
     }
 
+    fun addPinnedApp(packageName: String) {
+        val current = _appSearchSettings.value
+        if (packageName in current.pinnedApps) return
+        saveAppSearchSettings(current.copy(pinnedApps = current.pinnedApps + packageName))
+    }
+
+    fun removePinnedApp(packageName: String) {
+        val current = _appSearchSettings.value
+        if (packageName !in current.pinnedApps) return
+        saveAppSearchSettings(current.copy(pinnedApps = current.pinnedApps - packageName))
+    }
+
+    fun movePinnedAppUp(packageName: String) {
+        val current = _appSearchSettings.value
+        val currentList = current.pinnedApps.toMutableList()
+        val index = currentList.indexOf(packageName)
+        if (index <= 0) return
+        val temp = currentList[index]
+        currentList[index] = currentList[index - 1]
+        currentList[index - 1] = temp
+        saveAppSearchSettings(current.copy(pinnedApps = currentList))
+    }
+
+    fun movePinnedAppDown(packageName: String) {
+        val current = _appSearchSettings.value
+        val currentList = current.pinnedApps.toMutableList()
+        val index = currentList.indexOf(packageName)
+        if (index == -1 || index >= currentList.size - 1) return
+        val temp = currentList[index]
+        currentList[index] = currentList[index + 1]
+        currentList[index + 1] = temp
+        saveAppSearchSettings(current.copy(pinnedApps = currentList))
+    }
+
     fun setTranslucentResultsEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_TRANSLUCENT_RESULTS, enabled) }
         _translucentResultsEnabled.value = enabled
@@ -1001,28 +1035,63 @@ enum class FileSearchSortMode {
     }
 }
 
+enum class AppListType {
+    RECENT,
+    PINNED,
+    ;
+
+    companion object {
+        fun fromStorageValue(value: String?): AppListType {
+            if (value.isNullOrBlank()) return RECENT
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: RECENT
+        }
+    }
+
+    fun userFacingLabel(): String =
+        when (this) {
+            RECENT -> "Recent Apps"
+            PINNED -> "Pinned Apps"
+        }
+}
+
 data class AppSearchSettings(
     val includePackageName: Boolean,
     val aiAssistantQueriesEnabled: Boolean = true,
-    val showRecentApps: Boolean = false,
+    val appListEnabled: Boolean = false,
+    val appListType: AppListType = AppListType.RECENT,
     val reverseRecentAppsOrder: Boolean = false,
+    val reversePinnedAppsOrder: Boolean = false,
+    val pinnedApps: List<String> = emptyList(),
 ) {
     companion object {
         fun default(): AppSearchSettings =
             AppSearchSettings(
                 includePackageName = false,
                 aiAssistantQueriesEnabled = true,
-                showRecentApps = false,
+                appListEnabled = false,
+                appListType = AppListType.RECENT,
                 reverseRecentAppsOrder = false,
+                reversePinnedAppsOrder = false,
+                pinnedApps = emptyList(),
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
             if (json == null) return null
+            val pinnedAppsArray = json.optJSONArray("pinnedApps")
+            val pinnedApps =
+                if (pinnedAppsArray != null) {
+                    (0 until pinnedAppsArray.length()).mapNotNull { pinnedAppsArray.optString(it) }
+                } else {
+                    emptyList()
+                }
             return AppSearchSettings(
                 includePackageName = json.optBoolean("includePackageName", false),
                 aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true),
-                showRecentApps = json.optBoolean("showRecentApps", false),
+                appListEnabled = json.optBoolean("appListEnabled", json.optBoolean("showRecentApps", false)),
+                appListType = AppListType.fromStorageValue(json.optString("appListType")),
                 reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
+                reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
+                pinnedApps = pinnedApps,
             )
         }
     }
@@ -1031,8 +1100,11 @@ data class AppSearchSettings(
         JSONObject().apply {
             put("includePackageName", includePackageName)
             put("aiAssistantQueriesEnabled", aiAssistantQueriesEnabled)
-            put("showRecentApps", showRecentApps)
+            put("appListEnabled", appListEnabled)
+            put("appListType", appListType.name)
             put("reverseRecentAppsOrder", reverseRecentAppsOrder)
+            put("reversePinnedAppsOrder", reversePinnedAppsOrder)
+            put("pinnedApps", JSONArray(pinnedApps))
         }
 
     fun toJsonString(): String = toJson().toString()

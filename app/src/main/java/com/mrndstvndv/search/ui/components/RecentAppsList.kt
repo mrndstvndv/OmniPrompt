@@ -4,12 +4,14 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -25,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.provider.apps.RecentApp
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 
 @Composable
@@ -71,8 +74,12 @@ fun RecentAppsList(
                 val displayApps = if (isReversed) recentApps.asReversed() else recentApps
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     displayApps.forEach { app ->
@@ -91,6 +98,46 @@ fun RecentAppsList(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A reusable component for displaying a list of apps (either recent or pinned).
+ */
+@Composable
+fun AppListRow(
+    apps: List<RecentApp>,
+    isReversed: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val displayApps = if (isReversed) apps.asReversed() else apps
+    val iconSizeDp = 40.dp
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, if (isReversed) Alignment.End else Alignment.Start),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        displayApps.forEach { app ->
+            if (app.icon != null) {
+                Image(
+                    bitmap = app.icon.asImageBitmap(),
+                    contentDescription = app.label,
+                    modifier =
+                        Modifier
+                            .size(iconSizeDp)
+                            .clip(CircleShape)
+                            .clickable {
+                                context.startActivity(app.launchIntent)
+                            },
+                )
             }
         }
     }
