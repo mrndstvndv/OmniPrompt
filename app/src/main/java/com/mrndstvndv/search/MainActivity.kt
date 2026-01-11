@@ -408,10 +408,13 @@ class MainActivity : ComponentActivity() {
                                 placeholder = { Text("Search") },
                                 trailingIcon = {
                                     if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                        IconButton(onClick = {
-                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                            startActivity(intent)
-                                        }) {
+                                        IconButton(
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            onClick = {
+                                                val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                startActivity(intent)
+                                            },
+                                        ) {
                                             Icon(
                                                 imageVector = Icons.Outlined.Settings,
                                                 contentDescription = "Settings",
