@@ -42,7 +42,8 @@ class ProviderSettingsRepository(
         private const val KEY_SYSTEM_SETTINGS = "system_settings"
         private const val KEY_CONTACTS = "contacts"
         private const val KEY_TERMUX = "termux"
-        private const val KEY_SHOW_SETTINGS_ICON = "show_settings_icon"
+        private const val KEY_SHOW_SETTINGS_ICON = "show_settings_icon" // Legacy
+        private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -99,8 +100,8 @@ class ProviderSettingsRepository(
     private val _termuxSettings = MutableStateFlow(TermuxSettings.default())
     val termuxSettings: StateFlow<TermuxSettings> = _termuxSettings
 
-    private val _showSettingsIcon = MutableStateFlow(true)
-    val showSettingsIcon: StateFlow<Boolean> = _showSettingsIcon
+    private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.BELOW)
+    val settingsIconPosition: StateFlow<SettingsIconPosition> = _settingsIconPosition
 
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
@@ -120,7 +121,7 @@ class ProviderSettingsRepository(
                 _systemSettingsSettings.value = loadSystemSettingsSettings()
                 _contactsSettings.value = loadContactsSettings()
                 _termuxSettings.value = loadTermuxSettings()
-                _showSettingsIcon.value = loadShowSettingsIcon()
+                _settingsIconPosition.value = loadSettingsIconPosition()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
@@ -137,7 +138,7 @@ class ProviderSettingsRepository(
             _systemSettingsSettings.value = loadSystemSettingsSettings()
             _contactsSettings.value = loadContactsSettings()
             _termuxSettings.value = loadTermuxSettings()
-            _showSettingsIcon.value = loadShowSettingsIcon()
+            _settingsIconPosition.value = loadSettingsIconPosition()
         }
     }
 
@@ -521,12 +522,28 @@ class ProviderSettingsRepository(
         _termuxSettings.value = settings
     }
 
-    fun setShowSettingsIcon(enabled: Boolean) {
-        preferences.edit { putBoolean(KEY_SHOW_SETTINGS_ICON, enabled) }
-        _showSettingsIcon.value = enabled
+    fun setSettingsIconPosition(position: SettingsIconPosition) {
+        preferences.edit { putString(KEY_SETTINGS_ICON_POSITION, position.name) }
+        _settingsIconPosition.value = position
     }
 
-    private fun loadShowSettingsIcon(): Boolean = preferences.getBoolean(KEY_SHOW_SETTINGS_ICON, true)
+    private fun loadSettingsIconPosition(): SettingsIconPosition {
+        // Try loading new preference
+        val positionName = preferences.getString(KEY_SETTINGS_ICON_POSITION, null)
+        if (positionName != null) {
+            return SettingsIconPosition.fromStorageValue(positionName)
+        }
+
+        // Fallback to legacy preference
+        if (preferences.contains(KEY_SHOW_SETTINGS_ICON)) {
+            val show = preferences.getBoolean(KEY_SHOW_SETTINGS_ICON, true)
+            // Migrate immediately? Or just return mapped value?
+            // Let's just return mapped value, migration happens on next save or implicit logic
+            return if (show) SettingsIconPosition.BELOW else SettingsIconPosition.OFF
+        }
+
+        return SettingsIconPosition.BELOW
+    }
 }
 
 data class WebSearchSettings(

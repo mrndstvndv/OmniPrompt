@@ -37,6 +37,9 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -57,6 +60,7 @@ import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
@@ -363,7 +367,7 @@ fun AppearanceSettingsScreen(
     val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
     val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
     val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
-    val showSettingsIcon by settingsRepository.showSettingsIcon.collectAsState()
+    val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
 
     SettingsScaffold(
         title = "Appearance",
@@ -396,12 +400,46 @@ fun AppearanceSettingsScreen(
                     steps = 19,
                 )
                 SettingsDivider()
-                SettingsSwitch(
-                    title = "Show settings icon",
-                    subtitle = "Display the settings icon in the main search UI.",
-                    checked = showSettingsIcon,
-                    onCheckedChange = { settingsRepository.setShowSettingsIcon(it) },
-                )
+
+                // Settings Icon Position Chooser
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                ) {
+                    Text(
+                        text = "Settings Icon",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = "Position relative to the search bar.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    val options = listOf(SettingsIconPosition.BELOW, SettingsIconPosition.INSIDE, SettingsIconPosition.OFF)
+                    SingleChoiceSegmentedButtonRow(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                    ) {
+                        options.forEachIndexed { index, position ->
+                            SegmentedButton(
+                                selected = position == settingsIconPosition,
+                                onClick = {
+                                    if (position != settingsIconPosition) {
+                                        settingsRepository.setSettingsIconPosition(position)
+                                    }
+                                },
+                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                            ) {
+                                Text(text = position.userFacingLabel())
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -73,6 +73,7 @@ import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.system.SettingsProvider
@@ -124,7 +125,7 @@ class MainActivity : ComponentActivity() {
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
-            val showSettingsIcon by settingsRepository.showSettingsIcon.collectAsState()
+            val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
             val enabledProviders by settingsRepository.enabledProviders.collectAsState()
 
             LaunchedEffect(backgroundBlurStrength) {
@@ -405,6 +406,20 @@ class MainActivity : ComponentActivity() {
                                 onValueChange = { textState.value = it },
                                 singleLine = true,
                                 placeholder = { Text("Search") },
+                                trailingIcon = {
+                                    if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                                        IconButton(onClick = {
+                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                            startActivity(intent)
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Settings,
+                                                contentDescription = "Settings",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                },
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions =
                                     KeyboardActions(onDone = {
@@ -454,7 +469,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                if (showSettingsIcon) {
+                                if (settingsIconPosition == SettingsIconPosition.BELOW) {
                                     if (appSearchSettings.appListEnabled) {
                                         VerticalDivider(
                                             modifier =
