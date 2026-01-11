@@ -1,11 +1,10 @@
 package com.mrndstvndv.search.ui.settings
 
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,10 +40,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.ScrimDialog
@@ -64,11 +66,11 @@ import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 import com.mrndstvndv.search.util.FuzzyMatcher
-import com.mrndstvndv.search.util.loadAppIconBitmap
 
 @Composable
 fun AppSearchSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
+    appListRepository: AppListRepository,
     onBack: () -> Unit,
 ) {
     val appSearchSettings by settingsRepository.appSearchSettings.collectAsState()
@@ -198,6 +200,7 @@ fun AppSearchSettingsScreen(
 
                                 // Pinned apps list
                                 PinnedAppsSection(
+                                    appListRepository = appListRepository,
                                     pinnedApps = appSearchSettings.pinnedApps,
                                     enabled = appListEnabled,
                                     onMoveUp = { packageName -> settingsRepository.movePinnedAppUp(packageName) },
@@ -215,6 +218,7 @@ fun AppSearchSettingsScreen(
 
     if (isAddAppDialogOpen) {
         AddPinnedAppDialog(
+            appListRepository = appListRepository,
             existingPinnedApps = appSearchSettings.pinnedApps,
             onDismiss = { isAddAppDialogOpen = false },
             onAddApp = { packageName ->
@@ -278,6 +282,7 @@ private fun AppListTypeChooser(
 
 @Composable
 private fun PinnedAppsSection(
+    appListRepository: AppListRepository,
     pinnedApps: List<String>,
     enabled: Boolean,
     onMoveUp: (String) -> Unit,
@@ -286,8 +291,13 @@ private fun PinnedAppsSection(
     onAddClick: () -> Unit,
 ) {
     val disabledAlpha = 0.38f
-    val context = LocalContext.current
-    val packageManager = context.packageManager
+    val allApps by appListRepository.getAllApps().collectAsState()
+    val pinnedAppInfos =
+        remember(pinnedApps, allApps) {
+            pinnedApps.mapNotNull { packageName ->
+                allApps.find { it.packageName == packageName }
+            }
+        }
 
     Column(
         modifier =
@@ -303,35 +313,24 @@ private fun PinnedAppsSection(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             )
         } else {
-            pinnedApps.forEachIndexed { index, packageName ->
-                val appLabel =
-                    remember(packageName) {
-                        try {
-                            val appInfo = packageManager.getApplicationInfo(packageName, 0)
-                            packageManager.getApplicationLabel(appInfo).toString()
-                        } catch (e: PackageManager.NameNotFoundException) {
-                            packageName
-                        }
-                    }
-
-                val appIcon =
-                    remember(packageName) {
-                        loadAppIconBitmap(packageManager, packageName, 40)
-                    }
+            pinnedAppInfos.forEachIndexed { index, appInfo ->
+                val appIcon by produceState<Bitmap?>(null, appInfo.packageName) {
+                    value = appListRepository.getIcon(appInfo.packageName)
+                }
 
                 PinnedAppItem(
-                    label = appLabel,
-                    packageName = packageName,
+                    label = appInfo.label,
+                    packageName = appInfo.packageName,
                     icon = appIcon,
                     isFirst = index == 0,
-                    isLast = index == pinnedApps.size - 1,
+                    isLast = index == pinnedAppInfos.size - 1,
                     enabled = enabled,
-                    onMoveUp = { onMoveUp(packageName) },
-                    onMoveDown = { onMoveDown(packageName) },
-                    onRemove = { onRemove(packageName) },
+                    onMoveUp = { onMoveUp(appInfo.packageName) },
+                    onMoveDown = { onMoveDown(appInfo.packageName) },
+                    onRemove = { onRemove(appInfo.packageName) },
                 )
 
-                if (index < pinnedApps.size - 1) {
+                if (index < pinnedAppInfos.size - 1) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp),
                         color = MaterialTheme.colorScheme.outlineVariant,
@@ -439,45 +438,22 @@ private fun PinnedAppItem(
     }
 }
 
-private data class AppInfo(
-    val packageName: String,
-    val label: String,
-    val icon: Bitmap?,
-)
-
 @Composable
 private fun AddPinnedAppDialog(
+    appListRepository: AppListRepository,
     existingPinnedApps: List<String>,
     onDismiss: () -> Unit,
     onAddApp: (packageName: String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val packageManager = context.packageManager
-
     var searchQuery by remember { mutableStateOf("") }
+    val allApps by appListRepository.getAllApps().collectAsState()
 
-    // Load all launchable apps
-    val allApps =
-        remember {
-            val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
-            packageManager
-                .queryIntentActivities(intent, 0)
-                .mapNotNull { resolveInfo ->
-                    val packageName = resolveInfo.activityInfo?.packageName ?: return@mapNotNull null
-                    val label =
-                        resolveInfo.loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
-                            ?: return@mapNotNull null
-                    AppInfo(
-                        packageName = packageName,
-                        label = label,
-                        icon = loadAppIconBitmap(packageManager, packageName, 40),
-                    )
-                }.distinctBy { it.packageName }
-                .sortedBy { it.label.lowercase() }
-        }
+    LaunchedEffect(appListRepository) {
+        appListRepository.initialize()
+    }
 
     // Filter apps based on search query and exclude already pinned apps
-    val filteredApps by remember(searchQuery, existingPinnedApps) {
+    val filteredApps by remember(searchQuery, existingPinnedApps, allApps) {
         derivedStateOf {
             val query = searchQuery.trim()
             allApps
@@ -534,6 +510,10 @@ private fun AddPinnedAppDialog(
                     modifier = Modifier.heightIn(max = 300.dp),
                 ) {
                     items(filteredApps, key = { it.packageName }) { app ->
+                        val appIcon by produceState<Bitmap?>(null, app.packageName) {
+                            value = appListRepository.getIcon(app.packageName)
+                        }
+
                         Row(
                             modifier =
                                 Modifier
@@ -542,9 +522,9 @@ private fun AddPinnedAppDialog(
                                     .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (app.icon != null) {
+                            if (appIcon != null) {
                                 Image(
-                                    bitmap = app.icon.asImageBitmap(),
+                                    bitmap = appIcon!!.asImageBitmap(),
                                     contentDescription = app.label,
                                     modifier =
                                         Modifier

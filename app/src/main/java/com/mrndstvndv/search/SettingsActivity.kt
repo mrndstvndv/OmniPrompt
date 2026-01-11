@@ -24,6 +24,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
@@ -86,6 +87,8 @@ class SettingsActivity : ComponentActivity() {
             val rankingRepository = remember { ProviderRankingRepository.getInstance(this@SettingsActivity, coroutineScope) }
             val contactsRepository = remember { ContactsRepository.getInstance(this@SettingsActivity) }
             val developerSettingsManager = remember { DeveloperSettingsManager.getInstance(this@SettingsActivity) }
+            val defaultAppIconSize = remember { resources.getDimensionPixelSize(android.R.dimen.app_icon_size) }
+            val appListRepository = remember { AppListRepository.getInstance(this@SettingsActivity, defaultAppIconSize) }
             val isDefaultAssistant by defaultAssistantState
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val webSearchSettings by settingsRepository.webSearchSettings.collectAsState()
@@ -236,6 +239,7 @@ class SettingsActivity : ComponentActivity() {
                             BackHandler { currentScreen = Screen.Providers }
                             AppSearchSettingsScreen(
                                 settingsRepository = settingsRepository,
+                                appListRepository = appListRepository,
                                 onBack = { currentScreen = Screen.Providers },
                             )
                         }

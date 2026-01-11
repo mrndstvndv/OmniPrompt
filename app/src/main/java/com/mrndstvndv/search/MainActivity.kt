@@ -60,6 +60,7 @@ import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListProvider
+import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.calculator.CalculatorProvider
@@ -136,6 +137,7 @@ class MainActivity : ComponentActivity() {
             val fileThumbnailRepository = remember(this@MainActivity) { FileThumbnailRepository.getInstance(this@MainActivity) }
             val contactsRepository = remember(this@MainActivity) { ContactsRepository.getInstance(this@MainActivity) }
             val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
+            val appListRepository = remember(this@MainActivity) { AppListRepository.getInstance(this@MainActivity, defaultAppIconSize) }
             val recentAppsRepository =
                 remember(this@MainActivity) {
                     RecentAppsRepository(this@MainActivity, defaultAppIconSize)
@@ -150,7 +152,7 @@ class MainActivity : ComponentActivity() {
             val providers =
                 remember(this@MainActivity) {
                     buildList {
-                        add(AppListProvider(this@MainActivity, settingsRepository, defaultAppIconSize))
+                        add(AppListProvider(this@MainActivity, settingsRepository, appListRepository))
                         add(SettingsProvider(this@MainActivity, settingsRepository, developerSettingsManager))
                         add(CalculatorProvider(this@MainActivity))
                         add(TextUtilitiesProvider(this@MainActivity, settingsRepository))
@@ -165,6 +167,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.Default) {
                     providers.forEach { it.initialize() }
+                    appListRepository.initialize()
                 }
             }
 
