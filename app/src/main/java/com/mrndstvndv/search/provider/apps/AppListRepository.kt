@@ -47,6 +47,9 @@ class AppListRepository private constructor(
             }
         }
 
+    @Volatile
+    private var isReceiverRegistered = true
+
     init {
         val filter =
             IntentFilter().apply {
@@ -58,8 +61,29 @@ class AppListRepository private constructor(
         context.registerReceiver(packageChangeReceiver, filter)
     }
 
+    /**
+     * Cleans up resources. Call this method when the repository is no longer needed.
+     * Note: For singleton usage with applicationContext, this is typically not needed
+     * as the repository lives for the app's entire lifecycle.
+     */
+    fun dispose() {
+        if (isReceiverRegistered) {
+            try {
+                context.unregisterReceiver(packageChangeReceiver)
+                isReceiverRegistered = false
+            } catch (_: IllegalArgumentException) {
+                // Receiver was not registered or already unregistered
+            }
+        }
+    }
+
+    /**
+     * Initializes the repository by loading apps if not already cached.
+     * Thread-safe for cache updates; concurrent calls may result in duplicate loading.
+     */
     suspend fun initialize() {
-        if (cachedApps == null) {
+        val needsLoad = cacheMutex.withLock { cachedApps == null }
+        if (needsLoad) {
             loadApps()
         }
     }
@@ -81,9 +105,15 @@ class AppListRepository private constructor(
         }
     }
 
+    /**
+     * Refreshes the app list and clears the icon cache.
+     * Thread-safe: all cache operations are protected by mutex.
+     */
     suspend fun refresh() {
-        cachedApps = null
-        iconCache.clear()
+        cacheMutex.withLock {
+            cachedApps = null
+            iconCache.clear()
+        }
         loadApps()
     }
 
