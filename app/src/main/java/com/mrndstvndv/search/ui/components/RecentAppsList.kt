@@ -2,6 +2,7 @@ package com.mrndstvndv.search.ui.components
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -93,6 +94,7 @@ fun RecentAppsList(
                                         .clip(CircleShape)
                                         .clickable {
                                             context.startActivity(app.launchIntent)
+                                            (context as ComponentActivity).finish()
                                         },
                             )
                         }
