@@ -73,13 +73,14 @@ class FileSearchProvider(
         if (matches.isEmpty()) return emptyList()
         val lowerQuery = normalized.lowercase()
         val results = mutableListOf<ProviderResult>()
-        for (match in matches) {
+        val uniqueMatches = matches.distinctBy { it.documentUri }
+        for (match in uniqueMatches) {
             val iconDescriptor = resolveIcons(match, thumbnailsEnabled, settings.thumbnailCropMode)
             // Calculate offset for subtitle indices due to prefix "${rootDisplayName} • "
             val subtitlePrefix = "${match.rootDisplayName} • "
             val adjustedSubtitleIndices = match.matchedSubtitleIndices.map { it + subtitlePrefix.length }
             results += ProviderResult(
-                id = "$id:${match.documentUri.hashCode()}",
+                id = "$id:${match.documentUri}",
                 title = match.displayName,
                 subtitle = describeMatch(match),
                 icon = null,
