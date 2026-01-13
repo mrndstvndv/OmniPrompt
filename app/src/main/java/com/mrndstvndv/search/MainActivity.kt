@@ -586,6 +586,47 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+
+                aliasDialogCandidate?.let { candidate ->
+                    AliasCreationDialog(
+                        candidate = candidate,
+                        alias = aliasDialogValue,
+                        errorMessage = aliasDialogError,
+                        onAliasChange = { aliasDialogValue = it },
+                        onDismiss = {
+                            aliasDialogCandidate = null
+                            aliasDialogError = null
+                        },
+                        onSave = {
+                            when (aliasRepository.addAlias(aliasDialogValue, candidate.target)) {
+                                AliasRepository.SaveResult.SUCCESS -> {
+                                    aliasDialogCandidate = null
+                                    aliasDialogError = null
+                                }
+
+                                AliasRepository.SaveResult.DUPLICATE -> {
+                                    aliasDialogError = "Alias already exists"
+                                }
+
+                                AliasRepository.SaveResult.INVALID_ALIAS -> {
+                                    aliasDialogError = "Alias cannot be empty"
+                                }
+                            }
+                        },
+                    )
+                }
+
+                // Contact action sheet
+                contactActionData?.let { contact ->
+                    ContactActionSheet(
+                        contact = contact,
+                        onDismiss = { contactActionData = null },
+                        onActionComplete = {
+                            contactActionData = null
+                            finish()
+                        },
+                    )
+                }
             }
 
             LaunchedEffect(isPerformingAction, activityIndicatorDelayMs) {
@@ -621,46 +662,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            aliasDialogCandidate?.let { candidate ->
-                AliasCreationDialog(
-                    candidate = candidate,
-                    alias = aliasDialogValue,
-                    errorMessage = aliasDialogError,
-                    onAliasChange = { aliasDialogValue = it },
-                    onDismiss = {
-                        aliasDialogCandidate = null
-                        aliasDialogError = null
-                    },
-                    onSave = {
-                        when (aliasRepository.addAlias(aliasDialogValue, candidate.target)) {
-                            AliasRepository.SaveResult.SUCCESS -> {
-                                aliasDialogCandidate = null
-                                aliasDialogError = null
-                            }
 
-                            AliasRepository.SaveResult.DUPLICATE -> {
-                                aliasDialogError = "Alias already exists"
-                            }
-
-                            AliasRepository.SaveResult.INVALID_ALIAS -> {
-                                aliasDialogError = "Alias cannot be empty"
-                            }
-                        }
-                    },
-                )
-            }
-
-            // Contact action sheet
-            contactActionData?.let { contact ->
-                ContactActionSheet(
-                    contact = contact,
-                    onDismiss = { contactActionData = null },
-                    onActionComplete = {
-                        contactActionData = null
-                        finish()
-                    },
-                )
-            }
 
             LaunchedEffect(Unit) {
                 focusRequester.requestFocus()
