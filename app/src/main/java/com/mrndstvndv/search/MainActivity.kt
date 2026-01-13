@@ -441,9 +441,12 @@ class MainActivity : ComponentActivity() {
                             )
 
                             Spacer(modifier = Modifier.height(4.dp))
+                            val shouldCenterAppList =
+                                appSearchSettings.centerAppList &&
+                                    settingsIconPosition != SettingsIconPosition.BELOW
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
+                                horizontalArrangement = if (shouldCenterAppList) Arrangement.Center else Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 if (appSearchSettings.appListEnabled) {
@@ -452,6 +455,7 @@ class MainActivity : ComponentActivity() {
                                             RecentAppsList(
                                                 repository = recentAppsRepository,
                                                 isReversed = appSearchSettings.reverseRecentAppsOrder,
+                                                shouldCenter = shouldCenterAppList,
                                                 modifier =
                                                     Modifier
                                                         .weight(1f)
@@ -465,6 +469,7 @@ class MainActivity : ComponentActivity() {
                                                 AppListRow(
                                                     apps = pinnedApps,
                                                     isReversed = appSearchSettings.reversePinnedAppsOrder,
+                                                    shouldCenter = shouldCenterAppList,
                                                     modifier =
                                                         Modifier
                                                             .weight(1f)

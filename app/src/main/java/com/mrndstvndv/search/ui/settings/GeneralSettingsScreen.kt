@@ -440,7 +440,8 @@ fun AppearanceSettingsScreen(
                         }
                     }
                 }
-            }
+
+                }
         }
     }
 }

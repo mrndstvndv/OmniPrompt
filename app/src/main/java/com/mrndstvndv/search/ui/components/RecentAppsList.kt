@@ -36,6 +36,7 @@ fun RecentAppsList(
     repository: RecentAppsRepository,
     isReversed: Boolean,
     modifier: Modifier = Modifier,
+    shouldCenter: Boolean = false,
 ) {
     val context = LocalContext.current
     val hasPermission = remember(repository) { repository.hasPermission() }
@@ -80,7 +81,7 @@ fun RecentAppsList(
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
                             .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = if (shouldCenter) Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally) else Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     displayApps.forEach { app ->
@@ -113,6 +114,7 @@ fun AppListRow(
     apps: List<RecentApp>,
     isReversed: Boolean,
     modifier: Modifier = Modifier,
+    shouldCenter: Boolean = false,
 ) {
     val context = LocalContext.current
     val displayApps = if (isReversed) apps.asReversed() else apps
@@ -124,7 +126,7 @@ fun AppListRow(
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, if (isReversed) Alignment.End else Alignment.Start),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, if (shouldCenter) Alignment.CenterHorizontally else if (isReversed) Alignment.End else Alignment.Start),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         displayApps.forEach { app ->
