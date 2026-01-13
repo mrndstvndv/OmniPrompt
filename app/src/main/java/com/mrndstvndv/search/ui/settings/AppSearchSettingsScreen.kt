@@ -156,6 +156,25 @@ fun AppSearchSettingsScreen(
 
                         SettingsDivider()
 
+                        // Center app list toggle
+                        Box(
+                            modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
+                        ) {
+                            SettingsSwitch(
+                                title = "Center app list",
+                                subtitle = "Only works when the settings icon is hidden or inside the search bar.",
+                                checked = appSearchSettings.centerAppList,
+                                enabled = appListEnabled,
+                                onCheckedChange = {
+                                    settingsRepository.saveAppSearchSettings(
+                                        appSearchSettings.copy(centerAppList = it),
+                                    )
+                                },
+                            )
+                        }
+
+                        SettingsDivider()
+
                         // Conditional options based on type
                         when (appSearchSettings.appListType) {
                             AppListType.RECENT -> {

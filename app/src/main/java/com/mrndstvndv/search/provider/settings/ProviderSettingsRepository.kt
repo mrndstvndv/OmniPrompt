@@ -1091,6 +1091,7 @@ data class AppSearchSettings(
     val appListType: AppListType = AppListType.RECENT,
     val reverseRecentAppsOrder: Boolean = false,
     val reversePinnedAppsOrder: Boolean = false,
+    val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
 ) {
     companion object {
@@ -1102,6 +1103,7 @@ data class AppSearchSettings(
                 appListType = AppListType.RECENT,
                 reverseRecentAppsOrder = false,
                 reversePinnedAppsOrder = false,
+                centerAppList = false,
                 pinnedApps = emptyList(),
             )
 
@@ -1121,6 +1123,7 @@ data class AppSearchSettings(
                 appListType = AppListType.fromStorageValue(json.optString("appListType")),
                 reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
                 reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
+                centerAppList = json.optBoolean("centerAppList", false),
                 pinnedApps = pinnedApps,
             )
         }
@@ -1134,6 +1137,7 @@ data class AppSearchSettings(
             put("appListType", appListType.name)
             put("reverseRecentAppsOrder", reverseRecentAppsOrder)
             put("reversePinnedAppsOrder", reversePinnedAppsOrder)
+            put("centerAppList", centerAppList)
             put("pinnedApps", JSONArray(pinnedApps))
         }
 
