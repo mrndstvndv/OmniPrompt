@@ -73,7 +73,7 @@ fun RecentAppsList(
                     repository.getRecentApps(limit = maxItems)
                 }.collectAsState(initial = emptyList())
 
-                val displayApps = if (isReversed) recentApps.asReversed() else recentApps
+                val displayApps = if (isReversed) recentApps else recentApps.asReversed()
 
                 Row(
                     modifier =
@@ -117,7 +117,7 @@ fun AppListRow(
     shouldCenter: Boolean = false,
 ) {
     val context = LocalContext.current
-    val displayApps = if (isReversed) apps.asReversed() else apps
+    val displayApps = if (isReversed) apps else apps.asReversed()
     val iconSizeDp = 40.dp
 
     Row(
@@ -126,7 +126,7 @@ fun AppListRow(
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, if (shouldCenter) Alignment.CenterHorizontally else if (isReversed) Alignment.End else Alignment.Start),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, if (shouldCenter) Alignment.CenterHorizontally else if (isReversed) Alignment.Start else Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         displayApps.forEach { app ->
