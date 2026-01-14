@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.AlertDialog
@@ -21,7 +20,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,6 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsSection
+import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun ProviderRankingSection(
@@ -58,29 +60,16 @@ fun ProviderRankingSection(
     }
 
     Column(
-        modifier =
-            Modifier
-                .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        Text(
-            text = "Result Ranking",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.secondary,
-        )
-        Text(
-            text = "Control how results are ordered.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
-            // Toggle for frequency-based ranking
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface,
-            ) {
+        SettingsSection(
+            title = "Result Ranking",
+            subtitle = "Control how results are ordered.",
+        ) {
+            SettingsGroup {
+                // Frequency-based ranking toggle
+                // Using custom Row to support clicking the row to open the dialog
                 Row(
                     modifier =
                         Modifier
@@ -106,78 +95,37 @@ fun ProviderRankingSection(
                         onCheckedChange = { rankingRepository.setUseFrequencyRanking(it) },
                     )
                 }
-            }
 
-            if (useFrequencyRanking) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 2.dp,
-                    color = MaterialTheme.colorScheme.surface,
-                ) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { rankingRepository.setQueryBasedRankingEnabled(!queryBasedRankingEnabled) }
-                                .padding(horizontal = 20.dp, vertical = 18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Use query-specific ranking",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                text = if (queryBasedRankingEnabled) "Ranking depends on the specific search term" else "Ranking is global across all queries",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = queryBasedRankingEnabled,
-                            onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
-                        )
-                    }
+                if (useFrequencyRanking) {
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = "Use query-specific ranking",
+                        subtitle = if (queryBasedRankingEnabled) "Ranking depends on the specific search term" else "Ranking is global across all queries",
+                        checked = queryBasedRankingEnabled,
+                        onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
+                    )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Provider order",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                Column {
-                    visibleProviderOrder.forEachIndexed { index, providerId ->
-                        ProviderRankingItem(
-                            providerId = providerId,
-                            isFirst = index == 0,
-                            isLast = index == visibleProviderOrder.size - 1,
-                            onMoveUp = {
-                                rankingRepository.moveUp(providerId) { id -> enabledProviders[id] != false }
-                            },
-                            onMoveDown = {
-                                rankingRepository.moveDown(providerId) { id -> enabledProviders[id] != false }
-                            },
-                        )
-                        if (index < visibleProviderOrder.size - 1) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                            )
-                        }
+        SettingsSection(
+            title = "Provider order",
+        ) {
+            SettingsGroup {
+                visibleProviderOrder.forEachIndexed { index, providerId ->
+                    ProviderRankingItem(
+                        providerId = providerId,
+                        isFirst = index == 0,
+                        isLast = index == visibleProviderOrder.size - 1,
+                        onMoveUp = {
+                            rankingRepository.moveUp(providerId) { id -> enabledProviders[id] != false }
+                        },
+                        onMoveDown = {
+                            rankingRepository.moveDown(providerId) { id -> enabledProviders[id] != false }
+                        },
+                    )
+                    if (index < visibleProviderOrder.size - 1) {
+                        SettingsDivider()
                     }
                 }
             }
