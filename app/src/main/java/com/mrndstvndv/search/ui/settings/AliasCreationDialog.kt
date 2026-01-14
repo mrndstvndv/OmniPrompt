@@ -9,11 +9,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.alias.AliasCreationCandidate
+import androidx.compose.foundation.layout.padding
 
 @Composable
 fun AliasCreationDialog(
@@ -27,34 +29,58 @@ fun AliasCreationDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = "Create alias for ${candidate.description}")
+            Text(
+                text = "Create alias",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
         },
         text = {
             Column {
                 Text(
-                    text = "Alias target: ${candidate.target.summary}",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Create a shortcut for ${candidate.description}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Target info card
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Target",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = candidate.target.summary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
                     value = alias,
                     onValueChange = onAliasChange,
-                    label = { Text(text = "Alias") },
+                    label = { Text(text = "Alias name") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                errorMessage?.let {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Long press a search result to create custom shortcuts.",
-                    style = MaterialTheme.typography.bodySmall
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    isError = errorMessage != null,
+                    supportingText = {
+                        if (errorMessage != null) {
+                            Text(text = errorMessage)
+                        } else {
+                            Text(text = "Type this in search to launch")
+                        }
+                    }
                 )
             }
         },
@@ -67,6 +93,9 @@ fun AliasCreationDialog(
             TextButton(onClick = onDismiss) {
                 Text(text = "Cancel")
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.extraLarge
     )
 }
+
