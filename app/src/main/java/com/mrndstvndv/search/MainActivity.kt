@@ -149,6 +149,7 @@ class MainActivity : ComponentActivity() {
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
+            val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
             val providers =
                 remember(this@MainActivity) {
                     buildList {
@@ -272,7 +273,7 @@ class MainActivity : ComponentActivity() {
                 return false
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger) {
+            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger, queryBasedRankingEnabled) {
                 // Cancel previous query job to debounce typing
                 pendingQueryJob?.cancel()
 
@@ -663,8 +664,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-
-
 
             LaunchedEffect(Unit) {
                 focusRequester.requestFocus()
