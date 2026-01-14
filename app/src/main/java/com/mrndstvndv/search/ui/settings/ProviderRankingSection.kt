@@ -148,7 +148,7 @@ fun ProviderRankingSection(
 
 @Composable
 private fun FrequencyRankingDialog(
-    frequency: Map<String, Int>,
+    frequency: Map<String, Map<String, Int>>,
     onDismiss: () -> Unit,
     onReset: () -> Unit
 ) {
@@ -158,7 +158,7 @@ private fun FrequencyRankingDialog(
         text = {
             Column {
                 Text(
-                    text = "View or reset how often individual results are used.",
+                    text = "Usage is now scoped to specific search queries.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -170,18 +170,38 @@ private fun FrequencyRankingDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    val sortedEntries = frequency.entries
-                        .sortedByDescending { it.value }
-                        .toList()
+                    val sortedQueries = frequency.keys.sorted()
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 320.dp)
+                            .heightIn(max = 400.dp)
                     ) {
-                        itemsIndexed(sortedEntries) { index, (resultId, count) ->
-                            FrequencyItem(resultId = resultId, count = count)
-                            if (index < sortedEntries.lastIndex) {
+                        sortedQueries.forEach { query ->
+                            item(key = query) {
+                                Text(
+                                    text = if (query.isEmpty()) "General (no query)" else "Query: \"$query\"",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                                )
+                            }
+                            val queryCounts = frequency[query] ?: emptyMap()
+                            val sortedResults = queryCounts.entries.sortedByDescending { it.value }
+                            
+                            itemsIndexed(sortedResults) { index, (resultId, count) ->
+                                FrequencyItem(resultId = resultId, count = count)
+                                if (index < sortedResults.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 16.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                            
+                            item {
                                 HorizontalDivider(
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    thickness = 2.dp,
                                     color = MaterialTheme.colorScheme.outlineVariant
                                 )
                             }
@@ -208,7 +228,7 @@ private fun FrequencyItem(resultId: String, count: Int) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 6.dp, horizontal = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -217,13 +237,15 @@ private fun FrequencyItem(resultId: String, count: Int) {
         ) {
             Text(
                 text = resultId,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+                maxLines = 1
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "$count uses",
+                text = "$count",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.secondary
             )
         }
     }
