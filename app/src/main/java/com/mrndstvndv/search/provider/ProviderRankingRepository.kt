@@ -30,6 +30,7 @@ class ProviderRankingRepository private constructor(
         private const val KEY_PROVIDER_ORDER = "provider_order"
         private const val KEY_RESULT_FREQUENCY = "result_frequency"
         private const val KEY_USE_FREQUENCY_RANKING = "use_frequency_ranking"
+        private const val KEY_QUERY_BASED_RANKING = "query_based_ranking"
 
         // Default provider order (used if not yet customized by user)
         private val DEFAULT_PROVIDER_ORDER =
@@ -65,21 +66,33 @@ class ProviderRankingRepository private constructor(
     private val _useFrequencyRanking = MutableStateFlow(true)
     val useFrequencyRanking: StateFlow<Boolean> = _useFrequencyRanking
 
-    private val _resultFrequency = MutableStateFlow(emptyMap<String, Int>())
-    val resultFrequency: StateFlow<Map<String, Int>> = _resultFrequency
+    private val _queryBasedRankingEnabled = MutableStateFlow(true)
+    val queryBasedRankingEnabled: StateFlow<Boolean> = _queryBasedRankingEnabled
+
+    // Map<Query, Map<ResultId, Count>>
+    private val _resultFrequency = MutableStateFlow(emptyMap<String, Map<String, Int>>())
+    val resultFrequency: StateFlow<Map<String, Map<String, Int>>> = _resultFrequency
+
+    // Aggregated global frequency map (cached for performance)
+    // Map<ResultId, Count>
+    private var _globalFrequencyMap: Map<String, Int> = emptyMap()
 
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
                 _providerOrder.value = loadProviderOrder()
                 _useFrequencyRanking.value = loadUseFrequencyRanking()
+                _queryBasedRankingEnabled.value = loadQueryBasedRankingEnabled()
                 _resultFrequency.value = loadResultFrequency()
+                rebuildGlobalFrequency()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
             _providerOrder.value = loadProviderOrder()
             _useFrequencyRanking.value = loadUseFrequencyRanking()
+            _queryBasedRankingEnabled.value = loadQueryBasedRankingEnabled()
             _resultFrequency.value = loadResultFrequency()
+            rebuildGlobalFrequency()
         }
     }
 
@@ -93,17 +106,45 @@ class ProviderRankingRepository private constructor(
      * Get the frequency rank of a result (for result-level sorting when frequency mode is enabled).
      * Higher frequency = higher priority (lower rank value).
      */
-    fun getResultFrequencyRank(resultId: String): Int {
-        val freq = _resultFrequency.value[resultId] ?: 0
+    fun getResultFrequencyRank(
+        resultId: String,
+        query: String,
+    ): Int {
+        val count =
+            if (_queryBasedRankingEnabled.value) {
+                val normalizedQuery = normalizeQuery(query)
+                val queryCounts = _resultFrequency.value[normalizedQuery] ?: emptyMap()
+                queryCounts[resultId] ?: 0
+            } else {
+                _globalFrequencyMap[resultId] ?: 0
+            }
+
+        // To calculate rank correctly, we need the max frequency in the current context
+        val maxFreq =
+            if (_queryBasedRankingEnabled.value) {
+                val normalizedQuery = normalizeQuery(query)
+                _resultFrequency.value[normalizedQuery]?.values?.maxOrNull() ?: 1
+            } else {
+                _globalFrequencyMap.values.maxOrNull() ?: 1
+            }
+
         // Invert frequency so higher frequency results get lower rank values (sort ascending)
-        val maxFreq = _resultFrequency.value.values.maxOrNull() ?: 1
-        return (maxFreq - freq)
+        return (maxFreq - count)
     }
 
     /**
      * Get frequency count for a specific result.
      */
-    fun getResultFrequency(resultId: String): Int = _resultFrequency.value[resultId] ?: 0
+    fun getResultFrequency(
+        resultId: String,
+        query: String,
+    ): Int =
+        if (_queryBasedRankingEnabled.value) {
+            val normalizedQuery = normalizeQuery(query)
+            _resultFrequency.value[normalizedQuery]?.get(resultId) ?: 0
+        } else {
+            _globalFrequencyMap[resultId] ?: 0
+        }
 
     /**
      * Update the provider order
@@ -175,9 +216,23 @@ class ProviderRankingRepository private constructor(
      * Increment the usage frequency of a result.
      * Call this when a user selects a specific result.
      */
-    fun incrementResultUsage(resultId: String) {
+    fun incrementResultUsage(
+        resultId: String,
+        query: String,
+    ) {
+        val normalizedQuery = normalizeQuery(query)
         val current = _resultFrequency.value.toMutableMap()
-        current[resultId] = (current[resultId] ?: 0) + 1
+        val queryCounts = current[normalizedQuery]?.toMutableMap() ?: mutableMapOf()
+
+        val newCount = (queryCounts[resultId] ?: 0) + 1
+        queryCounts[resultId] = newCount
+        current[normalizedQuery] = queryCounts
+
+        // Update global frequency map efficiently (increment only)
+        val currentGlobal = _globalFrequencyMap.toMutableMap()
+        currentGlobal[resultId] = (currentGlobal[resultId] ?: 0) + 1
+        _globalFrequencyMap = currentGlobal
+
         _resultFrequency.value = current
         saveResultFrequency(current)
     }
@@ -191,12 +246,33 @@ class ProviderRankingRepository private constructor(
     }
 
     /**
+     * Toggle between query-based (specific) and global (generic) frequency ranking.
+     */
+    fun setQueryBasedRankingEnabled(enabled: Boolean) {
+        _queryBasedRankingEnabled.value = enabled
+        saveQueryBasedRankingEnabled(enabled)
+    }
+
+    /**
      * Reset result frequency counts.
      */
     fun resetResultFrequency() {
         _resultFrequency.value = emptyMap()
+        _globalFrequencyMap = emptyMap()
         saveResultFrequency(emptyMap())
     }
+
+    private fun rebuildGlobalFrequency() {
+        val global = mutableMapOf<String, Int>()
+        _resultFrequency.value.values.forEach { queryMap ->
+            queryMap.forEach { (resultId, count) ->
+                global[resultId] = (global[resultId] ?: 0) + count
+            }
+        }
+        _globalFrequencyMap = global
+    }
+
+    private fun normalizeQuery(query: String): String = query.trim().lowercase()
 
     private fun loadProviderOrder(): List<String> =
         try {
@@ -226,14 +302,32 @@ class ProviderRankingRepository private constructor(
         }
     }
 
-    private fun loadResultFrequency(): Map<String, Int> =
+    private fun loadQueryBasedRankingEnabled(): Boolean = preferences.getBoolean(KEY_QUERY_BASED_RANKING, true)
+
+    private fun saveQueryBasedRankingEnabled(enabled: Boolean) {
+        preferences.edit {
+            putBoolean(KEY_QUERY_BASED_RANKING, enabled)
+        }
+    }
+
+    private fun loadResultFrequency(): Map<String, Map<String, Int>> =
         try {
             val json = preferences.getString(KEY_RESULT_FREQUENCY, null)
             if (json != null) {
                 val obj = JSONObject(json)
                 buildMap {
                     obj.keys().forEach { key ->
-                        put(key, obj.getInt(key))
+                        val value = obj.optJSONObject(key)
+                        if (value != null) {
+                            // New format: key is query, value is map of resultId -> count
+                            val innerMap =
+                                buildMap {
+                                    value.keys().forEach { innerKey ->
+                                        put(innerKey, value.getInt(innerKey))
+                                    }
+                                }
+                            put(key, innerMap)
+                        }
                     }
                 }
             } else {
@@ -243,9 +337,13 @@ class ProviderRankingRepository private constructor(
             emptyMap()
         }
 
-    private fun saveResultFrequency(frequency: Map<String, Int>) {
+    private fun saveResultFrequency(frequency: Map<String, Map<String, Int>>) {
         preferences.edit {
-            val obj = JSONObject(frequency)
+            val obj = JSONObject()
+            frequency.forEach { (query, counts) ->
+                val innerObj = JSONObject(counts)
+                obj.put(query, innerObj)
+            }
             putString(KEY_RESULT_FREQUENCY, obj.toString())
         }
     }

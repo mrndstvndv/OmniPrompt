@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.AlertDialog
@@ -21,7 +20,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,14 +33,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.ui.components.settings.SettingsDivider
+import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsSection
+import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun ProviderRankingSection(
     rankingRepository: ProviderRankingRepository,
-    enabledProviders: Map<String, Boolean>
+    enabledProviders: Map<String, Boolean>,
 ) {
     val providerOrder by rankingRepository.providerOrder.collectAsState()
     val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
+    val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
     val resultFrequency by rankingRepository.resultFrequency.collectAsState()
     var showFrequencyDialog by remember { mutableStateOf(false) }
 
@@ -52,93 +55,77 @@ fun ProviderRankingSection(
         FrequencyRankingDialog(
             frequency = resultFrequency,
             onDismiss = { showFrequencyDialog = false },
-            onReset = { rankingRepository.resetResultFrequency() }
+            onReset = { rankingRepository.resetResultFrequency() },
         )
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        Text(
-            text = "Result Ranking",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Text(
-            text = "Control how results are ordered.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
-            // Toggle for frequency-based ranking
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface
-            ) {
+        SettingsSection(
+            title = "Result Ranking",
+            subtitle = "Control how results are ordered.",
+        ) {
+            SettingsGroup {
+                // Frequency-based ranking toggle
+                // Using custom Row to support clicking the row to open the dialog
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showFrequencyDialog = true }
-                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { showFrequencyDialog = true }
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Use frequency-based ranking",
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
                             text = if (useFrequencyRanking) "Most used items appear first" else "Provider order",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Switch(
                         checked = useFrequencyRanking,
-                        onCheckedChange = { rankingRepository.setUseFrequencyRanking(it) }
+                        onCheckedChange = { rankingRepository.setUseFrequencyRanking(it) },
+                    )
+                }
+
+                if (useFrequencyRanking) {
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = "Use query-specific ranking",
+                        subtitle = if (queryBasedRankingEnabled) "Ranking depends on the specific search term" else "Ranking is global across all queries",
+                        checked = queryBasedRankingEnabled,
+                        onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Provider order",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 2.dp,
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Column {
-                    visibleProviderOrder.forEachIndexed { index, providerId ->
-                        ProviderRankingItem(
-                            providerId = providerId,
-                            isFirst = index == 0,
-                            isLast = index == visibleProviderOrder.size - 1,
-                            onMoveUp = {
-                                rankingRepository.moveUp(providerId) { id -> enabledProviders[id] != false }
-                            },
-                            onMoveDown = {
-                                rankingRepository.moveDown(providerId) { id -> enabledProviders[id] != false }
-                            }
-                        )
-                        if (index < visibleProviderOrder.size - 1) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
-                        }
+        SettingsSection(
+            title = "Provider order",
+        ) {
+            SettingsGroup {
+                visibleProviderOrder.forEachIndexed { index, providerId ->
+                    ProviderRankingItem(
+                        providerId = providerId,
+                        isFirst = index == 0,
+                        isLast = index == visibleProviderOrder.size - 1,
+                        onMoveUp = {
+                            rankingRepository.moveUp(providerId) { id -> enabledProviders[id] != false }
+                        },
+                        onMoveDown = {
+                            rankingRepository.moveDown(providerId) { id -> enabledProviders[id] != false }
+                        },
+                    )
+                    if (index < visibleProviderOrder.size - 1) {
+                        SettingsDivider()
                     }
                 }
             }
@@ -148,9 +135,9 @@ fun ProviderRankingSection(
 
 @Composable
 private fun FrequencyRankingDialog(
-    frequency: Map<String, Int>,
+    frequency: Map<String, Map<String, Int>>,
     onDismiss: () -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -158,31 +145,52 @@ private fun FrequencyRankingDialog(
         text = {
             Column {
                 Text(
-                    text = "View or reset how often individual results are used.",
+                    text = "Usage is now scoped to specific search queries.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 if (frequency.isEmpty()) {
                     Text(
                         text = "No usage data yet",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    val sortedEntries = frequency.entries
-                        .sortedByDescending { it.value }
-                        .toList()
+                    val sortedQueries = frequency.keys.sorted()
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 320.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp),
                     ) {
-                        itemsIndexed(sortedEntries) { index, (resultId, count) ->
-                            FrequencyItem(resultId = resultId, count = count)
-                            if (index < sortedEntries.lastIndex) {
+                        sortedQueries.forEach { query ->
+                            item(key = query) {
+                                Text(
+                                    text = if (query.isEmpty()) "General (no query)" else "Query: \"$query\"",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                                )
+                            }
+                            val queryCounts = frequency[query] ?: emptyMap()
+                            val sortedResults = queryCounts.entries.sortedByDescending { it.value }
+
+                            itemsIndexed(sortedResults) { index, (resultId, count) ->
+                                FrequencyItem(resultId = resultId, count = count)
+                                if (index < sortedResults.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 16.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    )
+                                }
+                            }
+
+                            item {
                                 HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    thickness = 2.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant,
                                 )
                             }
                         }
@@ -199,31 +207,37 @@ private fun FrequencyRankingDialog(
             TextButton(onClick = onReset) {
                 Text(text = "Reset data")
             }
-        }
+        },
     )
 }
 
 @Composable
-private fun FrequencyItem(resultId: String, count: Int) {
+private fun FrequencyItem(
+    resultId: String,
+    count: Int,
+) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp, horizontal = 4.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = resultId,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "$count uses",
+                text = "$count",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.secondary,
             )
         }
     }
@@ -235,53 +249,54 @@ private fun ProviderRankingItem(
     isFirst: Boolean,
     isLast: Boolean,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
 ) {
     val displayName = getProviderDisplayName(providerId)
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = displayName,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         )
 
         Row {
             IconButton(
                 onClick = onMoveUp,
                 enabled = !isFirst,
-                modifier = Modifier.width(40.dp)
+                modifier = Modifier.width(40.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowUpward,
                     contentDescription = "Move up",
-                    modifier = Modifier.width(16.dp)
+                    modifier = Modifier.width(16.dp),
                 )
             }
 
             IconButton(
                 onClick = onMoveDown,
                 enabled = !isLast,
-                modifier = Modifier.width(40.dp)
+                modifier = Modifier.width(40.dp),
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowDownward,
                     contentDescription = "Move down",
-                    modifier = Modifier.width(16.dp)
+                    modifier = Modifier.width(16.dp),
                 )
             }
         }
     }
 }
 
-private fun getProviderDisplayName(providerId: String): String {
-    return when (providerId) {
+private fun getProviderDisplayName(providerId: String): String =
+    when (providerId) {
         "app-list" -> "Applications"
         "calculator" -> "Calculator"
         "text-utilities" -> "Text Utilities"
@@ -291,4 +306,3 @@ private fun getProviderDisplayName(providerId: String): String {
         "debug-long-operation" -> "Debug • Long Operation"
         else -> providerId
     }
-}

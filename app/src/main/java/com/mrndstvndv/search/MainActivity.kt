@@ -149,6 +149,7 @@ class MainActivity : ComponentActivity() {
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
+            val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
             val providers =
                 remember(this@MainActivity) {
                     buildList {
@@ -218,13 +219,14 @@ class MainActivity : ComponentActivity() {
             var showLoadingOverlay by remember { mutableStateOf(false) }
             var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
             var contactActionData by remember { mutableStateOf<ContactActionData?>(null) }
+            var currentNormalizedQuery by remember { mutableStateOf("") }
 
             fun startPendingAction(result: ProviderResult?) {
                 val action = result?.onSelect ?: return
                 if (isPerformingAction) return
                 isPerformingAction = true
                 // Track result usage frequency when result is selected
-                rankingRepository.incrementResultUsage(result.id)
+                rankingRepository.incrementResultUsage(result.id, currentNormalizedQuery)
                 pendingAction = PendingAction(action, result.keepOverlayUntilExit)
             }
 
@@ -261,7 +263,7 @@ class MainActivity : ComponentActivity() {
                             isSimNumber = isSimNumber,
                         )
                     // Track usage for contacts too
-                    rankingRepository.incrementResultUsage(candidate.id)
+                    rankingRepository.incrementResultUsage(candidate.id, currentNormalizedQuery)
                     return true
                 }
                 if (candidate.onSelect != null) {
@@ -271,7 +273,7 @@ class MainActivity : ComponentActivity() {
                 return false
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger) {
+            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger, queryBasedRankingEnabled) {
                 // Cancel previous query job to debounce typing
                 pendingQueryJob?.cancel()
 
@@ -283,6 +285,7 @@ class MainActivity : ComponentActivity() {
                         val currentText = textState.value.text
                         val match = aliasRepository.matchAlias(currentText)
                         val normalizedText = match?.remainingQuery ?: currentText
+                        currentNormalizedQuery = normalizedText
                         val query = Query(normalizedText, originalText = currentText)
 
                         val aggregated = mutableListOf<ProviderResult>()
@@ -328,14 +331,14 @@ class MainActivity : ComponentActivity() {
                                     compareBy(
                                         { result ->
                                             // Primary: items with frequency (0) come first, then items without (-1)
-                                            if (rankingRepository.getResultFrequency(result.id) > 0) 0 else 1
+                                            if (rankingRepository.getResultFrequency(result.id, normalizedText) > 0) 0 else 1
                                         },
                                         { result ->
                                             // Secondary: within each group, sort appropriately
-                                            val freq = rankingRepository.getResultFrequency(result.id)
+                                            val freq = rankingRepository.getResultFrequency(result.id, normalizedText)
                                             if (freq > 0) {
                                                 // For frequent items, sort by frequency rank
-                                                rankingRepository.getResultFrequencyRank(result.id)
+                                                rankingRepository.getResultFrequencyRank(result.id, normalizedText)
                                             } else {
                                                 // For non-frequent items, sort by provider rank
                                                 rankingRepository.getProviderRank(result.providerId)
@@ -661,8 +664,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-
-
 
             LaunchedEffect(Unit) {
                 focusRequester.requestFocus()
