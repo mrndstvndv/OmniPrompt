@@ -50,10 +50,8 @@
         </activity>
         <activity
                 android:name=".MainActivity"
-                android:clearTaskOnLaunch="true"
                 android:excludeFromRecents="true"
-                android:launchMode="singleInstance"
-                android:stateNotNeeded="true"
+                android:launchMode="singleTask"
                 android:exported="true"
                 android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
                 android:theme="@style/Theme.Search">
