@@ -1,9 +1,15 @@
-val appVersion = project.findProperty("appVersion") as? String
-    ?: error("appVersion is missing from gradle.properties")
-val appVersionCode = project.findProperty("appVersionCode")
-    ?.toString()
-    ?.toIntOrNull()
-    ?: error("appVersionCode is missing or invalid in gradle.properties")
+import java.io.FileInputStream
+import java.util.Properties
+
+val appVersion =
+    project.findProperty("appVersion") as? String
+        ?: error("appVersion is missing from gradle.properties")
+val appVersionCode =
+    project
+        .findProperty("appVersionCode")
+        ?.toString()
+        ?.toIntOrNull()
+        ?: error("appVersionCode is missing or invalid in gradle.properties")
 
 plugins {
     alias(libs.plugins.android.application)
@@ -26,6 +32,30 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = rootProject.file("keystore.properties")
+            val isCi = System.getenv("CI") == "true"
+
+            if (isCi) {
+                // CI Environment: Use env vars
+                storeFile = file(System.getenv("KEYSTORE_FILE") ?: "release.keystore")
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            } else if (keystoreFile.exists()) {
+                // Local Environment: Use keystore.properties
+                val props = Properties()
+                props.load(FileInputStream(keystoreFile))
+
+                storeFile = file(props.getProperty("STORE_FILE"))
+                storePassword = props.getProperty("STORE_PASSWORD")
+                keyAlias = props.getProperty("KEY_ALIAS")
+                keyPassword = props.getProperty("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -33,6 +63,7 @@ android {
         }
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
