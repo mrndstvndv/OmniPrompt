@@ -34,24 +34,21 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = rootProject.file("keystore.properties")
-            val isCi = System.getenv("CI") == "true"
-
-            if (isCi) {
-                // CI Environment: Use env vars
-                storeFile = file(System.getenv("KEYSTORE_FILE") ?: "release.keystore")
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
-            } else if (keystoreFile.exists()) {
-                // Local Environment: Use keystore.properties
-                val props = Properties()
-                props.load(FileInputStream(keystoreFile))
-
-                storeFile = file(props.getProperty("STORE_FILE"))
+            val propsFile = rootProject.file("keystore.properties")
+            if (propsFile.exists()) {
+                val props =
+                    Properties().apply {
+                        propsFile.inputStream().use { load(it) }
+                    }
+                storeFile = rootProject.file(props.getProperty("STORE_FILE") ?: "release.keystore")
                 storePassword = props.getProperty("STORE_PASSWORD")
                 keyAlias = props.getProperty("KEY_ALIAS")
                 keyPassword = props.getProperty("KEY_PASSWORD")
+            } else {
+                storeFile = rootProject.file(System.getenv("KEYSTORE_FILE") ?: "release.keystore")
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
             }
         }
     }
