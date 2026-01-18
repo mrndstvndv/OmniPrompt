@@ -252,12 +252,22 @@ class ProviderRankingRepository private constructor(
             queryCounts[topResultId] = decayedScore.coerceAtLeast(0f)
         }
 
-        // Update global frequency map (apply the same changes)
+        // Update global frequency map with its own top scorer for decay
         val currentGlobal = _globalFrequencyMap.toMutableMap()
         currentGlobal[resultId] = (currentGlobal[resultId] ?: 0f) + 1.0f
-        if (topResultId != null) {
-            val globalTopScore = currentGlobal[topResultId] ?: 0f
-            currentGlobal[topResultId] = (globalTopScore - decayAmount).coerceAtLeast(0f)
+
+        // Find global top scorer (excluding selected) and apply decay
+        var globalTopResultId: String? = null
+        var globalTopScore = Float.MIN_VALUE
+        currentGlobal.forEach { (id, score) ->
+            if (id != resultId && score > globalTopScore) {
+                globalTopScore = score
+                globalTopResultId = id
+            }
+        }
+        if (globalTopResultId != null && globalTopScore > 0f) {
+            val decayedGlobalScore = (currentGlobal[globalTopResultId] ?: 0f) - decayAmount
+            currentGlobal[globalTopResultId!!] = decayedGlobalScore.coerceAtLeast(0f)
         }
         _globalFrequencyMap = currentGlobal
 
