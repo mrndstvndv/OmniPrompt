@@ -32,6 +32,7 @@ class ProviderRankingRepository private constructor(
         private const val KEY_USE_FREQUENCY_RANKING = "use_frequency_ranking"
         private const val KEY_QUERY_BASED_RANKING = "query_based_ranking"
         private const val KEY_DECAY_AMOUNT = "decay_amount"
+        private const val FREQUENCY_NORMALIZATION_THRESHOLD = 10f
 
         // Default provider order (used if not yet customized by user)
         private val DEFAULT_PROVIDER_ORDER =
@@ -252,6 +253,8 @@ class ProviderRankingRepository private constructor(
             queryCounts[topResultId] = decayedScore.coerceAtLeast(0f)
         }
 
+        normalizeFrequencyMap(queryCounts)
+
         // Update global frequency map with its own top scorer for decay
         val currentGlobal = _globalFrequencyMap.toMutableMap()
         currentGlobal[resultId] = (currentGlobal[resultId] ?: 0f) + 1.0f
@@ -269,6 +272,8 @@ class ProviderRankingRepository private constructor(
             val decayedGlobalScore = (currentGlobal[globalTopResultId] ?: 0f) - decayAmount
             currentGlobal[globalTopResultId!!] = decayedGlobalScore.coerceAtLeast(0f)
         }
+
+        normalizeFrequencyMap(currentGlobal)
         _globalFrequencyMap = currentGlobal
 
         _resultFrequency.value = current
@@ -324,6 +329,14 @@ class ProviderRankingRepository private constructor(
     }
 
     private fun normalizeQuery(query: String): String = query.trim().lowercase()
+
+    private fun normalizeFrequencyMap(map: MutableMap<String, Float>) {
+        val maxScore = map.values.maxOrNull() ?: return
+        if (maxScore <= FREQUENCY_NORMALIZATION_THRESHOLD) return
+        map.entries.forEach { entry ->
+            entry.setValue(entry.value / 4f)
+        }
+    }
 
     private fun loadProviderOrder(): List<String> =
         try {
