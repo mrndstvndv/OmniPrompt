@@ -47,6 +47,7 @@ fun ProviderRankingSection(
     val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
     val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
     val resultFrequency by rankingRepository.resultFrequency.collectAsState()
+    val decayAmount by rankingRepository.decayAmount.collectAsState()
     var showFrequencyDialog by remember { mutableStateOf(false) }
 
     val visibleProviderOrder = providerOrder.filter { enabledProviders[it] != false }
@@ -104,6 +105,16 @@ fun ProviderRankingSection(
                         checked = queryBasedRankingEnabled,
                         onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
                     )
+                    SettingsDivider()
+                    com.mrndstvndv.search.ui.components.settings.SettingsSliderRow(
+                        title = "Competitive decay",
+                        subtitle = "Score reduction for the top result when another is selected",
+                        value = decayAmount,
+                        onValueChange = { rankingRepository.setDecayAmount(it) },
+                        valueRange = 0f..5f,
+                        steps = 9,
+                        valueText = String.format("%.1f", decayAmount),
+                    )
                 }
             }
         }
@@ -135,7 +146,7 @@ fun ProviderRankingSection(
 
 @Composable
 private fun FrequencyRankingDialog(
-    frequency: Map<String, Map<String, Int>>,
+    frequency: Map<String, Map<String, Float>>,
     onDismiss: () -> Unit,
     onReset: () -> Unit,
 ) {
@@ -176,8 +187,8 @@ private fun FrequencyRankingDialog(
                             val queryCounts = frequency[query] ?: emptyMap()
                             val sortedResults = queryCounts.entries.sortedByDescending { it.value }
 
-                            itemsIndexed(sortedResults) { index, (resultId, count) ->
-                                FrequencyItem(resultId = resultId, count = count)
+                            itemsIndexed(sortedResults) { index, (resultId, score) ->
+                                FrequencyItem(resultId = resultId, score = score)
                                 if (index < sortedResults.lastIndex) {
                                     HorizontalDivider(
                                         modifier = Modifier.padding(start = 16.dp),
@@ -214,7 +225,7 @@ private fun FrequencyRankingDialog(
 @Composable
 private fun FrequencyItem(
     resultId: String,
-    count: Int,
+    score: Float,
 ) {
     Column(
         modifier =
@@ -235,7 +246,7 @@ private fun FrequencyItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "$count",
+                text = String.format("%.1f", score),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary,
             )

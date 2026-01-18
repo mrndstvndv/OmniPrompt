@@ -31,6 +31,7 @@ class ProviderRankingRepository private constructor(
         private const val KEY_RESULT_FREQUENCY = "result_frequency"
         private const val KEY_USE_FREQUENCY_RANKING = "use_frequency_ranking"
         private const val KEY_QUERY_BASED_RANKING = "query_based_ranking"
+        private const val KEY_DECAY_AMOUNT = "decay_amount"
 
         // Default provider order (used if not yet customized by user)
         private val DEFAULT_PROVIDER_ORDER =
@@ -69,13 +70,16 @@ class ProviderRankingRepository private constructor(
     private val _queryBasedRankingEnabled = MutableStateFlow(true)
     val queryBasedRankingEnabled: StateFlow<Boolean> = _queryBasedRankingEnabled
 
-    // Map<Query, Map<ResultId, Count>>
-    private val _resultFrequency = MutableStateFlow(emptyMap<String, Map<String, Int>>())
-    val resultFrequency: StateFlow<Map<String, Map<String, Int>>> = _resultFrequency
+    // Map<Query, Map<ResultId, Score>>
+    private val _resultFrequency = MutableStateFlow(emptyMap<String, Map<String, Float>>())
+    val resultFrequency: StateFlow<Map<String, Map<String, Float>>> = _resultFrequency
 
     // Aggregated global frequency map (cached for performance)
-    // Map<ResultId, Count>
-    private var _globalFrequencyMap: Map<String, Int> = emptyMap()
+    // Map<ResultId, Score>
+    private var _globalFrequencyMap: Map<String, Float> = emptyMap()
+
+    private val _decayAmount = MutableStateFlow(1.0f)
+    val decayAmount: StateFlow<Float> = _decayAmount
 
     init {
         if (scope != null) {
@@ -84,6 +88,7 @@ class ProviderRankingRepository private constructor(
                 _useFrequencyRanking.value = loadUseFrequencyRanking()
                 _queryBasedRankingEnabled.value = loadQueryBasedRankingEnabled()
                 _resultFrequency.value = loadResultFrequency()
+                _decayAmount.value = loadDecayAmount()
                 rebuildGlobalFrequency()
             }
         } else {
@@ -92,6 +97,7 @@ class ProviderRankingRepository private constructor(
             _useFrequencyRanking.value = loadUseFrequencyRanking()
             _queryBasedRankingEnabled.value = loadQueryBasedRankingEnabled()
             _resultFrequency.value = loadResultFrequency()
+            _decayAmount.value = loadDecayAmount()
             rebuildGlobalFrequency()
         }
     }
@@ -109,23 +115,23 @@ class ProviderRankingRepository private constructor(
     fun getResultFrequencyRank(
         resultId: String,
         query: String,
-    ): Int {
+    ): Float {
         val count =
             if (_queryBasedRankingEnabled.value) {
                 val normalizedQuery = normalizeQuery(query)
                 val queryCounts = _resultFrequency.value[normalizedQuery] ?: emptyMap()
-                queryCounts[resultId] ?: 0
+                queryCounts[resultId] ?: 0f
             } else {
-                _globalFrequencyMap[resultId] ?: 0
+                _globalFrequencyMap[resultId] ?: 0f
             }
 
         // To calculate rank correctly, we need the max frequency in the current context
         val maxFreq =
             if (_queryBasedRankingEnabled.value) {
                 val normalizedQuery = normalizeQuery(query)
-                _resultFrequency.value[normalizedQuery]?.values?.maxOrNull() ?: 1
+                _resultFrequency.value[normalizedQuery]?.values?.maxOrNull() ?: 1f
             } else {
-                _globalFrequencyMap.values.maxOrNull() ?: 1
+                _globalFrequencyMap.values.maxOrNull() ?: 1f
             }
 
         // Invert frequency so higher frequency results get lower rank values (sort ascending)
@@ -138,12 +144,12 @@ class ProviderRankingRepository private constructor(
     fun getResultFrequency(
         resultId: String,
         query: String,
-    ): Int =
+    ): Float =
         if (_queryBasedRankingEnabled.value) {
             val normalizedQuery = normalizeQuery(query)
-            _resultFrequency.value[normalizedQuery]?.get(resultId) ?: 0
+            _resultFrequency.value[normalizedQuery]?.get(resultId) ?: 0f
         } else {
-            _globalFrequencyMap[resultId] ?: 0
+            _globalFrequencyMap[resultId] ?: 0f
         }
 
     /**
@@ -215,6 +221,7 @@ class ProviderRankingRepository private constructor(
     /**
      * Increment the usage frequency of a result.
      * Call this when a user selects a specific result.
+     * Applies competitive decay: selected score += 1; current top score (excluding selected) -= decayAmount, clamped at 0.
      */
     fun incrementResultUsage(
         resultId: String,
@@ -224,13 +231,34 @@ class ProviderRankingRepository private constructor(
         val current = _resultFrequency.value.toMutableMap()
         val queryCounts = current[normalizedQuery]?.toMutableMap() ?: mutableMapOf()
 
-        val newCount = (queryCounts[resultId] ?: 0) + 1
-        queryCounts[resultId] = newCount
+        // Increment selected result score
+        val newScore = (queryCounts[resultId] ?: 0f) + 1.0f
+        queryCounts[resultId] = newScore
         current[normalizedQuery] = queryCounts
 
-        // Update global frequency map efficiently (increment only)
+        // Find current top score result (excluding selected) and apply decay
+        val decayAmount = _decayAmount.value
+        var topResultId: String? = null
+        var topScore = Float.MIN_VALUE
+        queryCounts.forEach { (id, score) ->
+            if (id != resultId && score > topScore) {
+                topScore = score
+                topResultId = id
+            }
+        }
+
+        if (topResultId != null && topScore > 0f) {
+            val decayedScore = (queryCounts[topResultId] ?: 0f) - decayAmount
+            queryCounts[topResultId] = decayedScore.coerceAtLeast(0f)
+        }
+
+        // Update global frequency map (apply the same changes)
         val currentGlobal = _globalFrequencyMap.toMutableMap()
-        currentGlobal[resultId] = (currentGlobal[resultId] ?: 0) + 1
+        currentGlobal[resultId] = (currentGlobal[resultId] ?: 0f) + 1.0f
+        if (topResultId != null) {
+            val globalTopScore = currentGlobal[topResultId] ?: 0f
+            currentGlobal[topResultId] = (globalTopScore - decayAmount).coerceAtLeast(0f)
+        }
         _globalFrequencyMap = currentGlobal
 
         _resultFrequency.value = current
@@ -254,6 +282,19 @@ class ProviderRankingRepository private constructor(
     }
 
     /**
+     * Get the decay amount applied to the current top-scoring result when another is selected.
+     */
+    fun getDecayAmount(): Float = _decayAmount.value
+
+    /**
+     * Set the decay amount applied to the current top-scoring result when another is selected.
+     */
+    fun setDecayAmount(amount: Float) {
+        _decayAmount.value = amount.coerceIn(0f, 10f)
+        saveDecayAmount(_decayAmount.value)
+    }
+
+    /**
      * Reset result frequency counts.
      */
     fun resetResultFrequency() {
@@ -263,10 +304,10 @@ class ProviderRankingRepository private constructor(
     }
 
     private fun rebuildGlobalFrequency() {
-        val global = mutableMapOf<String, Int>()
+        val global = mutableMapOf<String, Float>()
         _resultFrequency.value.values.forEach { queryMap ->
             queryMap.forEach { (resultId, count) ->
-                global[resultId] = (global[resultId] ?: 0) + count
+                global[resultId] = (global[resultId] ?: 0f) + count
             }
         }
         _globalFrequencyMap = global
@@ -310,7 +351,15 @@ class ProviderRankingRepository private constructor(
         }
     }
 
-    private fun loadResultFrequency(): Map<String, Map<String, Int>> =
+    private fun loadDecayAmount(): Float = preferences.getFloat(KEY_DECAY_AMOUNT, 1.0f)
+
+    private fun saveDecayAmount(amount: Float) {
+        preferences.edit {
+            putFloat(KEY_DECAY_AMOUNT, amount)
+        }
+    }
+
+    private fun loadResultFrequency(): Map<String, Map<String, Float>> =
         try {
             val json = preferences.getString(KEY_RESULT_FREQUENCY, null)
             if (json != null) {
@@ -319,11 +368,19 @@ class ProviderRankingRepository private constructor(
                     obj.keys().forEach { key ->
                         val value = obj.optJSONObject(key)
                         if (value != null) {
-                            // New format: key is query, value is map of resultId -> count
+                            // New format: key is query, value is map of resultId -> score
                             val innerMap =
                                 buildMap {
                                     value.keys().forEach { innerKey ->
-                                        put(innerKey, value.getInt(innerKey))
+                                        val jsonValue = value.opt(innerKey)
+                                        val score =
+                                            when {
+                                                jsonValue is Double -> jsonValue.toFloat()
+                                                jsonValue is Int -> jsonValue.toFloat()
+                                                jsonValue is Long -> jsonValue.toFloat()
+                                                else -> 0f
+                                            }
+                                        put(innerKey, score)
                                     }
                                 }
                             put(key, innerMap)
@@ -337,7 +394,7 @@ class ProviderRankingRepository private constructor(
             emptyMap()
         }
 
-    private fun saveResultFrequency(frequency: Map<String, Map<String, Int>>) {
+    private fun saveResultFrequency(frequency: Map<String, Map<String, Float>>) {
         preferences.edit {
             val obj = JSONObject()
             frequency.forEach { (query, counts) ->

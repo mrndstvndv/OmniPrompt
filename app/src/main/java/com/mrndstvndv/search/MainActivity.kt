@@ -322,26 +322,27 @@ class MainActivity : ComponentActivity() {
 
                         // Sort results:
                         // If frequency ranking enabled:
-                        //   - Items with usage frequency appear first (sorted by frequency)
-                        //   - Items with no usage follow provider ranking
+                        //   - Items with score > 0 appear first (sorted by score descending)
+                        //   - Items with score 0 follow provider ranking
                         // Otherwise: sort purely by provider ranking
                         val sortedResults =
                             if (useFrequencyRanking) {
                                 filtered.sortedWith(
                                     compareBy(
                                         { result ->
-                                            // Primary: items with frequency (0) come first, then items without (-1)
-                                            if (rankingRepository.getResultFrequency(result.id, normalizedText) > 0) 0 else 1
+                                            // Primary: items with score (>0) come first, then items without (=0)
+                                            val score = rankingRepository.getResultFrequency(result.id, normalizedText)
+                                            if (score > 0f) 0 else 1
                                         },
                                         { result ->
                                             // Secondary: within each group, sort appropriately
-                                            val freq = rankingRepository.getResultFrequency(result.id, normalizedText)
-                                            if (freq > 0) {
-                                                // For frequent items, sort by frequency rank
-                                                rankingRepository.getResultFrequencyRank(result.id, normalizedText)
+                                            val score = rankingRepository.getResultFrequency(result.id, normalizedText)
+                                            if (score > 0f) {
+                                                // For items with score, sort by score descending (negative for descending)
+                                                -score
                                             } else {
-                                                // For non-frequent items, sort by provider rank
-                                                rankingRepository.getProviderRank(result.providerId)
+                                                // For items with no score, sort by provider rank
+                                                rankingRepository.getProviderRank(result.providerId).toFloat()
                                             }
                                         },
                                     ),
