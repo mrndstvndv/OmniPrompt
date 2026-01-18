@@ -13,8 +13,8 @@ import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.Quicklink
-import com.mrndstvndv.search.provider.settings.WebSearchSite
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
+import com.mrndstvndv.search.provider.settings.WebSearchSite
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
@@ -23,9 +23,8 @@ import kotlinx.coroutines.withContext
 // TODO: the query should be empty if a whitespace between the trigger and query is not yet made. the behavior right now is that the searchitem searches for the trigger if a query is not yet made
 class WebSearchProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository
+    private val settingsRepository: ProviderSettingsRepository,
 ) : Provider {
-
     override val id: String = "web-search"
     override val displayName: String = "Web Search"
 
@@ -53,7 +52,7 @@ class WebSearchProvider(
 
     private fun matchQuicklinks(
         queryText: String,
-        quicklinks: List<Quicklink>
+        quicklinks: List<Quicklink>,
     ): List<ProviderResult> {
         if (quicklinks.isEmpty()) return emptyList()
 
@@ -61,38 +60,49 @@ class WebSearchProvider(
             val quicklink: Quicklink,
             val score: Int,
             val matchedTitleIndices: List<Int>,
-            val matchedSubtitleIndices: List<Int>
+            val matchedSubtitleIndices: List<Int>,
         )
 
-        val scored = quicklinks.mapNotNull { quicklink ->
-            val titleMatch = FuzzyMatcher.match(queryText, quicklink.title)
-            val domainMatch = FuzzyMatcher.match(queryText, quicklink.domain())
+        val scored =
+            quicklinks
+                .mapNotNull { quicklink ->
+                    val titleMatch = FuzzyMatcher.match(queryText, quicklink.title)
+                    val domainMatch = FuzzyMatcher.match(queryText, quicklink.domain())
 
-            // Apply penalty to domain matches (like AppListProvider does for package names)
-            val domainScoreWithPenalty = domainMatch?.let { it.score - DOMAIN_MATCH_PENALTY }
+                    // Apply penalty to domain matches (like AppListProvider does for package names)
+                    val domainScoreWithPenalty = domainMatch?.let { it.score - DOMAIN_MATCH_PENALTY }
 
-            val titleIsBest = when {
-                titleMatch == null -> false
-                domainScoreWithPenalty == null -> true
-                else -> titleMatch.score >= domainScoreWithPenalty
-            }
+                    val titleIsBest =
+                        when {
+                            titleMatch == null -> false
+                            domainScoreWithPenalty == null -> true
+                            else -> titleMatch.score >= domainScoreWithPenalty
+                        }
 
-            when {
-                titleIsBest && titleMatch != null -> ScoredQuicklink(
-                    quicklink = quicklink,
-                    score = titleMatch.score,
-                    matchedTitleIndices = titleMatch.matchedIndices,
-                    matchedSubtitleIndices = domainMatch?.matchedIndices ?: emptyList()
-                )
-                domainMatch != null -> ScoredQuicklink(
-                    quicklink = quicklink,
-                    score = domainScoreWithPenalty!!,
-                    matchedTitleIndices = emptyList(),
-                    matchedSubtitleIndices = domainMatch.matchedIndices
-                )
-                else -> null
-            }
-        }.sortedByDescending { it.score }
+                    when {
+                        titleIsBest && titleMatch != null -> {
+                            ScoredQuicklink(
+                                quicklink = quicklink,
+                                score = titleMatch.score,
+                                matchedTitleIndices = titleMatch.matchedIndices,
+                                matchedSubtitleIndices = domainMatch?.matchedIndices ?: emptyList(),
+                            )
+                        }
+
+                        domainMatch != null -> {
+                            ScoredQuicklink(
+                                quicklink = quicklink,
+                                score = domainScoreWithPenalty!!,
+                                matchedTitleIndices = emptyList(),
+                                matchedSubtitleIndices = domainMatch.matchedIndices,
+                            )
+                        }
+
+                        else -> {
+                            null
+                        }
+                    }
+                }.sortedByDescending { it.score }
 
         return scored.map { (quicklink, _, matchedTitleIndices, matchedSubtitleIndices) ->
             val action: suspend () -> Unit = {
@@ -108,15 +118,18 @@ class WebSearchProvider(
                 title = quicklink.title,
                 subtitle = quicklink.displayUrl(),
                 defaultVectorIcon = Icons.Outlined.Link,
-                iconLoader = if (quicklink.hasFavicon) {
-                    { FaviconLoader.loadFavicon(activity, quicklink.id) }
-                } else null,
+                iconLoader =
+                    if (quicklink.hasFavicon) {
+                        { FaviconLoader.loadFavicon(activity, quicklink.id) }
+                    } else {
+                        null
+                    },
                 providerId = id,
                 onSelect = action,
                 aliasTarget = QuicklinkAliasTarget(quicklink.id, quicklink.title),
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedTitleIndices,
-                matchedSubtitleIndices = matchedSubtitleIndices
+                matchedSubtitleIndices = matchedSubtitleIndices,
             )
         }
     }
@@ -124,35 +137,38 @@ class WebSearchProvider(
     private fun matchSearchEngines(
         query: Query,
         cleaned: String,
-        settings: WebSearchSettings
+        settings: WebSearchSettings,
     ): List<ProviderResult> {
         val sites = settings.sites
         if (sites.isEmpty()) return emptyList()
 
         val defaultSite = settings.siteForId(settings.defaultSiteId) ?: sites.first()
-        val triggerToken = query.originalText.trimStart().takeWhile { char ->
-            !char.isWhitespace() && char != ':'
-        }
+        val triggerToken =
+            query.originalText.trimStart().takeWhile { char ->
+                !char.isWhitespace() && char != ':'
+            }
 
         // Use fuzzy matching for trigger tokens
-        val triggerMatches = if (triggerToken.isBlank()) {
-            emptyList()
-        } else {
-            sites.filter { it.id != defaultSite.id }
-                .mapNotNull { site ->
-                    val match = FuzzyMatcher.match(triggerToken, site.displayName)
-                    match?.let { site to it }
-                }
-                .sortedByDescending { it.second.score }
-                .map { it.first }
-        }
+        val triggerMatches =
+            if (triggerToken.isBlank()) {
+                emptyList()
+            } else {
+                sites
+                    .filter { it.id != defaultSite.id }
+                    .mapNotNull { site ->
+                        val match = FuzzyMatcher.match(triggerToken, site.displayName)
+                        match?.let { site to it }
+                    }.sortedByDescending { it.second.score }
+                    .map { it.first }
+            }
 
         val searchTerms = dropTriggerToken(cleaned, triggerToken).ifBlank { cleaned }.trim()
-        val visibleSites = if (triggerMatches.isEmpty()) {
-            listOf(defaultSite)
-        } else {
-            triggerMatches + defaultSite
-        }
+        val visibleSites =
+            if (triggerMatches.isEmpty()) {
+                listOf(defaultSite)
+            } else {
+                triggerMatches + defaultSite
+            }
 
         return visibleSites.map { site ->
             val actualQuery = if (site.id == defaultSite.id) cleaned else searchTerms
@@ -167,20 +183,25 @@ class WebSearchProvider(
             ProviderResult(
                 id = "$id:${site.id}:${actualQuery.hashCode()}",
                 title = "Search \"$actualQuery\"",
-                subtitle = if (site.id == defaultSite.id) {
-                    "${site.displayName} (default)"
-                } else {
-                    site.displayName
-                },
+                subtitle =
+                    if (site.id == defaultSite.id) {
+                        "${site.displayName} (default)"
+                    } else {
+                        site.displayName
+                    },
                 providerId = id,
                 onSelect = action,
                 aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
-                keepOverlayUntilExit = true
+                keepOverlayUntilExit = true,
+                excludeFromFrequencyRanking = true,
             )
         }
     }
 
-    private fun dropTriggerToken(queryText: String, triggerToken: String): String {
+    private fun dropTriggerToken(
+        queryText: String,
+        triggerToken: String,
+    ): String {
         if (triggerToken.isBlank()) return queryText.trimStart()
         val trimmed = queryText.trimStart()
         val lowerTrimmed = trimmed.lowercase()

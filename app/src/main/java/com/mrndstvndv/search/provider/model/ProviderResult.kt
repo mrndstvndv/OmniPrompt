@@ -21,5 +21,7 @@ data class ProviderResult(
     /** Indices of matched characters in [title] for fuzzy search highlighting */
     val matchedTitleIndices: List<Int> = emptyList(),
     /** Indices of matched characters in [subtitle] for fuzzy search highlighting */
-    val matchedSubtitleIndices: List<Int> = emptyList()
+    val matchedSubtitleIndices: List<Int> = emptyList(),
+    /** When true, this result will not be tracked for frequency-based ranking */
+    val excludeFromFrequencyRanking: Boolean = false,
 )

@@ -226,7 +226,9 @@ class MainActivity : ComponentActivity() {
                 if (isPerformingAction) return
                 isPerformingAction = true
                 // Track result usage frequency when result is selected
-                rankingRepository.incrementResultUsage(result.id, currentNormalizedQuery)
+                if (!result.excludeFromFrequencyRanking) {
+                    rankingRepository.incrementResultUsage(result.id, currentNormalizedQuery)
+                }
                 pendingAction = PendingAction(action, result.keepOverlayUntilExit)
             }
 
@@ -263,7 +265,9 @@ class MainActivity : ComponentActivity() {
                             isSimNumber = isSimNumber,
                         )
                     // Track usage for contacts too
-                    rankingRepository.incrementResultUsage(candidate.id, currentNormalizedQuery)
+                    if (!candidate.excludeFromFrequencyRanking) {
+                        rankingRepository.incrementResultUsage(candidate.id, currentNormalizedQuery)
+                    }
                     return true
                 }
                 if (candidate.onSelect != null) {
