@@ -334,7 +334,7 @@ class ProviderRankingRepository private constructor(
         val maxScore = map.values.maxOrNull() ?: return
         if (maxScore <= FREQUENCY_NORMALIZATION_THRESHOLD) return
         map.entries.forEach { entry ->
-            entry.setValue(entry.value / 4f)
+            entry.setValue(entry.value / 2f)
         }
     }
 
