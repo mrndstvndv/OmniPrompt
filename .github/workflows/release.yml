@@ -26,9 +26,6 @@ jobs:
       - name: Install Determinate Nix
         uses: DeterminateSystems/determinate-nix-action@v3
 
-      - name: Setup FlakeHub Cache
-        uses: DeterminateSystems/flakehub-cache-action@main
-
       - name: Decode Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

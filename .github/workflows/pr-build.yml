@@ -25,9 +25,6 @@ jobs:
       - name: Install Determinate Nix
         uses: DeterminateSystems/determinate-nix-action@v3
 
-      - name: Setup FlakeHub Cache
-        uses: DeterminateSystems/flakehub-cache-action@main
-
       - name: Build Debug APK
         run: nix develop --command ./gradlew assembleDebug --no-daemon
 
