@@ -51,7 +51,7 @@ fun RecentAppsList(
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = "Enable Recent Apps",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier =
                         Modifier
                             .size(24.dp)
