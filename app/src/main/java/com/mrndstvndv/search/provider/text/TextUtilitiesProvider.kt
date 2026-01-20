@@ -20,9 +20,8 @@ import kotlin.math.min
 
 class TextUtilitiesProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository
+    private val settingsRepository: ProviderSettingsRepository,
 ) : Provider {
-
     override val id: String = "text-utilities"
     override val displayName: String = "Text Utilities"
 
@@ -44,7 +43,7 @@ class TextUtilitiesProvider(
     private fun buildSuccessResult(
         command: ParsedCommand,
         outcome: TransformOutcome.Success,
-        settings: TextUtilitiesSettings
+        settings: TextUtilitiesSettings,
     ): ProviderResult {
         val preview = previewText(outcome.output)
         val autoLaunchUri = resolveAutoLaunchUri(command, outcome.output, settings)
@@ -66,19 +65,21 @@ class TextUtilitiesProvider(
             title = preview,
             subtitle = subtitle,
             providerId = id,
-            extras = mapOf(
-                EXTRA_UTILITY_ID to command.utility.id,
-                EXTRA_MODE to command.mode.name,
-                EXTRA_PAYLOAD to payload
-            ),
+            extras =
+                mapOf(
+                    EXTRA_UTILITY_ID to command.utility.id,
+                    EXTRA_MODE to command.mode.name,
+                    EXTRA_PAYLOAD to payload,
+                ),
             onSelect = action,
-            keepOverlayUntilExit = autoLaunchUri != null
+            keepOverlayUntilExit = autoLaunchUri != null,
+            excludeFromFrequencyRanking = true,
         )
     }
 
     private fun buildInvalidInputResult(
         command: ParsedCommand,
-        outcome: TransformOutcome.InvalidInput
+        outcome: TransformOutcome.InvalidInput,
     ): ProviderResult {
         val payload = command.payload.orEmpty()
         return ProviderResult(
@@ -86,11 +87,13 @@ class TextUtilitiesProvider(
             title = outcome.message,
             subtitle = command.utility.invalidInputHint,
             providerId = id,
-            extras = mapOf(
-                EXTRA_UTILITY_ID to command.utility.id,
-                EXTRA_MODE to command.mode.name,
-                EXTRA_PAYLOAD to payload
-            ),
+            extras =
+                mapOf(
+                    EXTRA_UTILITY_ID to command.utility.id,
+                    EXTRA_MODE to command.mode.name,
+                    EXTRA_PAYLOAD to payload,
+                ),
+            excludeFromFrequencyRanking = true,
         )
     }
 
@@ -102,11 +105,15 @@ class TextUtilitiesProvider(
             title = command.utility.displayName,
             subtitle = instruction,
             providerId = id,
-            extras = mapOf(PREFILL_QUERY_EXTRA to prefill)
+            extras = mapOf(PREFILL_QUERY_EXTRA to prefill),
+            excludeFromFrequencyRanking = true,
         )
     }
 
-    private fun copyToClipboard(label: String, value: String) {
+    private fun copyToClipboard(
+        label: String,
+        value: String,
+    ) {
         val clipboard = activity.getSystemService(ClipboardManager::class.java)
         val clip = ClipData.newPlainText(label, value)
         clipboard?.setPrimaryClip(clip)
@@ -136,14 +143,15 @@ class TextUtilitiesProvider(
         // Get per-utility default mode from settings, fallback to utility's built-in default
         val settings = settingsRepository.textUtilitiesSettings.value
         val savedMode = settings.utilityDefaultModes[utilityMatch.utility.id]
-        var mode = if (savedMode != null) {
-            when (savedMode) {
-                TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
-                TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+        var mode =
+            if (savedMode != null) {
+                when (savedMode) {
+                    TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
+                    TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+                }
+            } else {
+                utilityMatch.utility.defaultMode
             }
-        } else {
-            utilityMatch.utility.defaultMode
-        }
         var consumedModeToken: String? = null
         if (remainder.isNotBlank()) {
             val nextSpaceIndex = remainder.indexOfFirst { it.isWhitespace() }
@@ -166,7 +174,7 @@ class TextUtilitiesProvider(
             canonicalKeyword = utilityMatch.canonicalKeyword,
             mode = mode,
             payload = payload,
-            consumedModeToken = consumedModeToken
+            consumedModeToken = consumedModeToken,
         )
     }
 
@@ -195,7 +203,10 @@ class TextUtilitiesProvider(
         return null
     }
 
-    private fun previewText(value: String, maxLength: Int = 60): String {
+    private fun previewText(
+        value: String,
+        maxLength: Int = 60,
+    ): String {
         if (value.isEmpty()) return "(empty string)"
         if (value.length <= maxLength) return value
         val softLimit = min(maxLength, value.length)
@@ -205,14 +216,17 @@ class TextUtilitiesProvider(
     private fun resolveAutoLaunchUri(
         command: ParsedCommand,
         decodedText: String,
-        settings: TextUtilitiesSettings
+        settings: TextUtilitiesSettings,
     ): Uri? {
         if (command.mode != TransformMode.DECODE) return null
         if (!settings.openDecodedUrls) return null
         return decodedText.toNavigableUriOrNull()
     }
 
-    private fun buildActionSubtitle(command: ParsedCommand, suffix: String = ""): String {
+    private fun buildActionSubtitle(
+        command: ParsedCommand,
+        suffix: String = "",
+    ): String {
         val verb = command.mode.action.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         return buildString {
             append(verb)
@@ -245,15 +259,18 @@ class TextUtilitiesProvider(
         val canonicalKeyword: String,
         val mode: TransformMode,
         val payload: String?,
-        val consumedModeToken: String?
+        val consumedModeToken: String?,
     )
 
-    private enum class TransformMode(val verb: String, val action: String) {
+    private enum class TransformMode(
+        val verb: String,
+        val action: String,
+    ) {
         ENCODE(verb = "encoded", action = "encode"),
-        DECODE(verb = "decoded", action = "decode")
+        DECODE(verb = "decoded", action = "decode"),
     }
 
-private interface TextUtility {
+    private interface TextUtility {
         val id: String
         val displayName: String
         val description: String
@@ -263,12 +280,20 @@ private interface TextUtility {
         val supportsBothModes: Boolean
         val defaultMode: TransformMode
 
-        fun transform(mode: TransformMode, text: String): TransformOutcome
+        fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome
     }
 
     private sealed interface TransformOutcome {
-        data class Success(val output: String) : TransformOutcome
-        data class InvalidInput(val message: String) : TransformOutcome
+        data class Success(
+            val output: String,
+        ) : TransformOutcome
+
+        data class InvalidInput(
+            val message: String,
+        ) : TransformOutcome
     }
 
     private class Base64Utility : TextUtility {
@@ -281,12 +306,14 @@ private interface TextUtility {
         override val supportsBothModes: Boolean = true
         override val defaultMode: TransformMode = TransformMode.DECODE
 
-        override fun transform(mode: TransformMode, text: String): TransformOutcome {
-            return when (mode) {
+        override fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome =
+            when (mode) {
                 TransformMode.ENCODE -> encode(text)
                 TransformMode.DECODE -> decode(text)
             }
-        }
 
         private fun encode(text: String): TransformOutcome {
             val bytes = text.toByteArray(Charsets.UTF_8)
@@ -318,7 +345,10 @@ private interface TextUtility {
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
-        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+        override fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome {
             val trimmed = text.trim()
             return if (trimmed.isEmpty()) {
                 TransformOutcome.InvalidInput("Nothing to trim")
@@ -338,7 +368,10 @@ private interface TextUtility {
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
-        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+        override fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome {
             val result = text.replace("\\s+".toRegex(), "")
             return if (result.isEmpty()) {
                 TransformOutcome.InvalidInput("Nothing left after removing whitespaces")
@@ -358,17 +391,21 @@ private interface TextUtility {
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
-        override fun transform(mode: TransformMode, text: String): TransformOutcome {
+        override fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
                 return TransformOutcome.InvalidInput("No URL provided")
             }
 
-            val uri = try {
-                Uri.parse(trimmed)
-            } catch (e: Exception) {
-                return TransformOutcome.InvalidInput("Invalid URL format")
-            }
+            val uri =
+                try {
+                    Uri.parse(trimmed)
+                } catch (e: Exception) {
+                    return TransformOutcome.InvalidInput("Invalid URL format")
+                }
 
             // Only accept l.facebook.com
             val host = uri.host?.lowercase()
@@ -377,8 +414,9 @@ private interface TextUtility {
             }
 
             // Extract the 'u' parameter (already URL-decoded by getQueryParameter)
-            val originalUrl = uri.getQueryParameter("u")
-                ?: return TransformOutcome.InvalidInput("No redirect URL found in link")
+            val originalUrl =
+                uri.getQueryParameter("u")
+                    ?: return TransformOutcome.InvalidInput("No redirect URL found in link")
 
             return TransformOutcome.Success(originalUrl)
         }
@@ -394,12 +432,14 @@ private interface TextUtility {
         override val supportsBothModes: Boolean = true
         override val defaultMode: TransformMode = TransformMode.ENCODE
 
-        override fun transform(mode: TransformMode, text: String): TransformOutcome {
-            return when (mode) {
+        override fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome =
+            when (mode) {
                 TransformMode.ENCODE -> encode(text)
                 TransformMode.DECODE -> decode(text)
             }
-        }
 
         private fun encode(text: String): TransformOutcome {
             if (text.isEmpty()) {
@@ -425,7 +465,7 @@ private interface TextUtility {
 
     private data class UtilityMatch(
         val utility: TextUtility,
-        val canonicalKeyword: String
+        val canonicalKeyword: String,
     )
 
     companion object {
@@ -436,28 +476,31 @@ private interface TextUtility {
         const val PREFILL_QUERY_EXTRA = "textUtilitiesPrefillQuery"
         private val ENCODE_TOKENS = setOf("e", "enc", "encode")
         private val DECODE_TOKENS = setOf("d", "dec", "decode")
-        private val utilities: List<TextUtility> = listOf(
-            Base64Utility(),
-            TrimUtility(),
-            RemoveWhitespacesUtility(),
-            MessengerUrlExtractorUtility(),
-            UrlEncodeUtility()
-        )
-
-        fun getUtilitiesInfo(): List<TextUtilityInfo> = utilities.map { utility ->
-            TextUtilityInfo(
-                id = utility.id,
-                displayName = utility.displayName,
-                description = utility.description,
-                keywords = utility.keywords,
-                example = utility.invalidInputHint,
-                supportsBothModes = utility.supportsBothModes,
-                defaultMode = when (utility.defaultMode) {
-                    TransformMode.ENCODE -> TextUtilityDefaultMode.ENCODE
-                    TransformMode.DECODE -> TextUtilityDefaultMode.DECODE
-                }
+        private val utilities: List<TextUtility> =
+            listOf(
+                Base64Utility(),
+                TrimUtility(),
+                RemoveWhitespacesUtility(),
+                MessengerUrlExtractorUtility(),
+                UrlEncodeUtility(),
             )
-        }
+
+        fun getUtilitiesInfo(): List<TextUtilityInfo> =
+            utilities.map { utility ->
+                TextUtilityInfo(
+                    id = utility.id,
+                    displayName = utility.displayName,
+                    description = utility.description,
+                    keywords = utility.keywords,
+                    example = utility.invalidInputHint,
+                    supportsBothModes = utility.supportsBothModes,
+                    defaultMode =
+                        when (utility.defaultMode) {
+                            TransformMode.ENCODE -> TextUtilityDefaultMode.ENCODE
+                            TransformMode.DECODE -> TextUtilityDefaultMode.DECODE
+                        },
+                )
+            }
     }
 }
 
@@ -468,5 +511,5 @@ data class TextUtilityInfo(
     val keywords: Set<String>,
     val example: String,
     val supportsBothModes: Boolean,
-    val defaultMode: TextUtilityDefaultMode
+    val defaultMode: TextUtilityDefaultMode,
 )
