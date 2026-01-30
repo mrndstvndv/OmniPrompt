@@ -167,12 +167,12 @@ output_section() {
     fi
 }
 
-output_section "Features" "${features[@]:-}"
-output_section "Fixes" "${fixes[@]:-}"
-output_section "Updates" "${updates[@]:-}"
-output_section "UI Changes" "${ui_changes[@]:-}"
-output_section "Refactoring" "${refactoring[@]:-}"
-output_section "Performance" "${performance[@]:-}"
+output_section "Features" ${features[@]+"${features[@]}"}
+output_section "Fixes" ${fixes[@]+"${fixes[@]}"}
+output_section "Updates" ${updates[@]+"${updates[@]}"}
+output_section "UI Changes" ${ui_changes[@]+"${ui_changes[@]}"}
+output_section "Refactoring" ${refactoring[@]+"${refactoring[@]}"}
+output_section "Performance" ${performance[@]+"${performance[@]}"}
 
 # If no changes found, add a note
 # Temporarily disable nounset to check array lengths safely
