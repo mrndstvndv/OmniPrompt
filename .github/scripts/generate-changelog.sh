@@ -28,9 +28,10 @@ HAS_PATCH=false
 while IFS= read -r line; do
     [ -z "$line" ] && continue
     
-    # Extract commit hash and message
+    # Extract commit hash (short), full hash, and message
     commit_hash=$(echo "$line" | cut -d'|' -f1)
-    commit_msg=$(echo "$line" | cut -d'|' -f2-)
+    commit_hash_full=$(echo "$line" | cut -d'|' -f2)
+    commit_msg=$(echo "$line" | cut -d'|' -f3-)
     
     # Skip excluded types and merge commits
     if [[ "$commit_msg" =~ ^(ci|agent|chore|doc|Merge|Revert) ]]; then
@@ -55,11 +56,19 @@ while IFS= read -r line; do
             scope="${scope%\)}"
         fi
         
-        # Format entry
-        if [ -n "$scope" ]; then
-            entry="- **${scope}**: ${desc}"
+        # Build commit URL
+        REPO_URL="https://github.com/${GITHUB_REPOSITORY:-}"
+        if [ -n "$REPO_URL" ] && [ "$REPO_URL" != "https://github.com/" ]; then
+            commit_link="([${commit_hash}](${REPO_URL}/commit/${commit_hash_full}))"
         else
-            entry="- ${desc}"
+            commit_link=""
+        fi
+        
+        # Format entry with commit link
+        if [ -n "$scope" ]; then
+            entry="- **${scope}**: ${desc} ${commit_link}"
+        else
+            entry="- ${desc} ${commit_link}"
         fi
         
         # Track version bump type
@@ -90,7 +99,7 @@ while IFS= read -r line; do
                 ;;
         esac
     fi
-done < <(git log --pretty=format:"%h|%s" "$COMMIT_RANGE" 2>/dev/null || echo "")
+done < <(git log --pretty=format:"%h|%H|%s" "$COMMIT_RANGE" 2>/dev/null || echo "")
 
 # Calculate new version
 if [ -n "$PREVIOUS_TAG" ]; then
