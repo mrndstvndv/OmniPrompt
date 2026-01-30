@@ -107,25 +107,32 @@ fun ItemsList(
     onItemClick: (ProviderResult) -> Unit,
     onItemLongPress: ((ProviderResult) -> Unit)? = null,
     translucentItems: Boolean = false,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(2.dp),
+    reverseOrder: Boolean = false,
 ) {
     if (results.isEmpty()) return
 
+    val displayResults = if (reverseOrder) results.reversed() else results
     val listState = rememberLazyListState()
     
-    LaunchedEffect(results.firstOrNull()?.id) {
-        listState.scrollToItem(0)
+    LaunchedEffect(displayResults.firstOrNull()?.id) {
+        if (reverseOrder && displayResults.isNotEmpty()) {
+            listState.scrollToItem(displayResults.lastIndex)
+        } else {
+            listState.scrollToItem(0)
+        }
     }
 
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = verticalArrangement,
     ) {
         itemsIndexed(
-            items = results,
+            items = displayResults,
             key = { _, item -> item.id }
         ) { index, item ->
-            val singleItem = results.size == 1
+            val singleItem = displayResults.size == 1
             val targetTopStart = when {
                 singleItem -> 20.dp
                 index == 0 -> 20.dp
@@ -138,12 +145,12 @@ fun ItemsList(
             }
             val targetBottomStart = when {
                 singleItem -> 20.dp
-                index == results.lastIndex -> 20.dp
+                index == displayResults.lastIndex -> 20.dp
                 else -> 5.dp
             }
             val targetBottomEnd = when {
                 singleItem -> 20.dp
-                index == results.lastIndex -> 20.dp
+                index == displayResults.lastIndex -> 20.dp
                 else -> 5.dp
             }
 

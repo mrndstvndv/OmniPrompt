@@ -60,6 +60,7 @@ import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
@@ -368,6 +369,7 @@ fun AppearanceSettingsScreen(
     val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
     val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
     val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
+    val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
 
     SettingsScaffold(
         title = "Appearance",
@@ -440,6 +442,18 @@ fun AppearanceSettingsScreen(
                         }
                     }
                 }
+
+                SettingsDivider()
+                SettingsSwitch(
+                    title = "Search bar at bottom",
+                    subtitle = "Place search bar below results instead of above.",
+                    checked = searchBarPosition == SearchBarPosition.BOTTOM,
+                    onCheckedChange = { isBottom ->
+                        settingsRepository.setSearchBarPosition(
+                            if (isBottom) SearchBarPosition.BOTTOM else SearchBarPosition.TOP
+                        )
+                    },
+                )
 
                 }
         }

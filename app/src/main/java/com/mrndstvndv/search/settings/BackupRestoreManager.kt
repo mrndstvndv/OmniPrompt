@@ -54,6 +54,7 @@ class BackupRestoreManager(
         // Appearance Keys
         private const val KEY_TRANSLUCENT_RESULTS = "translucentResults"
         private const val KEY_BACKGROUND_OPACITY = "backgroundOpacity"
+        private const val KEY_SEARCH_BAR_POSITION = "searchBarPosition"
         private const val KEY_BACKGROUND_BLUR_STRENGTH = "backgroundBlurStrength"
 
         // Behavior Keys
@@ -149,6 +150,7 @@ class BackupRestoreManager(
             appearance.put(KEY_TRANSLUCENT_RESULTS, settingsRepository.translucentResultsEnabled.value)
             appearance.put(KEY_BACKGROUND_OPACITY, settingsRepository.backgroundOpacity.value.toDouble())
             appearance.put(KEY_BACKGROUND_BLUR_STRENGTH, settingsRepository.backgroundBlurStrength.value.toDouble())
+            appearance.put(KEY_SEARCH_BAR_POSITION, settingsRepository.searchBarPosition.value.name)
             providerSettings.put(KEY_APPEARANCE, appearance)
 
             // Behavior settings
@@ -427,6 +429,14 @@ class BackupRestoreManager(
                         settingsRepository.setBackgroundBlurStrength(
                             appearanceJson.optDouble(KEY_BACKGROUND_BLUR_STRENGTH, 0.5).toFloat(),
                         )
+                        appearanceJson.optString(KEY_SEARCH_BAR_POSITION)?.let { positionName ->
+                            try {
+                                val position = com.mrndstvndv.search.provider.settings.SearchBarPosition.valueOf(positionName)
+                                settingsRepository.setSearchBarPosition(position)
+                            } catch (e: IllegalArgumentException) {
+                                warnings.add("Invalid search bar position in backup")
+                            }
+                        }
                         settingsRestored++
                     } catch (e: Exception) {
                         warnings.add("Failed to restore appearance settings")

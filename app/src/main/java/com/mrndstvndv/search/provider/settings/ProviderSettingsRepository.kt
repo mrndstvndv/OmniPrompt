@@ -44,6 +44,7 @@ class ProviderSettingsRepository(
         private const val KEY_TERMUX = "termux"
         private const val KEY_SHOW_SETTINGS_ICON = "show_settings_icon" // Legacy
         private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
+        private const val KEY_SEARCH_BAR_POSITION = "search_bar_position"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -103,6 +104,9 @@ class ProviderSettingsRepository(
     private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.BELOW)
     val settingsIconPosition: StateFlow<SettingsIconPosition> = _settingsIconPosition
 
+    private val _searchBarPosition = MutableStateFlow(SearchBarPosition.TOP)
+    val searchBarPosition: StateFlow<SearchBarPosition> = _searchBarPosition
+
     init {
         preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
         // Load persisted settings off the main thread if scope provided
@@ -122,6 +126,7 @@ class ProviderSettingsRepository(
                 _contactsSettings.value = loadContactsSettings()
                 _termuxSettings.value = loadTermuxSettings()
                 _settingsIconPosition.value = loadSettingsIconPosition()
+                _searchBarPosition.value = loadSearchBarPosition()
             }
         } else {
             // Synchronous load (for Workers already on IO thread)
@@ -139,6 +144,7 @@ class ProviderSettingsRepository(
             _contactsSettings.value = loadContactsSettings()
             _termuxSettings.value = loadTermuxSettings()
             _settingsIconPosition.value = loadSettingsIconPosition()
+            _searchBarPosition.value = loadSearchBarPosition()
         }
     }
 
@@ -543,6 +549,16 @@ class ProviderSettingsRepository(
         }
 
         return SettingsIconPosition.BELOW
+    }
+
+    fun setSearchBarPosition(position: SearchBarPosition) {
+        preferences.edit { putString(KEY_SEARCH_BAR_POSITION, position.name) }
+        _searchBarPosition.value = position
+    }
+
+    private fun loadSearchBarPosition(): SearchBarPosition {
+        val positionName = preferences.getString(KEY_SEARCH_BAR_POSITION, null)
+        return SearchBarPosition.fromStorageValue(positionName)
     }
 }
 
