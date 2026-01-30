@@ -158,15 +158,18 @@ output_section() {
     fi
 }
 
-output_section "Features" "${features[@]}"
-output_section "Fixes" "${fixes[@]}"
-output_section "Updates" "${updates[@]}"
-output_section "UI Changes" "${ui_changes[@]}"
-output_section "Refactoring" "${refactoring[@]}"
-output_section "Performance" "${performance[@]}"
+output_section "Features" "${features[@]:-}"
+output_section "Fixes" "${fixes[@]:-}"
+output_section "Updates" "${updates[@]:-}"
+output_section "UI Changes" "${ui_changes[@]:-}"
+output_section "Refactoring" "${refactoring[@]:-}"
+output_section "Performance" "${performance[@]:-}"
 
 # If no changes found, add a note
+# Temporarily disable nounset to check array lengths safely
+set +u
 if [ ${#features[@]} -eq 0 ] && [ ${#fixes[@]} -eq 0 ] && [ ${#updates[@]} -eq 0 ] && \
    [ ${#ui_changes[@]} -eq 0 ] && [ ${#refactoring[@]} -eq 0 ] && [ ${#performance[@]} -eq 0 ]; then
     echo "*No notable changes in this release.*"
 fi
+set -u
