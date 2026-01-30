@@ -115,6 +115,12 @@ else
     PATCH=0
 fi
 
+# Check if there are any version-bumping commits
+HAS_VERSION_BUMP=false
+if [ "$HAS_BREAKING" = true ] || [ "$HAS_FEAT" = true ] || [ "$HAS_PATCH" = true ]; then
+    HAS_VERSION_BUMP=true
+fi
+
 # Apply version bump based on priority: breaking > feat > patch
 if [ "$HAS_BREAKING" = true ]; then
     MAJOR=$((MAJOR + 1))
@@ -123,13 +129,14 @@ if [ "$HAS_BREAKING" = true ]; then
 elif [ "$HAS_FEAT" = true ]; then
     MINOR=$((MINOR + 1))
     PATCH=0
-else
+elif [ "$HAS_PATCH" = true ]; then
     PATCH=$((PATCH + 1))
 fi
 
 NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
 
-# Output new version to stderr for workflow capture
+# Output whether we should skip release and the new version to stderr for workflow capture
+echo "skip_release=$([ "$HAS_VERSION_BUMP" = true ] && echo 'false' || echo 'true')" >&2
 echo "v${NEW_VERSION}" >&2
 
 # Output changelog to stdout

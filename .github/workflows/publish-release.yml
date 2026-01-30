@@ -20,6 +20,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Get Previous Release Tag
         id: previous_release
         env:
@@ -30,40 +35,45 @@ jobs:
           echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
           echo "Previous release tag: $PREVIOUS_TAG"
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Generate Changelog
         id: changelog
         run: |
           chmod +x .github/scripts/generate-changelog.sh
-          # Run script with previous tag and capture both stdout (changelog) and stderr (version)
-          CHANGELOG=$(.github/scripts/generate-changelog.sh "${{ steps.previous_release.outputs.previous_tag }}" 2>/tmp/new_version)
-          NEW_VERSION=$(cat /tmp/new_version)
+          # Run script with previous tag and capture both stdout (changelog) and stderr
+          # stderr contains: skip_release=true/false and the version
+          .github/scripts/generate-changelog.sh "${{ steps.previous_release.outputs.previous_tag }}" 2>/tmp/script_output > /tmp/changelog_output
+          
+          # Parse the script output
+          SKIP_RELEASE=$(grep "skip_release=" /tmp/script_output | cut -d= -f2)
+          NEW_VERSION=$(grep "^v" /tmp/script_output)
+          CHANGELOG=$(cat /tmp/changelog_output)
 
           # Output for subsequent steps
+          echo "skip_release=$SKIP_RELEASE" >> $GITHUB_OUTPUT
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
           # Display for debugging
+          echo "Skip release: $SKIP_RELEASE"
           echo "New version: $NEW_VERSION"
           echo "Changelog:"
           echo "$CHANGELOG"
 
       - name: Decode Keystore
+        if: steps.changelog.outputs.skip_release != 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
 
       - name: Install Determinate Nix
+        if: steps.changelog.outputs.skip_release != 'true'
         uses: DeterminateSystems/determinate-nix-action@v3
 
       - name: Build Signed Release APK
+        if: steps.changelog.outputs.skip_release != 'true'
         env:
           CI: true
           KEYSTORE_FILE: release.keystore
@@ -73,6 +83,7 @@ jobs:
         run: nix develop --command ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK with Version
+        if: steps.changelog.outputs.skip_release != 'true'
         run: |
           VERSION="${{ steps.changelog.outputs.new_version }}"
           for apk in app/build/outputs/apk/release/*.apk; do
@@ -83,6 +94,7 @@ jobs:
           done
 
       - name: Create Release
+        if: steps.changelog.outputs.skip_release != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.changelog.outputs.new_version }}
