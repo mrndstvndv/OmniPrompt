@@ -1,0 +1,85 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-release:
+    name: Build and Publish Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          chmod +x .github/scripts/generate-changelog.sh
+          # Run script and capture both stdout (changelog) and stderr (version)
+          CHANGELOG=$(.github/scripts/generate-changelog.sh 2>/tmp/new_version)
+          NEW_VERSION=$(cat /tmp/new_version)
+          
+          # Output for subsequent steps
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          # Display for debugging
+          echo "New version: $NEW_VERSION"
+          echo "Changelog:"
+          echo "$CHANGELOG"
+
+      - name: Decode Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Build Signed Release APK
+        env:
+          CI: true
+          KEYSTORE_FILE: release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: nix develop --command ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK with Version
+        run: |
+          VERSION="${{ steps.changelog.outputs.new_version }}"
+          for apk in app/build/outputs/apk/release/*.apk; do
+            if [ -f "$apk" ]; then
+              cp "$apk" "app/build/outputs/apk/release/search-${VERSION}.apk"
+              break
+            fi
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.new_version }}
+          name: Release ${{ steps.changelog.outputs.new_version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: app/build/outputs/apk/release/search-*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
