@@ -20,6 +20,16 @@ jobs:
       contents: write
 
     steps:
+      - name: Get Previous Release Tag
+        id: previous_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the latest release tag using gh CLI
+          PREVIOUS_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+          echo "Previous release tag: $PREVIOUS_TAG"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -29,16 +39,16 @@ jobs:
         id: changelog
         run: |
           chmod +x .github/scripts/generate-changelog.sh
-          # Run script and capture both stdout (changelog) and stderr (version)
-          CHANGELOG=$(.github/scripts/generate-changelog.sh 2>/tmp/new_version)
+          # Run script with previous tag and capture both stdout (changelog) and stderr (version)
+          CHANGELOG=$(.github/scripts/generate-changelog.sh "${{ steps.previous_release.outputs.previous_tag }}" 2>/tmp/new_version)
           NEW_VERSION=$(cat /tmp/new_version)
-          
+
           # Output for subsequent steps
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          
+
           # Display for debugging
           echo "New version: $NEW_VERSION"
           echo "Changelog:"
