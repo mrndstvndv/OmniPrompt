@@ -8,6 +8,7 @@ import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -18,6 +19,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -411,7 +415,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         if (searchBarPosition == SearchBarPosition.TOP) {
                             Spacer(Modifier.weight(spacerWeight))
-                        } else {
+                        } else if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
                             Spacer(Modifier.weight(bottomSpacerWeight))
                         }
 
@@ -459,102 +463,261 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                        if (searchBarPosition == SearchBarPosition.BOTTOM) {
+                            val density = LocalDensity.current
+                            val imeInsets = WindowInsets.ime
+                            val keyboardHeightPx = imeInsets.getBottom(density)
+                            val keyboardHeightDp = with(density) { keyboardHeightPx.toDp() }
 
-                        Column(
-                            modifier =
-                                if (searchBarPosition == SearchBarPosition.BOTTOM) {
-                                    Modifier.fillMaxWidth().imePadding()
-                                } else {
-                                    Modifier.fillMaxWidth()
-                                },
-                        ) {
-                            SearchField(
+                            BoxWithConstraints(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .focusRequester(focusRequester),
-                                value = textState.value,
-                                onValueChange = { textState.value = it },
-                                singleLine = true,
-                                placeholder = { Text("Search") },
-                                trailingIcon = {
-                                    if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                        IconButton(
-                                            modifier = Modifier.padding(end = 6.dp),
-                                            onClick = {
-                                                val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                startActivity(intent)
-                                            },
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Settings,
-                                                contentDescription = "Settings",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    }
-                                },
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                keyboardActions =
-                                    KeyboardActions(onDone = {
-                                        val primaryResult = providerResults.firstOrNull()
-                                        val handled = handleResultSelection(primaryResult)
-                                        if (!handled) {
-                                            val query = textState.value.text.trim()
-                                            if (query.isNotEmpty()) {
-                                                handleQuerySubmission(query)
+                                        .then(
+                                            if (!hasVisibleResults) {
+                                                Modifier.weight(1f)
+                                            } else {
+                                                Modifier
                                             }
-                                        }
-                                    }),
-                            )
-
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val shouldCenterAppList =
-                                appSearchSettings.centerAppList &&
-                                    settingsIconPosition != SettingsIconPosition.BELOW
-                            val showAppList = appSearchSettings.appListEnabled && !hasVisibleResults
-                            val appListEnterDuration = 250
-                            val appListExitDuration = 200
-                            motionAwareVisibility(
-                                visible = showAppList,
-                                modifier = Modifier.fillMaxWidth(),
-                                enter =
-                                    fadeIn(animationSpec = tween(durationMillis = appListEnterDuration)) +
-                                        expandVertically(
-                                            expandFrom = Alignment.Bottom,
-                                            animationSpec = tween(durationMillis = appListEnterDuration),
-                                        ),
-                                exit =
-                                    fadeOut(animationSpec = tween(durationMillis = appListExitDuration)) +
-                                        shrinkVertically(
-                                            shrinkTowards = Alignment.Bottom,
-                                            animationSpec = tween(durationMillis = appListExitDuration),
                                         ),
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = if (shouldCenterAppList) Arrangement.Center else Arrangement.End,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    when (appSearchSettings.appListType) {
-                                        AppListType.RECENT -> {
-                                            RecentAppsList(
-                                                repository = recentAppsRepository,
-                                                isReversed = appSearchSettings.reverseRecentAppsOrder,
-                                                shouldCenter = shouldCenterAppList,
-                                                modifier =
-                                                    Modifier
-                                                        .weight(1f)
-                                                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                                            )
-                                        }
+                                val containerHeight = maxHeight
+                                val searchBarHeight = 56.dp // Approximate height of search bar
+                                val appListHeight = if (appSearchSettings.appListEnabled && !hasVisibleResults) 64.dp else 0.dp
+                                val totalContentHeight = searchBarHeight + appListHeight + 10.dp // padding
 
-                                        AppListType.PINNED -> {
-                                            val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
-                                            if (pinnedApps.isNotEmpty()) {
-                                                AppListRow(
-                                                    apps = pinnedApps,
-                                                    isReversed = appSearchSettings.reversePinnedAppsOrder,
+                                // Calculate centering padding for "no results" state
+                                val centeringPadding = if (!hasVisibleResults) {
+                                    (containerHeight - totalContentHeight) / 2
+                                } else {
+                                    0.dp
+                                }
+
+                                // Calculate if centered content would overlap with keyboard
+                                val centeredBottomPosition = containerHeight / 2 + totalContentHeight / 2
+                                val keyboardTopPosition = containerHeight - keyboardHeightDp
+                                val shouldPushUp = centeredBottomPosition > keyboardTopPosition && keyboardHeightPx > 0
+
+                                // When there are results, always push up by keyboard height if keyboard is visible
+                                val needsKeyboardPadding = hasVisibleResults && keyboardHeightPx > 0
+
+                                // Animate the bottom padding for smooth keyboard transitions
+                                val targetPadding = when {
+                                    needsKeyboardPadding -> keyboardHeightDp
+                                    shouldPushUp -> keyboardHeightDp
+                                    !hasVisibleResults -> centeringPadding
+                                    else -> 0.dp
+                                }
+                                val animatedBottomPadding by animateDpAsState(
+                                    targetValue = targetPadding,
+                                    animationSpec = tween(durationMillis = 250),
+                                    label = "keyboardPadding"
+                                )
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = animatedBottomPadding),
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    SearchField(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .focusRequester(focusRequester),
+                                        value = textState.value,
+                                        onValueChange = { textState.value = it },
+                                        singleLine = true,
+                                        placeholder = { Text("Search") },
+                                        trailingIcon = {
+                                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                                                IconButton(
+                                                    modifier = Modifier.padding(end = 6.dp),
+                                                    onClick = {
+                                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                        startActivity(intent)
+                                                    },
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Settings,
+                                                        contentDescription = "Settings",
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardActions =
+                                            KeyboardActions(onDone = {
+                                                val primaryResult = providerResults.firstOrNull()
+                                                val handled = handleResultSelection(primaryResult)
+                                                if (!handled) {
+                                                    val query = textState.value.text.trim()
+                                                    if (query.isNotEmpty()) {
+                                                        handleQuerySubmission(query)
+                                                    }
+                                                }
+                                            }),
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    val shouldCenterAppList =
+                                        appSearchSettings.centerAppList &&
+                                            settingsIconPosition != SettingsIconPosition.BELOW
+                                    val showAppList = appSearchSettings.appListEnabled && !hasVisibleResults
+                                    val appListEnterDuration = 250
+                                    val appListExitDuration = 200
+                                    motionAwareVisibility(
+                                        visible = showAppList,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enter =
+                                            fadeIn(animationSpec = tween(durationMillis = appListEnterDuration)) +
+                                                expandVertically(
+                                                    expandFrom = Alignment.Bottom,
+                                                    animationSpec = tween(durationMillis = appListEnterDuration),
+                                                ),
+                                        exit =
+                                            fadeOut(animationSpec = tween(durationMillis = appListExitDuration)) +
+                                                shrinkVertically(
+                                                    shrinkTowards = Alignment.Bottom,
+                                                    animationSpec = tween(durationMillis = appListExitDuration),
+                                                ),
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = if (shouldCenterAppList) Arrangement.Center else Arrangement.End,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            when (appSearchSettings.appListType) {
+                                                AppListType.RECENT -> {
+                                                    RecentAppsList(
+                                                        repository = recentAppsRepository,
+                                                        isReversed = appSearchSettings.reverseRecentAppsOrder,
+                                                        shouldCenter = shouldCenterAppList,
+                                                        modifier =
+                                                            Modifier
+                                                                .weight(1f)
+                                                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                                    )
+                                                }
+
+                                                AppListType.PINNED -> {
+                                                    val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+                                                    if (pinnedApps.isNotEmpty()) {
+                                                        AppListRow(
+                                                            apps = pinnedApps,
+                                                            isReversed = appSearchSettings.reversePinnedAppsOrder,
+                                                            shouldCenter = shouldCenterAppList,
+                                                            modifier =
+                                                                Modifier
+                                                                    .weight(1f)
+                                                                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            if (settingsIconPosition == SettingsIconPosition.BELOW) {
+                                                VerticalDivider(
+                                                    modifier =
+                                                        Modifier
+                                                            .height(24.dp)
+                                                            .padding(horizontal = 4.dp),
+                                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                                )
+
+                                                IconButton(onClick = {
+                                                    val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                    startActivity(intent)
+                                                }) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Settings,
+                                                        contentDescription = "Settings",
+                                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
+                            }
+                        } else {
+                            Column(Modifier.fillMaxWidth()) {
+                                SearchField(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .focusRequester(focusRequester),
+                                    value = textState.value,
+                                    onValueChange = { textState.value = it },
+                                    singleLine = true,
+                                    placeholder = { Text("Search") },
+                                    trailingIcon = {
+                                        if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                                            IconButton(
+                                                modifier = Modifier.padding(end = 6.dp),
+                                                onClick = {
+                                                    val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                    startActivity(intent)
+                                                },
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Settings,
+                                                    contentDescription = "Settings",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                    },
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions =
+                                        KeyboardActions(onDone = {
+                                            val primaryResult = providerResults.firstOrNull()
+                                            val handled = handleResultSelection(primaryResult)
+                                            if (!handled) {
+                                                val query = textState.value.text.trim()
+                                                if (query.isNotEmpty()) {
+                                                    handleQuerySubmission(query)
+                                                }
+                                            }
+                                        }),
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val shouldCenterAppList =
+                                    appSearchSettings.centerAppList &&
+                                        settingsIconPosition != SettingsIconPosition.BELOW
+                                val showAppList = appSearchSettings.appListEnabled && !hasVisibleResults
+                                val appListEnterDuration = 250
+                                val appListExitDuration = 200
+                                motionAwareVisibility(
+                                    visible = showAppList,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enter =
+                                        fadeIn(animationSpec = tween(durationMillis = appListEnterDuration)) +
+                                            expandVertically(
+                                                expandFrom = Alignment.Bottom,
+                                                animationSpec = tween(durationMillis = appListEnterDuration),
+                                            ),
+                                    exit =
+                                        fadeOut(animationSpec = tween(durationMillis = appListExitDuration)) +
+                                            shrinkVertically(
+                                                shrinkTowards = Alignment.Bottom,
+                                                animationSpec = tween(durationMillis = appListExitDuration),
+                                            ),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = if (shouldCenterAppList) Arrangement.Center else Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        when (appSearchSettings.appListType) {
+                                            AppListType.RECENT -> {
+                                                RecentAppsList(
+                                                    repository = recentAppsRepository,
+                                                    isReversed = appSearchSettings.reverseRecentAppsOrder,
                                                     shouldCenter = shouldCenterAppList,
                                                     modifier =
                                                         Modifier
@@ -562,39 +725,52 @@ class MainActivity : ComponentActivity() {
                                                             .padding(horizontal = 4.dp, vertical = 4.dp),
                                                 )
                                             }
+
+                                            AppListType.PINNED -> {
+                                                val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+                                                if (pinnedApps.isNotEmpty()) {
+                                                    AppListRow(
+                                                        apps = pinnedApps,
+                                                        isReversed = appSearchSettings.reversePinnedAppsOrder,
+                                                        shouldCenter = shouldCenterAppList,
+                                                        modifier =
+                                                            Modifier
+                                                                .weight(1f)
+                                                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                                    )
+                                                }
+                                            }
                                         }
-                                    }
 
-                                    if (settingsIconPosition == SettingsIconPosition.BELOW) {
-                                        VerticalDivider(
-                                            modifier =
-                                                Modifier
-                                                    .height(24.dp)
-                                                    .padding(horizontal = 4.dp),
-                                            color = MaterialTheme.colorScheme.outlineVariant,
-                                        )
-
-                                        IconButton(onClick = {
-                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                            startActivity(intent)
-                                        }) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Settings,
-                                                contentDescription = "Settings",
-                                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        if (settingsIconPosition == SettingsIconPosition.BELOW) {
+                                            VerticalDivider(
+                                                modifier =
+                                                    Modifier
+                                                        .height(24.dp)
+                                                        .padding(horizontal = 4.dp),
+                                                color = MaterialTheme.colorScheme.outlineVariant,
                                             )
+
+                                            IconButton(onClick = {
+                                                val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                startActivity(intent)
+                                            }) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Settings,
+                                                    contentDescription = "Settings",
+                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                )
+                                            }
                                         }
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(6.dp))
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
-                        }
 
-                        if (searchBarPosition == SearchBarPosition.TOP && !hasVisibleResults) {
-                            Spacer(Modifier.weight(spacerWeight))
-                        }
+                            if (!hasVisibleResults) {
+                                Spacer(Modifier.weight(spacerWeight))
+                            }
 
-                        if (searchBarPosition == SearchBarPosition.TOP) {
                             val listEnterDuration = 250
                             val listExitDuration = 200
                             motionAwareVisibility(
@@ -748,7 +924,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(Unit) {
+            LaunchedEffect(searchBarPosition) {
                 focusRequester.requestFocus()
             }
         }
