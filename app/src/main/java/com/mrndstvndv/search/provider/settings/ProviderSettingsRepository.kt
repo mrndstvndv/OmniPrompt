@@ -1096,6 +1096,7 @@ data class AppSearchSettings(
     val reversePinnedAppsOrder: Boolean = false,
     val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
+    val hideAppListWhenResultsVisible: Boolean = true,
 ) {
     companion object {
         fun default(): AppSearchSettings =
@@ -1108,6 +1109,7 @@ data class AppSearchSettings(
                 reversePinnedAppsOrder = false,
                 centerAppList = false,
                 pinnedApps = emptyList(),
+                hideAppListWhenResultsVisible = true,
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
@@ -1128,6 +1130,7 @@ data class AppSearchSettings(
                 reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
                 centerAppList = json.optBoolean("centerAppList", false),
                 pinnedApps = pinnedApps,
+                hideAppListWhenResultsVisible = json.optBoolean("hideAppListWhenResultsVisible", true),
             )
         }
     }
@@ -1142,6 +1145,7 @@ data class AppSearchSettings(
             put("reversePinnedAppsOrder", reversePinnedAppsOrder)
             put("centerAppList", centerAppList)
             put("pinnedApps", JSONArray(pinnedApps))
+            put("hideAppListWhenResultsVisible", hideAppListWhenResultsVisible)
         }
 
     fun toJsonString(): String = toJson().toString()

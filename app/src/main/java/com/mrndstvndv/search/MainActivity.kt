@@ -565,7 +565,8 @@ class MainActivity : ComponentActivity() {
                                     val shouldCenterAppList =
                                         appSearchSettings.centerAppList &&
                                             settingsIconPosition != SettingsIconPosition.BELOW
-                                    val showAppList = appSearchSettings.appListEnabled && !hasVisibleResults
+                                val showAppList = appSearchSettings.appListEnabled &&
+                                    (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                     val appListEnterDuration = 250
                                     val appListExitDuration = 200
                                     motionAwareVisibility(
@@ -689,7 +690,8 @@ class MainActivity : ComponentActivity() {
                                 val shouldCenterAppList =
                                     appSearchSettings.centerAppList &&
                                         settingsIconPosition != SettingsIconPosition.BELOW
-                                val showAppList = appSearchSettings.appListEnabled && !hasVisibleResults
+                                val showAppList = appSearchSettings.appListEnabled &&
+                                    (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                 val appListEnterDuration = 250
                                 val appListExitDuration = 200
                                 motionAwareVisibility(

@@ -175,6 +175,25 @@ fun AppSearchSettingsScreen(
 
                         SettingsDivider()
 
+                        // Hide when results visible toggle
+                        Box(
+                            modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
+                        ) {
+                            SettingsSwitch(
+                                title = "Hide when results visible",
+                                subtitle = "Hide the app list when search results are displayed.",
+                                checked = appSearchSettings.hideAppListWhenResultsVisible,
+                                enabled = appListEnabled,
+                                onCheckedChange = {
+                                    settingsRepository.saveAppSearchSettings(
+                                        appSearchSettings.copy(hideAppListWhenResultsVisible = it),
+                                    )
+                                },
+                            )
+                        }
+
+                        SettingsDivider()
+
                         // Conditional options based on type
                         when (appSearchSettings.appListType) {
                             AppListType.RECENT -> {
