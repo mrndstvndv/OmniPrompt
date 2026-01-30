@@ -101,7 +101,7 @@ class ProviderSettingsRepository(
     private val _termuxSettings = MutableStateFlow(TermuxSettings.default())
     val termuxSettings: StateFlow<TermuxSettings> = _termuxSettings
 
-    private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.BELOW)
+    private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.INSIDE)
     val settingsIconPosition: StateFlow<SettingsIconPosition> = _settingsIconPosition
 
     private val _searchBarPosition = MutableStateFlow(SearchBarPosition.TOP)
@@ -534,21 +534,8 @@ class ProviderSettingsRepository(
     }
 
     private fun loadSettingsIconPosition(): SettingsIconPosition {
-        // Try loading new preference
         val positionName = preferences.getString(KEY_SETTINGS_ICON_POSITION, null)
-        if (positionName != null) {
-            return SettingsIconPosition.fromStorageValue(positionName)
-        }
-
-        // Fallback to legacy preference
-        if (preferences.contains(KEY_SHOW_SETTINGS_ICON)) {
-            val show = preferences.getBoolean(KEY_SHOW_SETTINGS_ICON, true)
-            // Migrate immediately? Or just return mapped value?
-            // Let's just return mapped value, migration happens on next save or implicit logic
-            return if (show) SettingsIconPosition.BELOW else SettingsIconPosition.OFF
-        }
-
-        return SettingsIconPosition.BELOW
+        return SettingsIconPosition.fromStorageValue(positionName)
     }
 
     fun setSearchBarPosition(position: SearchBarPosition) {

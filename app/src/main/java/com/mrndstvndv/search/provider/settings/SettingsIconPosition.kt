@@ -8,8 +8,8 @@ enum class SettingsIconPosition {
 
     companion object {
         fun fromStorageValue(value: String?): SettingsIconPosition {
-            if (value.isNullOrBlank()) return BELOW
-            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: BELOW
+            if (value.isNullOrBlank()) return INSIDE
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: INSIDE
         }
     }
 
