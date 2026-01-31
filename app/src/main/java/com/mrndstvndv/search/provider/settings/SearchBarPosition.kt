@@ -9,8 +9,8 @@ enum class SearchBarPosition {
 
     companion object {
         fun fromStorageValue(value: String?): SearchBarPosition {
-            if (value.isNullOrBlank()) return TOP
-            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: TOP
+            if (value.isNullOrBlank()) return BOTTOM
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: BOTTOM
         }
     }
 }

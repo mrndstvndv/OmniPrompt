@@ -104,7 +104,7 @@ class ProviderSettingsRepository(
     private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.INSIDE)
     val settingsIconPosition: StateFlow<SettingsIconPosition> = _settingsIconPosition
 
-    private val _searchBarPosition = MutableStateFlow(SearchBarPosition.TOP)
+    private val _searchBarPosition = MutableStateFlow(SearchBarPosition.BOTTOM)
     val searchBarPosition: StateFlow<SearchBarPosition> = _searchBarPosition
 
     init {
