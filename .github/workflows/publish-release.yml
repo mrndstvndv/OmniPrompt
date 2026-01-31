@@ -7,7 +7,7 @@ on:
       - master
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -61,6 +61,31 @@ jobs:
           echo "Changelog:"
           echo "$CHANGELOG"
 
+      - name: Update Version in gradle.properties
+        if: steps.changelog.outputs.skip_release != 'true'
+        run: |
+          # Get the new version from changelog step
+          NEW_VERSION="${{ steps.changelog.outputs.new_version }}"
+          # Remove 'v' prefix for gradle.properties
+          VERSION_NAME="${NEW_VERSION#v}"
+
+          # Get current version code and increment
+          CURRENT_VERSION_CODE=$(grep "^appVersionCode=" gradle.properties | cut -d= -f2)
+          NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+
+          echo "Updating version: name=$VERSION_NAME, code=$NEW_VERSION_CODE"
+
+          # Update gradle.properties atomically using awk
+          awk -v ver="$VERSION_NAME" -v code="$NEW_VERSION_CODE" '
+            /^appVersion=/ { $0="appVersion="ver }
+            /^appVersionCode=/ { $0="appVersionCode="code }
+            { print }
+          ' gradle.properties > gradle.properties.tmp && mv gradle.properties.tmp gradle.properties
+
+          # Validate both updates succeeded
+          grep -q "^appVersion=$VERSION_NAME$" gradle.properties || { echo "ERROR: Failed to update appVersion"; exit 1; }
+          grep -q "^appVersionCode=$NEW_VERSION_CODE$" gradle.properties || { echo "ERROR: Failed to update appVersionCode"; exit 1; }
+
       - name: Decode Keystore
         if: steps.changelog.outputs.skip_release != 'true'
         env:
@@ -105,3 +130,33 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and Push Version Update to Branches
+        if: steps.changelog.outputs.skip_release != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Get the new version from changelog step
+          NEW_VERSION="${{ steps.changelog.outputs.new_version }}"
+
+          # Get the new version code from gradle.properties (already updated in previous step)
+          NEW_VERSION_CODE=$(grep "^appVersionCode=" gradle.properties | cut -d= -f2)
+
+          # Stage, commit, and push to master atomically to prevent race condition
+          git add gradle.properties
+          git commit -m "chore: bump version to $NEW_VERSION (code $NEW_VERSION_CODE) [skip ci]"
+          git push origin master
+
+          # Fetch dev branch
+          git fetch origin dev
+
+          # Checkout dev and rebase onto master (which now has the version commit)
+          git checkout dev
+          git rebase master
+
+          # Push dev (force-with-lease to be safe)
+          git push origin dev --force-with-lease
