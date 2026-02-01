@@ -8,6 +8,7 @@ import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -45,6 +46,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -382,11 +384,28 @@ class MainActivity : ComponentActivity() {
 
             SearchTheme(motionPreferences = motionPreferences) {
                 val hasVisibleResults = shouldShowResults && providerResults.isNotEmpty()
-                val spacerWeight by rememberMotionAwareFloat(
-                    targetValue = if (hasVisibleResults) 0.01f else 1f,
-                    durationMillis = 300,
-                    label = "resultsSpacer",
-                )
+
+                // Single unit animation: search bar + app list animate together
+                val spacerAnimatable = remember { Animatable(if (hasVisibleResults) 0.01f else 1f) }
+                var prevHasVisibleResults by remember { mutableStateOf(hasVisibleResults) }
+
+                LaunchedEffect(hasVisibleResults) {
+                    val targetValue = if (hasVisibleResults) 0.01f else 1f
+                    // Going up (showing results): fast (300ms)
+                    // Going down (hiding results): slow (500ms)
+                    val durationMillis = if (hasVisibleResults) 300 else 500
+                    if (motionPreferences.animationsEnabled) {
+                        spacerAnimatable.animateTo(
+                            targetValue = targetValue,
+                            animationSpec = tween(durationMillis = durationMillis)
+                        )
+                    } else {
+                        spacerAnimatable.snapTo(targetValue)
+                    }
+                    prevHasVisibleResults = hasVisibleResults
+                }
+
+                val spacerWeight = spacerAnimatable.value
                 val bottomSpacerWeight = if (hasVisibleResults) 0.01f else 1f
 
                 val tintedPrimaryBackground =
@@ -567,7 +586,9 @@ class MainActivity : ComponentActivity() {
                                             settingsIconPosition != SettingsIconPosition.BELOW
                                 val showAppList = appSearchSettings.appListEnabled &&
                                     (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                    val appListEnterDuration = 250
+                                    // Single unit animation: match spacer animation durations
+                                    val isGoingDown = prevHasVisibleResults && !hasVisibleResults
+                                    val appListEnterDuration = if (isGoingDown) 500 else 300
                                     val appListExitDuration = 200
                                     motionAwareVisibility(
                                         visible = showAppList,
@@ -692,7 +713,9 @@ class MainActivity : ComponentActivity() {
                                         settingsIconPosition != SettingsIconPosition.BELOW
                                 val showAppList = appSearchSettings.appListEnabled &&
                                     (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                val appListEnterDuration = 250
+                                // Single unit animation: match spacer animation durations
+                                val isGoingDown = prevHasVisibleResults && !hasVisibleResults
+                                val appListEnterDuration = if (isGoingDown) 500 else 300
                                 val appListExitDuration = 200
                                 motionAwareVisibility(
                                     visible = showAppList,

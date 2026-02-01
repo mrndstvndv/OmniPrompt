@@ -3,6 +3,8 @@ package com.mrndstvndv.search.ui.components
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -21,10 +23,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -84,25 +89,60 @@ fun RecentAppsList(
                     horizontalArrangement = if (shouldCenter) Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally) else Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    displayApps.forEach { app ->
-                        if (app.icon != null) {
-                            Image(
-                                bitmap = app.icon.asImageBitmap(),
-                                contentDescription = app.label,
-                                modifier =
-                                    Modifier
-                                        .size(iconSizeDp)
-                                        .clip(CircleShape)
-                                        .clickable {
-                                            context.startActivity(app.launchIntent)
-                                            (context as ComponentActivity).finish()
-                                        },
+                    displayApps.forEachIndexed { index, app ->
+                        key(app.packageName) {
+                            AppIconItem(
+                                app = app,
+                                iconSizeDp = iconSizeDp,
+                                index = index,
+                                onClick = {
+                                    context.startActivity(app.launchIntent)
+                                    (context as ComponentActivity).finish()
+                                },
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Individual app icon with fade-in + scale animation.
+ */
+@Composable
+private fun AppIconItem(
+    app: RecentApp,
+    iconSizeDp: androidx.compose.ui.unit.Dp,
+    index: Int,
+    onClick: () -> Unit,
+) {
+    if (app.icon != null) {
+        // Staggered fade-in and scale animation
+        val animationDelay = (index * 30).coerceAtMost(150)
+        val alpha by animateFloatAsState(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 300, delayMillis = animationDelay),
+            label = "appIconAlpha_${app.packageName}"
+        )
+        val scale by animateFloatAsState(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 300, delayMillis = animationDelay),
+            label = "appIconScale_${app.packageName}"
+        )
+
+        Image(
+            bitmap = app.icon.asImageBitmap(),
+            contentDescription = app.label,
+            modifier =
+                Modifier
+                    .size(iconSizeDp)
+                    .clip(CircleShape)
+                    .alpha(alpha)
+                    .scale(scale)
+                    .clickable(onClick = onClick),
+        )
     }
 }
 
@@ -129,18 +169,15 @@ fun AppListRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp, if (shouldCenter) Alignment.CenterHorizontally else if (isReversed) Alignment.Start else Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        displayApps.forEach { app ->
-            if (app.icon != null) {
-                Image(
-                    bitmap = app.icon.asImageBitmap(),
-                    contentDescription = app.label,
-                    modifier =
-                        Modifier
-                            .size(iconSizeDp)
-                            .clip(CircleShape)
-                            .clickable {
-                                context.startActivity(app.launchIntent)
-                            },
+        displayApps.forEachIndexed { index, app ->
+            key(app.packageName) {
+                AppIconItem(
+                    app = app,
+                    iconSizeDp = iconSizeDp,
+                    index = index,
+                    onClick = {
+                        context.startActivity(app.launchIntent)
+                    },
                 )
             }
         }
