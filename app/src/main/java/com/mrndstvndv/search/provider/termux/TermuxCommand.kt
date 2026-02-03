@@ -17,10 +17,11 @@ data class TermuxCommand(
 ) {
     companion object {
         // Session action values per Termux RUN_COMMAND spec
-        const val SESSION_ACTION_NEW_AND_OPEN = 0 // Switch to new session and open Termux
-        const val SESSION_ACTION_NEW_NO_OPEN = 1 // Switch to new session but don't open
-        const val SESSION_ACTION_CURRENT_AND_OPEN = 2 // Keep current session and open Termux
-        const val SESSION_ACTION_CURRENT_NO_OPEN = 3 // Keep current session, don't open
+        // https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java
+        const val SESSION_ACTION_NEW_AND_OPEN = 0 // VALUE_EXTRA_SESSION_ACTION_SWITCH_TO_NEW_SESSION_AND_OPEN_ACTIVITY
+        const val SESSION_ACTION_CURRENT_AND_OPEN = 1 // VALUE_EXTRA_SESSION_ACTION_KEEP_CURRENT_SESSION_AND_OPEN_ACTIVITY
+        const val SESSION_ACTION_NEW_NO_OPEN = 2 // VALUE_EXTRA_SESSION_ACTION_SWITCH_TO_NEW_SESSION_AND_DONT_OPEN_ACTIVITY
+        const val SESSION_ACTION_CURRENT_NO_OPEN = 3 // VALUE_EXTRA_SESSION_ACTION_KEEP_CURRENT_SESSION_AND_DONT_OPEN_ACTIVITY
 
         fun fromJson(json: JSONObject?): TermuxCommand? {
             if (json == null) return null

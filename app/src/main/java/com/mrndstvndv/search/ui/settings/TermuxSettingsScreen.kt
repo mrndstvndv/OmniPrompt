@@ -695,21 +695,25 @@ private fun TermuxCommandDialogContent(
             SessionActionOption(
                 selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_AND_OPEN,
                 label = "New session, open Termux",
+                enabled = !runInBackground,
                 onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_AND_OPEN) },
-            )
-            SessionActionOption(
-                selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_NO_OPEN,
-                label = "New session, don't open",
-                onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_NO_OPEN) },
             )
             SessionActionOption(
                 selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN,
                 label = "Current session, open Termux",
+                enabled = !runInBackground,
                 onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN) },
+            )
+            SessionActionOption(
+                selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_NO_OPEN,
+                label = "New session, don't open",
+                enabled = !runInBackground,
+                onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_NO_OPEN) },
             )
             SessionActionOption(
                 selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN,
                 label = "Current session, don't open",
+                enabled = !runInBackground,
                 onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN) },
             )
         }
@@ -753,6 +757,7 @@ private fun TermuxCommandDialogContent(
 private fun SessionActionOption(
     selected: Boolean,
     label: String,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Row(
@@ -761,6 +766,7 @@ private fun SessionActionOption(
                 .fillMaxWidth()
                 .selectable(
                     selected = selected,
+                    enabled = enabled,
                     onClick = onClick,
                     role = Role.RadioButton,
                 ).padding(vertical = 8.dp),
@@ -768,12 +774,14 @@ private fun SessionActionOption(
     ) {
         RadioButton(
             selected = selected,
+            enabled = enabled,
             onClick = null,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
