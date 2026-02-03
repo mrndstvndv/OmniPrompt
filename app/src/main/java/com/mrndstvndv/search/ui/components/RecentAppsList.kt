@@ -53,6 +53,7 @@ fun RecentAppsList(
     isReversed: Boolean,
     modifier: Modifier = Modifier,
     shouldCenter: Boolean = false,
+    visible: Boolean = true,
 ) {
     val context = LocalContext.current
     val hasPermission = remember(repository) { repository.hasPermission() }
@@ -110,6 +111,7 @@ fun RecentAppsList(
                                     context.startActivity(app.launchIntent)
                                     (context as ComponentActivity).finish()
                                 },
+                                visible = visible,
                             )
                         }
                     }
@@ -128,17 +130,18 @@ fun AppIconItem(
     iconSizeDp: androidx.compose.ui.unit.Dp,
     index: Int,
     onClick: () -> Unit,
+    visible: Boolean = true,
 ) {
     if (app.icon != null) {
         // Staggered fade-in and scale animation
         val animationDelay = (index * 30).coerceAtMost(150)
         val alpha by animateFloatAsState(
-            targetValue = 1f,
+            targetValue = if (visible) 1f else 0f,
             animationSpec = tween(durationMillis = 300, delayMillis = animationDelay),
             label = "appIconAlpha_${app.packageName}"
         )
         val scale by animateFloatAsState(
-            targetValue = 1f,
+            targetValue = if (visible) 1f else 0f,
             animationSpec = tween(durationMillis = 300, delayMillis = animationDelay),
             label = "appIconScale_${app.packageName}"
         )
@@ -166,6 +169,7 @@ fun AppListRow(
     isReversed: Boolean,
     modifier: Modifier = Modifier,
     shouldCenter: Boolean = false,
+    visible: Boolean = true,
 ) {
     val context = LocalContext.current
     val displayApps = if (isReversed) apps else apps.asReversed()
@@ -189,6 +193,7 @@ fun AppListRow(
                     onClick = {
                         context.startActivity(app.launchIntent)
                     },
+                    visible = visible,
                 )
             }
         }
@@ -261,6 +266,7 @@ fun AppListSection(
     isReversed: Boolean,
     shouldCenter: Boolean,
     modifier: Modifier = Modifier,
+    visible: Boolean = true,
 ) {
     when (appListType) {
         AppListType.RECENT -> {
@@ -269,6 +275,7 @@ fun AppListSection(
                 isReversed = isReversed,
                 shouldCenter = shouldCenter,
                 modifier = modifier,
+                visible = visible,
             )
         }
 
@@ -280,6 +287,7 @@ fun AppListSection(
                     isReversed = isReversed,
                     shouldCenter = shouldCenter,
                     modifier = modifier,
+                    visible = visible,
                 )
             }
         }

@@ -419,8 +419,12 @@ class MainActivity : ComponentActivity() {
                     val targetValue = if (hasVisibleResults) 0.01f else 1f
                     // Going up (showing results): fast (300ms)
                     // Going down (hiding results): slow (500ms)
+                    // But when app list will appear (going down), snap spacer immediately
+                    val isGoingDown = prevHasVisibleResults && !hasVisibleResults
+                    val shouldSnap = isGoingDown && appSearchSettings.appListEnabled &&
+                        (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                     val durationMillis = if (hasVisibleResults) 300 else 500
-                    if (motionPreferences.animationsEnabled) {
+                    if (motionPreferences.animationsEnabled && !shouldSnap) {
                         spacerAnimatable.animateTo(
                             targetValue = targetValue,
                             animationSpec = tween(durationMillis = durationMillis)
@@ -640,6 +644,7 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .padding(horizontal = 4.dp, vertical = 4.dp),
+                                            visible = showAppList,
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -721,6 +726,7 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(horizontal = 4.dp, vertical = 4.dp),
+                                        visible = showAppList,
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
