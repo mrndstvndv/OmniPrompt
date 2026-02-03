@@ -20,7 +20,7 @@ import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Description
@@ -36,7 +36,7 @@ import java.io.File
 
 class FileSearchProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<FileSearchSettings>,
     private val repository: FileSearchRepository,
     private val thumbnailRepository: FileThumbnailRepository
 ) : Provider {
@@ -48,7 +48,7 @@ class FileSearchProvider(
 
     override fun canHandle(query: Query): Boolean {
         if (query.isBlank) return false
-        val settings = settingsRepository.fileSearchSettings.value
+        val settings = settingsRepository.value
         val hasRoots = settings.enabledRoots().isNotEmpty()
         val hasDownloads = settings.includeDownloads && hasDownloadsPermission()
         return hasRoots || hasDownloads
@@ -57,7 +57,7 @@ class FileSearchProvider(
     override suspend fun query(query: Query): List<ProviderResult> {
         val normalized = query.trimmedText
         if (normalized.isBlank()) return emptyList()
-        val settings = settingsRepository.fileSearchSettings.value
+        val settings = settingsRepository.value
         val thumbnailsEnabled = settings.loadThumbnails
         val potentialRoots = settings.enabledRoots().map { it.id }.toMutableList()
         if (settings.includeDownloads && hasDownloadsPermission()) {

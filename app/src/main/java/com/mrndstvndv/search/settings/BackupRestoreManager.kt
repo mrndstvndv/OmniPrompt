@@ -5,7 +5,14 @@ import android.net.Uri
 import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.ContactsSettings
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
+import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
+import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.termux.TermuxSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -123,6 +130,13 @@ class BackupRestoreManager(
      */
     suspend fun createBackup(
         settingsRepository: ProviderSettingsRepository,
+        webSearchSettingsRepo: SettingsRepository<WebSearchSettings>,
+        appSearchSettingsRepo: SettingsRepository<AppSearchSettings>,
+        textUtilitiesSettingsRepo: SettingsRepository<TextUtilitiesSettings>,
+        fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
+        systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
+        contactsSettingsRepo: SettingsRepository<ContactsSettings>,
+        termuxSettingsRepo: SettingsRepository<TermuxSettings>,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): JSONObject =
@@ -137,13 +151,13 @@ class BackupRestoreManager(
 
             // Provider Settings
             val providerSettings = JSONObject()
-            providerSettings.put(KEY_WEB_SEARCH, settingsRepository.webSearchSettings.value.toJson())
-            providerSettings.put(KEY_APP_SEARCH, settingsRepository.appSearchSettings.value.toJson())
-            providerSettings.put(KEY_TEXT_UTILITIES, settingsRepository.textUtilitiesSettings.value.toJson())
-            providerSettings.put(KEY_FILE_SEARCH, JSONObject(settingsRepository.fileSearchSettings.value.toJsonString()))
-            providerSettings.put(KEY_SYSTEM_SETTINGS, settingsRepository.systemSettingsSettings.value.toJson())
-            providerSettings.put(KEY_CONTACTS, settingsRepository.contactsSettings.value.toJson())
-            providerSettings.put(KEY_TERMUX, settingsRepository.termuxSettings.value.toJson())
+            providerSettings.put(KEY_WEB_SEARCH, webSearchSettingsRepo.value.toJson())
+            providerSettings.put(KEY_APP_SEARCH, appSearchSettingsRepo.value.toJson())
+            providerSettings.put(KEY_TEXT_UTILITIES, textUtilitiesSettingsRepo.value.toJson())
+            providerSettings.put(KEY_FILE_SEARCH, JSONObject(fileSearchSettingsRepo.value.toJsonString()))
+            providerSettings.put(KEY_SYSTEM_SETTINGS, systemSettingsSettingsRepo.value.toJson())
+            providerSettings.put(KEY_CONTACTS, contactsSettingsRepo.value.toJson())
+            providerSettings.put(KEY_TERMUX, termuxSettingsRepo.value.toJson())
 
             // Appearance settings
             val appearance = JSONObject()
@@ -310,6 +324,13 @@ class BackupRestoreManager(
     suspend fun restoreFromBackup(
         backupJson: JSONObject,
         settingsRepository: ProviderSettingsRepository,
+        webSearchSettingsRepo: SettingsRepository<WebSearchSettings>,
+        appSearchSettingsRepo: SettingsRepository<AppSearchSettings>,
+        textUtilitiesSettingsRepo: SettingsRepository<TextUtilitiesSettings>,
+        fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
+        systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
+        contactsSettingsRepo: SettingsRepository<ContactsSettings>,
+        termuxSettingsRepo: SettingsRepository<TermuxSettings>,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): RestoreResult =
@@ -324,11 +345,9 @@ class BackupRestoreManager(
                 // Restore Web Search Settings
                 providerSettings?.optJSONObject(KEY_WEB_SEARCH)?.let { webSearchJson ->
                     try {
-                        val settings =
-                            com.mrndstvndv.search.provider.settings.WebSearchSettings
-                                .fromJson(webSearchJson)
+                        val settings = WebSearchSettings.fromJson(webSearchJson)
                         if (settings != null) {
-                            settingsRepository.saveWebSearchSettings(settings)
+                            webSearchSettingsRepo.replace(settings)
                             settingsRestored++
                         }
                     } catch (e: Exception) {
@@ -339,11 +358,9 @@ class BackupRestoreManager(
                 // Restore App Search Settings
                 providerSettings?.optJSONObject(KEY_APP_SEARCH)?.let { appSearchJson ->
                     try {
-                        val settings =
-                            com.mrndstvndv.search.provider.settings.AppSearchSettings
-                                .fromJson(appSearchJson)
+                        val settings = AppSearchSettings.fromJson(appSearchJson)
                         if (settings != null) {
-                            settingsRepository.saveAppSearchSettings(settings)
+                            appSearchSettingsRepo.replace(settings)
                             settingsRestored++
                         }
                     } catch (e: Exception) {
@@ -354,30 +371,9 @@ class BackupRestoreManager(
                 // Restore Text Utilities Settings
                 providerSettings?.optJSONObject(KEY_TEXT_UTILITIES)?.let { textUtilsJson ->
                     try {
-                        val settings =
-                            com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
-                                .fromJson(textUtilsJson)
+                        val settings = TextUtilitiesSettings.fromJson(textUtilsJson)
                         if (settings != null) {
-                            // Restore openDecodedUrls
-                            settingsRepository.setOpenDecodedUrlsAutomatically(settings.openDecodedUrls)
-
-                            // Restore disabled utilities
-                            settings.disabledUtilities.forEach { utilityId ->
-                                settingsRepository.setUtilityEnabled(utilityId, false)
-                            }
-
-                            // Restore disabled keywords
-                            settings.disabledKeywords.forEach { (utilityId, keywords) ->
-                                keywords.forEach { keyword ->
-                                    settingsRepository.setKeywordEnabled(utilityId, keyword, false)
-                                }
-                            }
-
-                            // Restore utility default modes
-                            settings.utilityDefaultModes.forEach { (utilityId, mode) ->
-                                settingsRepository.setUtilityDefaultMode(utilityId, mode)
-                            }
-
+                            textUtilitiesSettingsRepo.replace(settings)
                             settingsRestored++
                         }
                     } catch (e: Exception) {
@@ -388,27 +384,12 @@ class BackupRestoreManager(
                 // Restore File Search Settings
                 providerSettings?.optJSONObject(KEY_FILE_SEARCH)?.let { fileSearchJson ->
                     try {
-                        val settings =
-                            com.mrndstvndv.search.provider.settings.FileSearchSettings
-                                .fromJson(fileSearchJson)
+                        val settings = FileSearchSettings.fromJson(fileSearchJson)
                         if (settings != null) {
-                            // Restore basic settings
-                            settingsRepository.setDownloadsIndexingEnabled(settings.includeDownloads)
-                            settingsRepository.setFileSearchThumbnailsEnabled(settings.loadThumbnails)
-                            settingsRepository.setFileSearchThumbnailCropMode(settings.thumbnailCropMode)
-                            settingsRepository.setFileSearchSortMode(settings.sortMode)
-                            settingsRepository.setFileSearchSortAscending(settings.sortAscending)
-                            settingsRepository.setFileSearchSyncInterval(settings.syncIntervalMinutes)
-                            settingsRepository.setFileSearchSyncOnAppOpen(settings.syncOnAppOpen)
-
-                            // Restore roots (they may need permission re-grant)
-                            var rootsNeedingPermission = 0
-                            settings.roots.forEach { root ->
-                                settingsRepository.addFileSearchRoot(root)
-                                rootsNeedingPermission++
-                            }
-                            if (rootsNeedingPermission > 0) {
-                                warnings.add("$rootsNeedingPermission file search folder(s) may need permission")
+                            fileSearchSettingsRepo.replace(settings)
+                            // Note: File roots may need permission re-grant
+                            if (settings.roots.isNotEmpty()) {
+                                warnings.add("${settings.roots.size} file search folder(s) may need permission")
                             }
                             settingsRestored++
                         }
@@ -417,7 +398,7 @@ class BackupRestoreManager(
                     }
                 }
 
-                // Restore Appearance Settings
+                // Restore Appearance Settings (still using old repository for global settings)
                 providerSettings?.optJSONObject(KEY_APPEARANCE)?.let { appearanceJson ->
                     try {
                         settingsRepository.setTranslucentResultsEnabled(
@@ -443,7 +424,7 @@ class BackupRestoreManager(
                     }
                 }
 
-                // Restore Behavior Settings
+                // Restore Behavior Settings (still using old repository for global settings)
                 providerSettings?.optJSONObject(KEY_BEHAVIOR)?.let { behaviorJson ->
                     try {
                         settingsRepository.setAnimationsEnabled(
@@ -461,11 +442,9 @@ class BackupRestoreManager(
                 // Restore System Settings
                 providerSettings?.optJSONObject(KEY_SYSTEM_SETTINGS)?.let { systemJson ->
                     try {
-                        val settings =
-                            com.mrndstvndv.search.provider.settings.SystemSettingsSettings
-                                .fromJson(systemJson)
+                        val settings = SystemSettingsSettings.fromJson(systemJson)
                         if (settings != null) {
-                            settingsRepository.saveSystemSettingsSettings(settings)
+                            systemSettingsSettingsRepo.replace(settings)
                             settingsRestored++
                         }
                     } catch (e: Exception) {
@@ -473,14 +452,12 @@ class BackupRestoreManager(
                     }
                 }
 
-// Restore Contacts Settings
+                // Restore Contacts Settings
                 providerSettings?.optJSONObject(KEY_CONTACTS)?.let { contactsJson ->
                     try {
-                        val settings =
-                            com.mrndstvndv.search.provider.settings.ContactsSettings
-                                .fromJson(contactsJson)
+                        val settings = ContactsSettings.fromJson(contactsJson)
                         if (settings != null) {
-                            settingsRepository.saveContactsSettings(settings)
+                            contactsSettingsRepo.replace(settings)
                             settingsRestored++
                         }
                     } catch (e: Exception) {
@@ -493,7 +470,7 @@ class BackupRestoreManager(
                     try {
                         val settings = TermuxSettings.fromJson(termuxJson)
                         if (settings != null) {
-                            settingsRepository.saveTermuxSettings(settings)
+                            termuxSettingsRepo.replace(settings)
                             settingsRestored++
                         }
                     } catch (e: Exception) {
@@ -501,7 +478,7 @@ class BackupRestoreManager(
                     }
                 }
 
-                // Restore Enabled Providers
+                // Restore Enabled Providers (still using old repository for global settings)
                 providerSettings?.optJSONObject(KEY_ENABLED_PROVIDERS)?.let { enabledJson ->
                     try {
                         val keys = enabledJson.keys()

@@ -1,6 +1,5 @@
 package com.mrndstvndv.search.provider.termux
 
-import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -50,36 +49,4 @@ data class TermuxCommand(
             put("runInBackground", runInBackground)
             put("sessionAction", sessionAction)
         }
-}
-
-/**
- * Settings container for the Termux provider.
- */
-data class TermuxSettings(
-    val commands: List<TermuxCommand>,
-) {
-    companion object {
-        fun default(): TermuxSettings = TermuxSettings(commands = emptyList())
-
-        fun fromJson(json: JSONObject?): TermuxSettings? {
-            if (json == null) return null
-            val commandsArray = json.optJSONArray("commands") ?: JSONArray()
-            val commands =
-                buildList {
-                    for (i in 0 until commandsArray.length()) {
-                        TermuxCommand.fromJson(commandsArray.optJSONObject(i))?.let { add(it) }
-                    }
-                }
-            return TermuxSettings(commands = commands)
-        }
-    }
-
-    fun toJson(): JSONObject =
-        JSONObject().apply {
-            val commandsArray = JSONArray()
-            commands.forEach { commandsArray.put(it.toJson()) }
-            put("commands", commandsArray)
-        }
-
-    fun toJsonString(): String = toJson().toString()
 }

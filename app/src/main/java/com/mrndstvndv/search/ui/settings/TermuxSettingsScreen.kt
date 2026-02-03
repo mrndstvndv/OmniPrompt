@@ -51,7 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxCommand
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
@@ -64,12 +64,12 @@ import java.util.UUID
 
 @Composable
 fun TermuxSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<TermuxSettings>,
     isTermuxInstalled: Boolean,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val termuxSettings by settingsRepository.termuxSettings.collectAsState()
+    val termuxSettings by repository.flow.collectAsState()
     var commands by remember { mutableStateOf(termuxSettings.commands) }
     var editingCommand by remember { mutableStateOf<Pair<Int, TermuxCommand>?>(null) }
     var isAddDialogOpen by remember { mutableStateOf(false) }
@@ -84,7 +84,7 @@ fun TermuxSettingsScreen(
     }
 
     fun saveSettings() {
-        settingsRepository.saveTermuxSettings(TermuxSettings(commands))
+        repository.replace(TermuxSettings(commands))
     }
 
     fun addCommand(command: TermuxCommand) {

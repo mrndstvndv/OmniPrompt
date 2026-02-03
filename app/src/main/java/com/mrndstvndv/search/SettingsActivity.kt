@@ -25,11 +25,25 @@ import androidx.lifecycle.lifecycleScope
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListRepository
+import com.mrndstvndv.search.provider.apps.createAppSearchSettingsRepository
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
+import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
 import com.mrndstvndv.search.provider.files.FileSearchRepository
+import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.ContactsSettings
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
+import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
+import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
+import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
+import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
+import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
+import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
 import com.mrndstvndv.search.settings.AssistantRoleManager
 import com.mrndstvndv.search.ui.settings.AliasesSettingsScreen
 import com.mrndstvndv.search.ui.settings.AppSearchSettingsScreen
@@ -83,6 +97,16 @@ class SettingsActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
             val aliasRepository = remember { AliasRepository(this@SettingsActivity, coroutineScope) }
             val settingsRepository = remember { ProviderSettingsRepository(this@SettingsActivity, coroutineScope) }
+
+            // Create new provider-specific settings repositories (auto-register for backup)
+            val webSearchSettingsRepo = remember { createWebSearchSettingsRepository(this@SettingsActivity) }
+            val appSearchSettingsRepo = remember { createAppSearchSettingsRepository(this@SettingsActivity) }
+            val textUtilitiesSettingsRepo = remember { createTextUtilitiesSettingsRepository(this@SettingsActivity) }
+            val fileSearchSettingsRepo = remember { createFileSearchSettingsRepository(this@SettingsActivity) }
+            val systemSettingsSettingsRepo = remember { createSystemSettingsSettingsRepository(this@SettingsActivity) }
+            val contactsSettingsRepo = remember { createContactsSettingsRepository(this@SettingsActivity) }
+            val termuxSettingsRepo = remember { createTermuxSettingsRepository(this@SettingsActivity) }
+
             val fileSearchRepository = remember { FileSearchRepository.getInstance(this@SettingsActivity) }
             val rankingRepository = remember { ProviderRankingRepository.getInstance(this@SettingsActivity, coroutineScope) }
             val contactsRepository = remember { ContactsRepository.getInstance(this@SettingsActivity) }
@@ -91,7 +115,7 @@ class SettingsActivity : ComponentActivity() {
             val appListRepository = remember { AppListRepository.getInstance(this@SettingsActivity, defaultAppIconSize) }
             val isDefaultAssistant by defaultAssistantState
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
-            val webSearchSettings by settingsRepository.webSearchSettings.collectAsState()
+            val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
 
             val initialScreen =
                 remember {
@@ -213,7 +237,7 @@ class SettingsActivity : ComponentActivity() {
                                 initialSettings = webSearchSettings,
                                 onBack = { currentScreen = Screen.Providers },
                                 onSave = { newSettings ->
-                                    settingsRepository.saveWebSearchSettings(newSettings)
+                                    webSearchSettingsRepo.replace(newSettings)
                                 },
                             )
                         }
@@ -221,7 +245,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.FileSearch -> {
                             BackHandler { currentScreen = Screen.Providers }
                             FileSearchSettingsScreen(
-                                settingsRepository = settingsRepository,
+                                repository = fileSearchSettingsRepo,
                                 fileSearchRepository = fileSearchRepository,
                                 onBack = { currentScreen = Screen.Providers },
                             )
@@ -230,7 +254,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.TextUtilities -> {
                             BackHandler { currentScreen = Screen.Providers }
                             TextUtilitiesSettingsScreen(
-                                settingsRepository = settingsRepository,
+                                repository = textUtilitiesSettingsRepo,
                                 onBack = { currentScreen = Screen.Providers },
                             )
                         }
@@ -238,7 +262,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.AppSearch -> {
                             BackHandler { currentScreen = Screen.Providers }
                             AppSearchSettingsScreen(
-                                settingsRepository = settingsRepository,
+                                repository = appSearchSettingsRepo,
                                 appListRepository = appListRepository,
                                 onBack = { currentScreen = Screen.Providers },
                             )
@@ -269,7 +293,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.SystemSettings -> {
                             BackHandler { currentScreen = Screen.Providers }
                             SystemSettingsScreen(
-                                settingsRepository = settingsRepository,
+                                repository = systemSettingsSettingsRepo,
                                 developerSettingsManager = developerSettingsManager,
                                 onBack = { currentScreen = Screen.Providers },
                             )
@@ -278,7 +302,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.ContactsSettings -> {
                             BackHandler { currentScreen = Screen.Providers }
                             ContactsSettingsScreen(
-                                settingsRepository = settingsRepository,
+                                repository = contactsSettingsRepo,
                                 contactsRepository = contactsRepository,
                                 onBack = { currentScreen = Screen.Providers },
                             )
@@ -288,6 +312,13 @@ class SettingsActivity : ComponentActivity() {
                             BackHandler { currentScreen = Screen.Home }
                             BackupRestoreSettingsScreen(
                                 settingsRepository = settingsRepository,
+                                webSearchSettingsRepo = webSearchSettingsRepo,
+                                appSearchSettingsRepo = appSearchSettingsRepo,
+                                textUtilitiesSettingsRepo = textUtilitiesSettingsRepo,
+                                fileSearchSettingsRepo = fileSearchSettingsRepo,
+                                systemSettingsSettingsRepo = systemSettingsSettingsRepo,
+                                contactsSettingsRepo = contactsSettingsRepo,
+                                termuxSettingsRepo = termuxSettingsRepo,
                                 rankingRepository = rankingRepository,
                                 aliasRepository = aliasRepository,
                                 onBack = { currentScreen = Screen.Home },
@@ -297,7 +328,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.TermuxSettings -> {
                             BackHandler { currentScreen = Screen.Providers }
                             TermuxSettingsScreen(
-                                settingsRepository = settingsRepository,
+                                repository = termuxSettingsRepo,
                                 isTermuxInstalled = TermuxProvider.isTermuxInstalled(this@SettingsActivity),
                                 onBack = { currentScreen = Screen.Providers },
                             )

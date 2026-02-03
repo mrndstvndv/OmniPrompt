@@ -6,11 +6,14 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.files.index.FileSearchDatabase
 import com.mrndstvndv.search.provider.files.index.IndexedDocumentDao
 import com.mrndstvndv.search.provider.files.index.IndexedDocumentEntity
+import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
 import com.mrndstvndv.search.provider.settings.FileSearchScanState
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -27,8 +30,8 @@ class FileSearchIndexWorker(
         if (rootId.isNullOrBlank() || rootUri.isNullOrBlank() || rootDisplayName.isNullOrBlank()) {
             return@withContext Result.failure()
         }
-        val settingsRepository = ProviderSettingsRepository(applicationContext)
-        settingsRepository.updateFileSearchScanState(rootId, FileSearchScanState.INDEXING)
+        val settingsRepository = createFileSearchSettingsRepository(applicationContext)
+        updateScanState(settingsRepository, rootId, FileSearchScanState.INDEXING)
         val parsedUri = Uri.parse(rootUri)
         val documentTree = when (parsedUri.scheme) {
             "file" -> {
@@ -61,7 +64,8 @@ class FileSearchIndexWorker(
                 rootId = rootId,
                 counter = counter
             )
-            settingsRepository.updateFileSearchScanState(
+            updateScanState(
+                settingsRepository = settingsRepository,
                 rootId = rootId,
                 state = FileSearchScanState.SUCCESS,
                 itemCount = counter.value,
@@ -69,7 +73,8 @@ class FileSearchIndexWorker(
             )
             Result.success(workDataOf(KEY_INDEXED_COUNT to counter.value))
         } catch (error: Exception) {
-            settingsRepository.updateFileSearchScanState(
+            updateScanState(
+                settingsRepository = settingsRepository,
                 rootId = rootId,
                 state = FileSearchScanState.ERROR,
                 errorMessage = error.message ?: "Unknown error"
@@ -86,7 +91,7 @@ class FileSearchIndexWorker(
         dao: IndexedDocumentDao,
         batch: MutableList<IndexedDocumentEntity>,
         counter: Counter,
-        settingsRepository: ProviderSettingsRepository
+        settingsRepository: SettingsRepository<FileSearchSettings>
     ) {
         if (isStopped || counter.value >= MAX_INDEXED_ITEMS) return
         val children = document.listFiles()
@@ -134,19 +139,39 @@ class FileSearchIndexWorker(
     private suspend fun flushBatch(
         dao: IndexedDocumentDao,
         batch: MutableList<IndexedDocumentEntity>,
-        settingsRepository: ProviderSettingsRepository,
+        settingsRepository: SettingsRepository<FileSearchSettings>,
         rootId: String,
         counter: Counter
     ) {
         if (batch.isEmpty()) return
         dao.insertAll(batch.toList())
-        settingsRepository.updateFileSearchScanState(
+        updateScanState(
+            settingsRepository = settingsRepository,
             rootId = rootId,
             state = FileSearchScanState.INDEXING,
             itemCount = counter.value,
             errorMessage = null
         )
         batch.clear()
+    }
+
+    private fun updateScanState(
+        settingsRepository: SettingsRepository<FileSearchSettings>,
+        rootId: String,
+        state: FileSearchScanState,
+        itemCount: Int = 0,
+        errorMessage: String? = null
+    ) {
+        settingsRepository.update { currentSettings ->
+            val currentMetadata = currentSettings.scanMetadata.toMutableMap()
+            currentMetadata[rootId] = FileSearchScanMetadata(
+                state = state,
+                indexedItemCount = itemCount,
+                updatedAtMillis = System.currentTimeMillis(),
+                errorMessage = errorMessage
+            )
+            currentSettings.copy(scanMetadata = currentMetadata)
+        }
     }
 
     private class Counter {

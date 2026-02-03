@@ -49,8 +49,16 @@ import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
+import com.mrndstvndv.search.provider.termux.TermuxSettings
+import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
+import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.settings.BackupRestoreManager
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -61,6 +69,13 @@ import org.json.JSONObject
 @Composable
 fun BackupRestoreSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
+    webSearchSettingsRepo: SettingsRepository<WebSearchSettings>,
+    appSearchSettingsRepo: SettingsRepository<AppSearchSettings>,
+    textUtilitiesSettingsRepo: SettingsRepository<TextUtilitiesSettings>,
+    fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
+    systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
+    contactsSettingsRepo: SettingsRepository<ContactsSettings>,
+    termuxSettingsRepo: SettingsRepository<TermuxSettings>,
     rankingRepository: ProviderRankingRepository,
     aliasRepository: AliasRepository,
     onBack: () -> Unit,
@@ -69,7 +84,7 @@ fun BackupRestoreSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val backupManager = remember { BackupRestoreManager(context) }
 
-    val fileSearchSettings by settingsRepository.fileSearchSettings.collectAsState()
+    val fileSearchSettings by fileSearchSettingsRepo.flow.collectAsState()
 
     // UI State
     var isExporting by remember { mutableStateOf(false) }
@@ -94,9 +109,16 @@ fun BackupRestoreSettingsScreen(
                 coroutineScope.launch {
                     val backupJson =
                         backupManager.createBackup(
-                            settingsRepository,
-                            rankingRepository,
-                            aliasRepository,
+                            settingsRepository = settingsRepository,
+                            webSearchSettingsRepo = webSearchSettingsRepo,
+                            appSearchSettingsRepo = appSearchSettingsRepo,
+                            textUtilitiesSettingsRepo = textUtilitiesSettingsRepo,
+                            fileSearchSettingsRepo = fileSearchSettingsRepo,
+                            systemSettingsSettingsRepo = systemSettingsSettingsRepo,
+                            contactsSettingsRepo = contactsSettingsRepo,
+                            termuxSettingsRepo = termuxSettingsRepo,
+                            rankingRepository = rankingRepository,
+                            aliasRepository = aliasRepository,
                         )
                     when (val result = backupManager.writeBackupToUri(uri, backupJson)) {
                         is BackupRestoreManager.BackupResult.Success -> {
@@ -157,12 +179,11 @@ fun BackupRestoreSettingsScreen(
                     context.contentResolver.takePersistableUriPermission(uri, takeFlags)
 
                     // Update the root with the new URI
-                    val currentRoot = fileSearchSettings.roots.find { it.id == pendingPermissionRootId }
-                    if (currentRoot != null) {
-                        // Remove old root and add new one with updated URI
-                        settingsRepository.removeFileSearchRoot(currentRoot.id)
-                        val newRoot = currentRoot.copy(uri = uri)
-                        settingsRepository.addFileSearchRoot(newRoot)
+                    fileSearchSettingsRepo.update { currentSettings ->
+                        val updatedRoots = currentSettings.roots.map { root ->
+                            if (root.id == pendingPermissionRootId) root.copy(uri = uri) else root
+                        }
+                        currentSettings.copy(roots = updatedRoots)
                     }
 
                     Toast.makeText(context, "Permission granted", Toast.LENGTH_SHORT).show()
@@ -190,10 +211,17 @@ fun BackupRestoreSettingsScreen(
                         when (
                             val result =
                                 backupManager.restoreFromBackup(
-                                    json,
-                                    settingsRepository,
-                                    rankingRepository,
-                                    aliasRepository,
+                                    backupJson = json,
+                                    settingsRepository = settingsRepository,
+                                    webSearchSettingsRepo = webSearchSettingsRepo,
+                                    appSearchSettingsRepo = appSearchSettingsRepo,
+                                    textUtilitiesSettingsRepo = textUtilitiesSettingsRepo,
+                                    fileSearchSettingsRepo = fileSearchSettingsRepo,
+                                    systemSettingsSettingsRepo = systemSettingsSettingsRepo,
+                                    contactsSettingsRepo = contactsSettingsRepo,
+                                    termuxSettingsRepo = termuxSettingsRepo,
+                                    rankingRepository = rankingRepository,
+                                    aliasRepository = aliasRepository,
                                 )
                         ) {
                             is BackupRestoreManager.RestoreResult.Success -> {

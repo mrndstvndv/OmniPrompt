@@ -12,6 +12,7 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +25,8 @@ import kotlinx.coroutines.withContext
  */
 class TermuxProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository,
+    private val globalSettingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<TermuxSettings>,
 ) : Provider {
     override val id: String = "termux"
     override val displayName: String = "Termux Commands"
@@ -35,7 +37,7 @@ class TermuxProvider(
 
     override fun canHandle(query: Query): Boolean {
         if (!isTermuxInstalled) return false
-        val isEnabled = settingsRepository.enabledProviders.value[id] ?: true
+        val isEnabled = globalSettingsRepository.enabledProviders.value[id] ?: true
         if (!isEnabled) return false
         val cleaned = query.trimmedText
         return cleaned.isNotBlank()
@@ -47,7 +49,7 @@ class TermuxProvider(
         val cleaned = query.trimmedText
         if (cleaned.isBlank()) return emptyList()
 
-        val settings = settingsRepository.termuxSettings.value
+        val settings = settingsRepository.value
         val commands = settings.commands
         if (commands.isEmpty()) return emptyList()
 

@@ -31,7 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.text.TextUtilityInfo
@@ -42,10 +43,10 @@ import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun TextUtilitiesSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<TextUtilitiesSettings>,
     onBack: () -> Unit,
 ) {
-    val textUtilitiesSettings by settingsRepository.textUtilitiesSettings.collectAsState()
+    val textUtilitiesSettings by repository.flow.collectAsState()
     val utilitiesInfo = remember { TextUtilitiesProvider.getUtilitiesInfo() }
 
     Box(
@@ -72,7 +73,7 @@ fun TextUtilitiesSettingsScreen(
                         title = "Open decoded URLs",
                         subtitle = "Launch web links instead of copying them when decoding.",
                         checked = textUtilitiesSettings.openDecodedUrls,
-                        onCheckedChange = { settingsRepository.setOpenDecodedUrlsAutomatically(it) },
+                        onCheckedChange = { enabled -> repository.update { settings -> settings.copy(openDecodedUrls = enabled) } },
                     )
                 }
             }
@@ -114,13 +115,32 @@ fun TextUtilitiesSettingsScreen(
                             enabledKeywords = enabledKeywords,
                             defaultMode = defaultMode,
                             onToggleUtility = { enabled ->
-                                settingsRepository.setUtilityEnabled(info.id, enabled)
+                                repository.update { settings ->
+                                    settings.copy(
+                                        disabledUtilities =
+                                            if (enabled) {
+                                                settings.disabledUtilities - info.id
+                                            } else {
+                                                settings.disabledUtilities + info.id
+                                            },
+                                    )
+                                }
                             },
                             onToggleKeyword = { keyword, enabled ->
-                                settingsRepository.setKeywordEnabled(info.id, keyword, enabled)
+                                repository.update { settings ->
+                                    val currentKeywords = settings.disabledKeywords[info.id] ?: emptySet()
+                                    val newKeywords = if (enabled) currentKeywords - keyword else currentKeywords + keyword
+                                    settings.copy(
+                                        disabledKeywords = settings.disabledKeywords + (info.id to newKeywords),
+                                    )
+                                }
                             },
                             onModeChange = { mode ->
-                                settingsRepository.setUtilityDefaultMode(info.id, mode)
+                                repository.update { settings ->
+                                    settings.copy(
+                                        utilityDefaultModes = settings.utilityDefaultModes + (info.id to mode),
+                                    )
+                                }
                             },
                         )
                     }

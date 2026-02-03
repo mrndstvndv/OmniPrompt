@@ -6,13 +6,14 @@ import android.os.Environment
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.mrndstvndv.search.provider.settings.FileSearchRoot
+import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
+import com.mrndstvndv.search.provider.settings.FileSearchScanState
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
+import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.files.index.FileSearchDatabase
 import com.mrndstvndv.search.provider.files.index.IndexedDocumentDao
 import com.mrndstvndv.search.provider.files.index.IndexedDocumentEntity
-import com.mrndstvndv.search.provider.settings.FileSearchRoot
-import com.mrndstvndv.search.provider.settings.FileSearchScanState
-import com.mrndstvndv.search.provider.settings.FileSearchSettings
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -33,8 +34,8 @@ class IncrementalFileSyncWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val dao = FileSearchDatabase.get(applicationContext).indexedDocumentDao()
-        val settingsRepository = ProviderSettingsRepository(applicationContext)
-        val settings = settingsRepository.fileSearchSettings.value
+        val settingsRepository = createFileSearchSettingsRepository(applicationContext)
+        val settings = settingsRepository.value
 
         // Get all enabled roots (including Downloads if enabled)
         val roots = getEnabledRoots(settings)
@@ -47,18 +48,20 @@ class IncrementalFileSyncWorker(
             roots.forEach { root ->
                 if (isStopped) return@withContext Result.retry()
                 val itemCount = syncRoot(root, dao)
-                
+
                 // Update scan metadata for this root to refresh "Updated xx ago"
-                settingsRepository.updateFileSearchScanState(
-                    rootId = root.id,
+                val currentMetadata = settingsRepository.value.scanMetadata.toMutableMap()
+                currentMetadata[root.id] = FileSearchScanMetadata(
                     state = FileSearchScanState.SUCCESS,
-                    itemCount = itemCount,
+                    indexedItemCount = itemCount,
+                    updatedAtMillis = System.currentTimeMillis(),
                     errorMessage = null
                 )
+                settingsRepository.update { it.copy(scanMetadata = currentMetadata) }
             }
 
             // Update last sync timestamp
-            settingsRepository.updateLastSyncTimestamp(System.currentTimeMillis())
+            settingsRepository.update { it.copy(lastSyncTimestamp = System.currentTimeMillis()) }
 
             Result.success()
         } catch (e: Exception) {

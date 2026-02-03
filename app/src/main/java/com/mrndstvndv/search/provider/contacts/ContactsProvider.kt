@@ -6,7 +6,9 @@ import androidx.compose.material.icons.outlined.Person
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,7 +17,8 @@ import kotlinx.coroutines.withContext
  * Provider for searching device contacts.
  */
 class ContactsProvider(
-    private val settingsRepository: ProviderSettingsRepository,
+    private val globalSettingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<ContactsSettings>,
     private val contactsRepository: ContactsRepository
 ) : Provider {
 
@@ -24,13 +27,13 @@ class ContactsProvider(
 
     override fun canHandle(query: Query): Boolean {
         // Only handle if provider is enabled and has permission
-        val isEnabled = settingsRepository.enabledProviders.value[id] ?: false
+        val isEnabled = globalSettingsRepository.enabledProviders.value[id] ?: false
         return isEnabled && contactsRepository.hasContactsPermission()
     }
 
     override suspend fun query(query: Query): List<ProviderResult> {
         val normalized = query.trimmedText
-        val settings = settingsRepository.contactsSettings.value
+        val settings = settingsRepository.value
         val includePhoneNumbers = settings.includePhoneNumbers
 
         val contacts = contactsRepository.loadContacts()

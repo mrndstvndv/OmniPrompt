@@ -44,19 +44,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.ContactsSettings
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun ContactsSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<ContactsSettings>,
     contactsRepository: ContactsRepository,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val contactsSettings by settingsRepository.contactsSettings.collectAsState()
+    val contactsSettings by repository.flow.collectAsState()
 
     // Permission states
     var hasContactsPermission by remember {
@@ -80,7 +81,7 @@ fun ContactsSettingsScreen(
         ) { permissions ->
             hasPhoneStatePermission = permissions.values.all { it }
             if (hasPhoneStatePermission) {
-                settingsRepository.setContactsShowSimNumbers(true)
+                repository.update { it.copy(showSimNumbers = true) }
             }
         }
 
@@ -113,7 +114,7 @@ fun ContactsSettingsScreen(
             item {
                 ContactsSettingsCard(
                     includePhoneNumbers = contactsSettings.includePhoneNumbers,
-                    onIncludePhoneNumbersChange = { settingsRepository.setContactsIncludePhoneNumbers(it) },
+                    onIncludePhoneNumbersChange = { enabled -> repository.update { it.copy(includePhoneNumbers = enabled) } },
                     showSimNumbers = contactsSettings.showSimNumbers,
                     hasPhoneStatePermission = hasPhoneStatePermission,
                     onShowSimNumbersChange = { enabled ->
@@ -130,7 +131,7 @@ fun ContactsSettingsScreen(
                                 }
                             phoneStatePermissionLauncher.launch(permissions)
                         } else {
-                            settingsRepository.setContactsShowSimNumbers(enabled)
+                            repository.update { it.copy(showSimNumbers = enabled) }
                         }
                     },
                 )

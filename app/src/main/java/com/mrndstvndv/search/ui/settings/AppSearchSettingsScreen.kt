@@ -58,7 +58,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.settings.AppListType
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.ScrimDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -69,11 +70,11 @@ import com.mrndstvndv.search.util.FuzzyMatcher
 
 @Composable
 fun AppSearchSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<AppSearchSettings>,
     appListRepository: AppListRepository,
     onBack: () -> Unit,
 ) {
-    val appSearchSettings by settingsRepository.appSearchSettings.collectAsState()
+    val appSearchSettings by repository.flow.collectAsState()
     var isAddAppDialogOpen by remember { mutableStateOf(false) }
 
     Box(
@@ -100,10 +101,8 @@ fun AppSearchSettingsScreen(
                         title = "Include package name",
                         subtitle = "Search apps by their package name (e.g. com.android.settings).",
                         checked = appSearchSettings.includePackageName,
-                        onCheckedChange = {
-                            settingsRepository.saveAppSearchSettings(
-                                appSearchSettings.copy(includePackageName = it),
-                            )
+                        onCheckedChange = { newValue ->
+                            repository.update { it.copy(includePackageName = newValue) }
                         },
                     )
                     SettingsDivider()
@@ -111,10 +110,8 @@ fun AppSearchSettingsScreen(
                         title = "AI Assistant queries",
                         subtitle = "Send queries directly to AI apps like Gemini using \"ask gemini <query>\".",
                         checked = appSearchSettings.aiAssistantQueriesEnabled,
-                        onCheckedChange = {
-                            settingsRepository.saveAppSearchSettings(
-                                appSearchSettings.copy(aiAssistantQueriesEnabled = it),
-                            )
+                        onCheckedChange = { newValue ->
+                            repository.update { it.copy(aiAssistantQueriesEnabled = newValue) }
                         },
                     )
                 }
@@ -134,10 +131,8 @@ fun AppSearchSettingsScreen(
                             title = "Show app list",
                             subtitle = "Display an app list on the home screen.",
                             checked = appListEnabled,
-                            onCheckedChange = {
-                                settingsRepository.saveAppSearchSettings(
-                                    appSearchSettings.copy(appListEnabled = it),
-                                )
+                            onCheckedChange = { newValue ->
+                                repository.update { it.copy(appListEnabled = newValue) }
                             },
                         )
 
@@ -147,10 +142,8 @@ fun AppSearchSettingsScreen(
                         AppListTypeChooser(
                             selectedType = appSearchSettings.appListType,
                             enabled = appListEnabled,
-                            onTypeSelected = { type ->
-                                settingsRepository.saveAppSearchSettings(
-                                    appSearchSettings.copy(appListType = type),
-                                )
+                            onTypeSelected = { newType ->
+                                repository.update { it.copy(appListType = newType) }
                             },
                         )
 
@@ -165,10 +158,8 @@ fun AppSearchSettingsScreen(
                                 subtitle = "Only works when the settings icon is hidden or inside the search bar.",
                                 checked = appSearchSettings.centerAppList,
                                 enabled = appListEnabled,
-                                onCheckedChange = {
-                                    settingsRepository.saveAppSearchSettings(
-                                        appSearchSettings.copy(centerAppList = it),
-                                    )
+                                onCheckedChange = { newValue ->
+                                    repository.update { it.copy(centerAppList = newValue) }
                                 },
                             )
                         }
@@ -184,10 +175,8 @@ fun AppSearchSettingsScreen(
                                 subtitle = "Hide the app list when search results are displayed.",
                                 checked = appSearchSettings.hideAppListWhenResultsVisible,
                                 enabled = appListEnabled,
-                                onCheckedChange = {
-                                    settingsRepository.saveAppSearchSettings(
-                                        appSearchSettings.copy(hideAppListWhenResultsVisible = it),
-                                    )
+                                onCheckedChange = { newValue ->
+                                    repository.update { it.copy(hideAppListWhenResultsVisible = newValue) }
                                 },
                             )
                         }
@@ -205,10 +194,8 @@ fun AppSearchSettingsScreen(
                                         subtitle = "Place the most recently used app on the right side.",
                                         checked = appSearchSettings.reverseRecentAppsOrder,
                                         enabled = appListEnabled,
-                                        onCheckedChange = {
-                                            settingsRepository.saveAppSearchSettings(
-                                                appSearchSettings.copy(reverseRecentAppsOrder = it),
-                                            )
+                                        onCheckedChange = { newValue ->
+                                            repository.update { it.copy(reverseRecentAppsOrder = newValue) }
                                         },
                                     )
                                 }
@@ -223,10 +210,8 @@ fun AppSearchSettingsScreen(
                                         subtitle = "Display the first pinned app on the right side.",
                                         checked = appSearchSettings.reversePinnedAppsOrder,
                                         enabled = appListEnabled,
-                                        onCheckedChange = {
-                                            settingsRepository.saveAppSearchSettings(
-                                                appSearchSettings.copy(reversePinnedAppsOrder = it),
-                                            )
+                                        onCheckedChange = { newValue ->
+                                            repository.update { it.copy(reversePinnedAppsOrder = newValue) }
                                         },
                                     )
                                 }
@@ -241,9 +226,35 @@ fun AppSearchSettingsScreen(
                                     appListRepository = appListRepository,
                                     pinnedApps = appSearchSettings.pinnedApps,
                                     enabled = appListEnabled,
-                                    onMoveUp = { packageName -> settingsRepository.movePinnedAppUp(packageName) },
-                                    onMoveDown = { packageName -> settingsRepository.movePinnedAppDown(packageName) },
-                                    onRemove = { packageName -> settingsRepository.removePinnedApp(packageName) },
+                                    onMoveUp = { packageName ->
+                                        repository.update {
+                                            val currentList = it.pinnedApps.toMutableList()
+                                            val index = currentList.indexOf(packageName)
+                                            if (index > 0) {
+                                                val temp = currentList[index]
+                                                currentList[index] = currentList[index - 1]
+                                                currentList[index - 1] = temp
+                                                it.copy(pinnedApps = currentList)
+                                            } else {
+                                                it
+                                            }
+                                        }
+                                    },
+                                    onMoveDown = { packageName ->
+                                        repository.update {
+                                            val currentList = it.pinnedApps.toMutableList()
+                                            val index = currentList.indexOf(packageName)
+                                            if (index >= 0 && index < currentList.size - 1) {
+                                                val temp = currentList[index]
+                                                currentList[index] = currentList[index + 1]
+                                                currentList[index + 1] = temp
+                                                it.copy(pinnedApps = currentList)
+                                            } else {
+                                                it
+                                            }
+                                        }
+                                    },
+                                    onRemove = { packageName -> repository.update { it.copy(pinnedApps = it.pinnedApps - packageName) } },
                                     onAddClick = { isAddAppDialogOpen = true },
                                 )
                             }
@@ -260,7 +271,7 @@ fun AppSearchSettingsScreen(
             existingPinnedApps = appSearchSettings.pinnedApps,
             onDismiss = { isAddAppDialogOpen = false },
             onAddApp = { packageName ->
-                settingsRepository.addPinnedApp(packageName)
+                repository.update { it.copy(pinnedApps = it.pinnedApps + packageName) }
                 isAddAppDialogOpen = false
             },
         )

@@ -11,10 +11,9 @@ import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.Quicklink
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
-import com.mrndstvndv.search.provider.settings.WebSearchSite
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +22,7 @@ import kotlinx.coroutines.withContext
 // TODO: the query should be empty if a whitespace between the trigger and query is not yet made. the behavior right now is that the searchitem searches for the trigger if a query is not yet made
 class WebSearchProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<WebSearchSettings>,
 ) : Provider {
     override val id: String = "web-search"
     override val displayName: String = "Web Search"
@@ -38,7 +37,7 @@ class WebSearchProvider(
         val cleaned = query.trimmedText
         if (cleaned.isBlank()) return emptyList()
 
-        val settings = settingsRepository.webSearchSettings.value
+        val settings = settingsRepository.value
 
         // 1. Match quicklinks first (prioritized)
         val quicklinkResults = matchQuicklinks(cleaned, settings.quicklinks)

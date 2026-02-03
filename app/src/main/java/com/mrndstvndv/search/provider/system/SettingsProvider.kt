@@ -11,6 +11,8 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,7 +21,8 @@ import kotlinx.coroutines.withContext
 
 class SettingsProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository,
+    private val globalSettingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<SystemSettingsSettings>,
     private val developerSettingsManager: DeveloperSettingsManager
 ) : Provider {
 
@@ -141,7 +144,7 @@ class SettingsProvider(
     override fun canHandle(query: Query): Boolean = true
 
     override suspend fun query(query: Query): List<ProviderResult> {
-        val enabledProviders = settingsRepository.enabledProviders.value
+        val enabledProviders = globalSettingsRepository.enabledProviders.value
         if (enabledProviders[id] == false) return emptyList()
 
         val normalized = query.trimmedText
@@ -151,7 +154,7 @@ class SettingsProvider(
         val results = mutableListOf<ProviderResult>()
 
         // Add developer toggle result if feature is enabled and query matches
-        val systemSettings = settingsRepository.systemSettingsSettings.value
+        val systemSettings = settingsRepository.value
         if (systemSettings.developerToggleEnabled) {
             val matchesDeveloperToggle = developerToggleKeywords.any { keyword ->
                 keyword.contains(normalized, ignoreCase = true) || 

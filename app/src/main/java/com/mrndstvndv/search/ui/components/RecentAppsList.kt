@@ -5,6 +5,10 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -12,14 +16,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,8 +41,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentApp
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
+import com.mrndstvndv.search.provider.settings.AppListType
+import com.mrndstvndv.search.ui.theme.motionAwareVisibility
 
 @Composable
 fun RecentAppsList(
@@ -112,7 +123,7 @@ fun RecentAppsList(
  * Individual app icon with fade-in + scale animation.
  */
 @Composable
-private fun AppIconItem(
+fun AppIconItem(
     app: RecentApp,
     iconSizeDp: androidx.compose.ui.unit.Dp,
     index: Int,
@@ -178,6 +189,97 @@ fun AppListRow(
                     onClick = {
                         context.startActivity(app.launchIntent)
                     },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Container for app list with visibility animation and optional settings icon.
+ */
+@Composable
+fun AppListContainer(
+    visible: Boolean,
+    enterDuration: Int,
+    exitDuration: Int,
+    shouldCenter: Boolean,
+    showSettingsIcon: Boolean,
+    onSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    motionAwareVisibility(
+        visible = visible,
+        modifier = modifier.fillMaxWidth(),
+        enter = fadeIn(animationSpec = tween(durationMillis = enterDuration)) +
+            expandVertically(
+                expandFrom = Alignment.Bottom,
+                animationSpec = tween(durationMillis = enterDuration),
+            ),
+        exit = fadeOut(animationSpec = tween(durationMillis = exitDuration)) +
+            shrinkVertically(
+                shrinkTowards = Alignment.Bottom,
+                animationSpec = tween(durationMillis = exitDuration),
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = if (shouldCenter) Arrangement.Center else Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            content()
+
+            if (showSettingsIcon) {
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(24.dp)
+                        .padding(horizontal = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Unified app list section that handles both Recent and Pinned apps with animations.
+ */
+@Composable
+fun AppListSection(
+    appListType: AppListType,
+    recentAppsRepository: RecentAppsRepository,
+    pinnedAppsRepository: PinnedAppsRepository,
+    isReversed: Boolean,
+    shouldCenter: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    when (appListType) {
+        AppListType.RECENT -> {
+            RecentAppsList(
+                repository = recentAppsRepository,
+                isReversed = isReversed,
+                shouldCenter = shouldCenter,
+                modifier = modifier,
+            )
+        }
+
+        AppListType.PINNED -> {
+            val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+            if (pinnedApps.isNotEmpty()) {
+                AppListRow(
+                    apps = pinnedApps,
+                    isReversed = isReversed,
+                    shouldCenter = shouldCenter,
+                    modifier = modifier,
                 )
             }
         }

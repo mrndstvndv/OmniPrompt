@@ -11,7 +11,7 @@ import androidx.core.net.toUri
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +20,7 @@ import kotlin.math.min
 
 class TextUtilitiesProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<TextUtilitiesSettings>,
 ) : Provider {
     override val id: String = "text-utilities"
     override val displayName: String = "Text Utilities"
@@ -33,7 +33,7 @@ class TextUtilitiesProvider(
         if (payload == null) {
             return listOf(buildSuggestionResult(parsed))
         }
-        val textUtilitiesSettings = settingsRepository.textUtilitiesSettings.value
+        val textUtilitiesSettings = settingsRepository.value
         return when (val outcome = parsed.utility.transform(parsed.mode, parsed.payload)) {
             is TransformOutcome.Success -> listOf(buildSuccessResult(parsed, outcome, textUtilitiesSettings))
             is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(parsed, outcome))
@@ -141,7 +141,7 @@ class TextUtilitiesProvider(
         var remainder = if (firstSpaceIndex == -1) "" else trimmed.substring(firstSpaceIndex).trimStart()
 
         // Get per-utility default mode from settings, fallback to utility's built-in default
-        val settings = settingsRepository.textUtilitiesSettings.value
+        val settings = settingsRepository.value
         val savedMode = settings.utilityDefaultModes[utilityMatch.utility.id]
         var mode =
             if (savedMode != null) {
@@ -181,7 +181,7 @@ class TextUtilitiesProvider(
     private fun matchUtility(token: String): UtilityMatch? {
         val normalized = token.lowercase()
         if (normalized.isBlank()) return null
-        val settings = settingsRepository.textUtilitiesSettings.value
+        val settings = settingsRepository.value
 
         for (utility in utilities) {
             // Skip disabled utilities

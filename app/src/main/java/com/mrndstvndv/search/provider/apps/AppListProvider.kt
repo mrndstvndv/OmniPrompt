@@ -10,15 +10,15 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.apps.models.AppInfo
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
-import com.mrndstvndv.search.util.loadAppIconBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class AppListProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: ProviderSettingsRepository,
+    private val settingsRepository: SettingsRepository<AppSearchSettings>,
     private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "app-list"
@@ -30,7 +30,7 @@ class AppListProvider(
 
     override suspend fun query(query: Query): List<ProviderResult> {
         val normalized = query.trimmedText
-        val settings = settingsRepository.appSearchSettings.value
+        val settings = settingsRepository.value
         val includePackageName = settings.includePackageName
         val aiEnabled = settings.aiAssistantQueriesEnabled
 

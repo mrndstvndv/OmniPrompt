@@ -36,7 +36,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -44,11 +45,11 @@ import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun SystemSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<SystemSettingsSettings>,
     developerSettingsManager: DeveloperSettingsManager,
     onBack: () -> Unit,
 ) {
-    val systemSettings by settingsRepository.systemSettingsSettings.collectAsState()
+    val systemSettings by repository.flow.collectAsState()
     val permissionStatus by developerSettingsManager.permissionStatus.collectAsState()
 
     // Register/unregister Shizuku listeners based on feature toggle
@@ -90,7 +91,7 @@ fun SystemSettingsScreen(
                     subtitle = "Enable toggling developer options from search results",
                     checked = systemSettings.developerToggleEnabled,
                     onCheckedChange = { enabled ->
-                        settingsRepository.setDeveloperToggleEnabled(enabled)
+                        repository.update { it.copy(developerToggleEnabled = enabled) }
                         if (enabled) {
                             developerSettingsManager.registerListeners()
                             developerSettingsManager.refreshStatus()

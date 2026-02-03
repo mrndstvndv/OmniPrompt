@@ -5,10 +5,8 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Environment
 import androidx.core.content.edit
-import com.mrndstvndv.search.provider.termux.TermuxSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -29,20 +27,12 @@ class ProviderSettingsRepository(
 ) {
     companion object {
         private const val PREF_NAME = "provider_settings"
-        private const val KEY_WEB_SEARCH = "web_search"
-        private const val KEY_APP_SEARCH = "app_search"
         private const val KEY_TRANSLUCENT_RESULTS = "translucent_results"
         private const val KEY_BACKGROUND_OPACITY = "background_opacity"
         private const val KEY_BACKGROUND_BLUR_STRENGTH = "background_blur_strength"
         private const val KEY_ACTIVITY_INDICATOR_DELAY_MS = "activity_indicator_delay_ms"
         private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
-        private const val KEY_TEXT_UTILITIES = "text_utilities"
-        private const val KEY_FILE_SEARCH = "file_search"
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
-        private const val KEY_SYSTEM_SETTINGS = "system_settings"
-        private const val KEY_CONTACTS = "contacts"
-        private const val KEY_TERMUX = "termux"
-        private const val KEY_SHOW_SETTINGS_ICON = "show_settings_icon" // Legacy
         private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
         private const val KEY_SEARCH_BAR_POSITION = "search_bar_position"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
@@ -53,20 +43,6 @@ class ProviderSettingsRepository(
     }
 
     private val preferences: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    private val preferenceListener =
-        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            when (key) {
-                KEY_FILE_SEARCH -> _fileSearchSettings.value = loadFileSearchSettings()
-                KEY_APP_SEARCH -> _appSearchSettings.value = loadAppSearchSettings()
-            }
-        }
-
-    // Initialize with defaults; actual values loaded async in init block
-    private val _webSearchSettings = MutableStateFlow(WebSearchSettings.default())
-    val webSearchSettings: StateFlow<WebSearchSettings> = _webSearchSettings
-
-    private val _appSearchSettings = MutableStateFlow(AppSearchSettings.default())
-    val appSearchSettings: StateFlow<AppSearchSettings> = _appSearchSettings
 
     private val _translucentResultsEnabled = MutableStateFlow(true)
     val translucentResultsEnabled: StateFlow<Boolean> = _translucentResultsEnabled
@@ -83,23 +59,8 @@ class ProviderSettingsRepository(
     private val _motionPreferences = MutableStateFlow(MotionPreferences(animationsEnabled = DEFAULT_ANIMATIONS_ENABLED))
     val motionPreferences: StateFlow<MotionPreferences> = _motionPreferences
 
-    private val _textUtilitiesSettings = MutableStateFlow(TextUtilitiesSettings.default())
-    val textUtilitiesSettings: StateFlow<TextUtilitiesSettings> = _textUtilitiesSettings
-
-    private val _fileSearchSettings = MutableStateFlow(FileSearchSettings.empty())
-    val fileSearchSettings: StateFlow<FileSearchSettings> = _fileSearchSettings
-
     private val _enabledProviders = MutableStateFlow(emptyMap<String, Boolean>())
     val enabledProviders: StateFlow<Map<String, Boolean>> = _enabledProviders
-
-    private val _systemSettingsSettings = MutableStateFlow(SystemSettingsSettings.default())
-    val systemSettingsSettings: StateFlow<SystemSettingsSettings> = _systemSettingsSettings
-
-    private val _contactsSettings = MutableStateFlow(ContactsSettings.default())
-    val contactsSettings: StateFlow<ContactsSettings> = _contactsSettings
-
-    private val _termuxSettings = MutableStateFlow(TermuxSettings.default())
-    val termuxSettings: StateFlow<TermuxSettings> = _termuxSettings
 
     private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.INSIDE)
     val settingsIconPosition: StateFlow<SettingsIconPosition> = _settingsIconPosition
@@ -108,88 +69,27 @@ class ProviderSettingsRepository(
     val searchBarPosition: StateFlow<SearchBarPosition> = _searchBarPosition
 
     init {
-        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
-        // Load persisted settings off the main thread if scope provided
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
-                _webSearchSettings.value = loadWebSearchSettings()
-                _appSearchSettings.value = loadAppSearchSettings()
                 _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
                 _backgroundOpacity.value = loadBackgroundOpacity()
                 _backgroundBlurStrength.value = loadBackgroundBlurStrength()
                 _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
                 _motionPreferences.value = loadMotionPreferences()
-                _textUtilitiesSettings.value = loadTextUtilitiesSettings()
-                _fileSearchSettings.value = loadFileSearchSettings()
                 _enabledProviders.value = loadEnabledProviders()
-                _systemSettingsSettings.value = loadSystemSettingsSettings()
-                _contactsSettings.value = loadContactsSettings()
-                _termuxSettings.value = loadTermuxSettings()
                 _settingsIconPosition.value = loadSettingsIconPosition()
                 _searchBarPosition.value = loadSearchBarPosition()
             }
         } else {
-            // Synchronous load (for Workers already on IO thread)
-            _webSearchSettings.value = loadWebSearchSettings()
-            _appSearchSettings.value = loadAppSearchSettings()
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
             _backgroundOpacity.value = loadBackgroundOpacity()
             _backgroundBlurStrength.value = loadBackgroundBlurStrength()
             _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
             _motionPreferences.value = loadMotionPreferences()
-            _textUtilitiesSettings.value = loadTextUtilitiesSettings()
-            _fileSearchSettings.value = loadFileSearchSettings()
             _enabledProviders.value = loadEnabledProviders()
-            _systemSettingsSettings.value = loadSystemSettingsSettings()
-            _contactsSettings.value = loadContactsSettings()
-            _termuxSettings.value = loadTermuxSettings()
             _settingsIconPosition.value = loadSettingsIconPosition()
             _searchBarPosition.value = loadSearchBarPosition()
         }
-    }
-
-    fun saveWebSearchSettings(settings: WebSearchSettings) {
-        preferences.edit { putString(KEY_WEB_SEARCH, settings.toJsonString()) }
-        _webSearchSettings.value = settings
-    }
-
-    fun saveAppSearchSettings(settings: AppSearchSettings) {
-        preferences.edit { putString(KEY_APP_SEARCH, settings.toJsonString()) }
-        _appSearchSettings.value = settings
-    }
-
-    fun addPinnedApp(packageName: String) {
-        val current = _appSearchSettings.value
-        if (packageName in current.pinnedApps) return
-        saveAppSearchSettings(current.copy(pinnedApps = current.pinnedApps + packageName))
-    }
-
-    fun removePinnedApp(packageName: String) {
-        val current = _appSearchSettings.value
-        if (packageName !in current.pinnedApps) return
-        saveAppSearchSettings(current.copy(pinnedApps = current.pinnedApps - packageName))
-    }
-
-    fun movePinnedAppUp(packageName: String) {
-        val current = _appSearchSettings.value
-        val currentList = current.pinnedApps.toMutableList()
-        val index = currentList.indexOf(packageName)
-        if (index <= 0) return
-        val temp = currentList[index]
-        currentList[index] = currentList[index - 1]
-        currentList[index - 1] = temp
-        saveAppSearchSettings(current.copy(pinnedApps = currentList))
-    }
-
-    fun movePinnedAppDown(packageName: String) {
-        val current = _appSearchSettings.value
-        val currentList = current.pinnedApps.toMutableList()
-        val index = currentList.indexOf(packageName)
-        if (index == -1 || index >= currentList.size - 1) return
-        val temp = currentList[index]
-        currentList[index] = currentList[index + 1]
-        currentList[index + 1] = temp
-        saveAppSearchSettings(current.copy(pinnedApps = currentList))
     }
 
     fun setTranslucentResultsEnabled(enabled: Boolean) {
@@ -220,153 +120,6 @@ class ProviderSettingsRepository(
         _motionPreferences.value = _motionPreferences.value.copy(animationsEnabled = enabled)
     }
 
-    fun setOpenDecodedUrlsAutomatically(enabled: Boolean) {
-        val current = _textUtilitiesSettings.value
-        if (current.openDecodedUrls == enabled) return
-        val updated = current.copy(openDecodedUrls = enabled)
-        saveTextUtilitiesSettings(updated)
-    }
-
-    fun setUtilityEnabled(
-        utilityId: String,
-        enabled: Boolean,
-    ) {
-        val current = _textUtilitiesSettings.value
-        val updatedDisabled =
-            if (enabled) {
-                current.disabledUtilities - utilityId
-            } else {
-                current.disabledUtilities + utilityId
-            }
-        if (updatedDisabled == current.disabledUtilities) return
-        saveTextUtilitiesSettings(current.copy(disabledUtilities = updatedDisabled))
-    }
-
-    fun setKeywordEnabled(
-        utilityId: String,
-        keyword: String,
-        enabled: Boolean,
-    ) {
-        val current = _textUtilitiesSettings.value
-        val currentDisabledForUtility = current.disabledKeywords[utilityId] ?: emptySet()
-        val updatedDisabledForUtility =
-            if (enabled) {
-                currentDisabledForUtility - keyword
-            } else {
-                currentDisabledForUtility + keyword
-            }
-        val updatedDisabledKeywords =
-            if (updatedDisabledForUtility.isEmpty()) {
-                current.disabledKeywords - utilityId
-            } else {
-                current.disabledKeywords + (utilityId to updatedDisabledForUtility)
-            }
-        if (updatedDisabledKeywords == current.disabledKeywords) return
-        saveTextUtilitiesSettings(current.copy(disabledKeywords = updatedDisabledKeywords))
-    }
-
-    fun setUtilityDefaultMode(
-        utilityId: String,
-        mode: TextUtilityDefaultMode,
-    ) {
-        val current = _textUtilitiesSettings.value
-        val updatedModes = current.utilityDefaultModes + (utilityId to mode)
-        if (updatedModes == current.utilityDefaultModes) return
-        saveTextUtilitiesSettings(current.copy(utilityDefaultModes = updatedModes))
-    }
-
-    fun setDownloadsIndexingEnabled(enabled: Boolean) {
-        val current = _fileSearchSettings.value
-        if (current.includeDownloads == enabled) return
-        saveFileSearchSettings(current.copy(includeDownloads = enabled))
-    }
-
-    fun setFileSearchThumbnailsEnabled(enabled: Boolean) {
-        val current = _fileSearchSettings.value
-        if (current.loadThumbnails == enabled) return
-        saveFileSearchSettings(current.copy(loadThumbnails = enabled))
-    }
-
-    fun setFileSearchThumbnailCropMode(mode: FileSearchThumbnailCropMode) {
-        val current = _fileSearchSettings.value
-        if (current.thumbnailCropMode == mode) return
-        saveFileSearchSettings(current.copy(thumbnailCropMode = mode))
-    }
-
-    fun setFileSearchSortMode(mode: FileSearchSortMode) {
-        val current = _fileSearchSettings.value
-        if (current.sortMode == mode) return
-        saveFileSearchSettings(current.copy(sortMode = mode))
-    }
-
-    fun setFileSearchSortAscending(ascending: Boolean) {
-        val current = _fileSearchSettings.value
-        if (current.sortAscending == ascending) return
-        saveFileSearchSettings(current.copy(sortAscending = ascending))
-    }
-
-    fun setFileSearchSyncInterval(minutes: Int) {
-        val current = _fileSearchSettings.value
-        if (current.syncIntervalMinutes == minutes) return
-        saveFileSearchSettings(current.copy(syncIntervalMinutes = minutes))
-    }
-
-    fun setFileSearchSyncOnAppOpen(enabled: Boolean) {
-        val current = _fileSearchSettings.value
-        if (current.syncOnAppOpen == enabled) return
-        saveFileSearchSettings(current.copy(syncOnAppOpen = enabled))
-    }
-
-    fun updateLastSyncTimestamp(timestamp: Long) {
-        val current = _fileSearchSettings.value
-        saveFileSearchSettings(current.copy(lastSyncTimestamp = timestamp))
-    }
-
-    fun addFileSearchRoot(root: FileSearchRoot) {
-        val current = _fileSearchSettings.value
-        if (current.roots.any { it.id == root.id }) return
-        saveFileSearchSettings(current.copy(roots = current.roots + root))
-    }
-
-    fun removeFileSearchRoot(rootId: String) {
-        val current = _fileSearchSettings.value
-        val updatedRoots = current.roots.filterNot { it.id == rootId }
-        if (updatedRoots.size == current.roots.size) return
-        val updatedMetadata = current.scanMetadata - rootId
-        saveFileSearchSettings(current.copy(roots = updatedRoots, scanMetadata = updatedMetadata))
-    }
-
-    fun setFileSearchRootEnabled(
-        rootId: String,
-        enabled: Boolean,
-    ) {
-        val current = _fileSearchSettings.value
-        val updatedRoots =
-            current.roots.map { root ->
-                if (root.id == rootId) root.copy(isEnabled = enabled) else root
-            }
-        if (updatedRoots == current.roots) return
-        saveFileSearchSettings(current.copy(roots = updatedRoots))
-    }
-
-    fun updateFileSearchScanState(
-        rootId: String,
-        state: FileSearchScanState,
-        itemCount: Int = 0,
-        errorMessage: String? = null,
-    ) {
-        val current = _fileSearchSettings.value
-        val metadata =
-            FileSearchScanMetadata(
-                state = state,
-                indexedItemCount = itemCount,
-                updatedAtMillis = System.currentTimeMillis(),
-                errorMessage = errorMessage,
-            )
-        val updatedMetadata = current.scanMetadata.toMutableMap().apply { put(rootId, metadata) }
-        saveFileSearchSettings(current.copy(scanMetadata = updatedMetadata))
-    }
-
     fun setProviderEnabled(
         providerId: String,
         enabled: Boolean,
@@ -374,25 +127,6 @@ class ProviderSettingsRepository(
         val current = _enabledProviders.value.toMutableMap()
         current[providerId] = enabled
         saveEnabledProviders(current)
-    }
-
-    private fun loadWebSearchSettings(): WebSearchSettings {
-        val json = preferences.getString(KEY_WEB_SEARCH, null) ?: return WebSearchSettings.default()
-        return try {
-            WebSearchSettings.fromJson(JSONObject(json)) ?: WebSearchSettings.default()
-        } catch (ignored: JSONException) {
-            WebSearchSettings.default()
-        }
-    }
-
-    private fun loadAppSearchSettings(): AppSearchSettings {
-        val json = preferences.getString(KEY_APP_SEARCH, null)
-        return try {
-            val parsed = json?.let { JSONObject(it) }
-            AppSearchSettings.fromJson(parsed) ?: AppSearchSettings.default()
-        } catch (ignored: JSONException) {
-            AppSearchSettings.default()
-        }
     }
 
     private fun loadTranslucentResultsEnabled(): Boolean = preferences.getBoolean(KEY_TRANSLUCENT_RESULTS, true)
@@ -409,36 +143,6 @@ class ProviderSettingsRepository(
     private fun loadAnimationsEnabled(): Boolean = preferences.getBoolean(KEY_ANIMATIONS_ENABLED, DEFAULT_ANIMATIONS_ENABLED)
 
     private fun loadMotionPreferences(): MotionPreferences = MotionPreferences(animationsEnabled = loadAnimationsEnabled())
-
-    private fun loadTextUtilitiesSettings(): TextUtilitiesSettings {
-        val json = preferences.getString(KEY_TEXT_UTILITIES, null)
-        return try {
-            val parsed = json?.let { JSONObject(it) }
-            TextUtilitiesSettings.fromJson(parsed) ?: TextUtilitiesSettings.default()
-        } catch (ignored: JSONException) {
-            TextUtilitiesSettings.default()
-        }
-    }
-
-    private fun loadFileSearchSettings(): FileSearchSettings {
-        val json = preferences.getString(KEY_FILE_SEARCH, null)
-        return try {
-            val parsed = json?.let { JSONObject(it) }
-            FileSearchSettings.fromJson(parsed) ?: FileSearchSettings.empty()
-        } catch (ignored: JSONException) {
-            FileSearchSettings.empty()
-        }
-    }
-
-    private fun saveTextUtilitiesSettings(settings: TextUtilitiesSettings) {
-        preferences.edit { putString(KEY_TEXT_UTILITIES, settings.toJsonString()) }
-        _textUtilitiesSettings.value = settings
-    }
-
-    private fun saveFileSearchSettings(settings: FileSearchSettings) {
-        preferences.edit { putString(KEY_FILE_SEARCH, settings.toJsonString()) }
-        _fileSearchSettings.value = settings
-    }
 
     private fun loadEnabledProviders(): Map<String, Boolean> {
         val json = preferences.getString(KEY_ENABLED_PROVIDERS, null) ?: return emptyMap()
@@ -463,69 +167,6 @@ class ProviderSettingsRepository(
         }
         preferences.edit { putString(KEY_ENABLED_PROVIDERS, jsonObject.toString()) }
         _enabledProviders.value = providers
-    }
-
-    private fun loadSystemSettingsSettings(): SystemSettingsSettings {
-        val json = preferences.getString(KEY_SYSTEM_SETTINGS, null)
-        return try {
-            val parsed = json?.let { JSONObject(it) }
-            SystemSettingsSettings.fromJson(parsed) ?: SystemSettingsSettings.default()
-        } catch (ignored: JSONException) {
-            SystemSettingsSettings.default()
-        }
-    }
-
-    fun saveSystemSettingsSettings(settings: SystemSettingsSettings) {
-        preferences.edit { putString(KEY_SYSTEM_SETTINGS, settings.toJsonString()) }
-        _systemSettingsSettings.value = settings
-    }
-
-    fun setDeveloperToggleEnabled(enabled: Boolean) {
-        val current = _systemSettingsSettings.value
-        if (current.developerToggleEnabled == enabled) return
-        saveSystemSettingsSettings(current.copy(developerToggleEnabled = enabled))
-    }
-
-    private fun loadContactsSettings(): ContactsSettings {
-        val json = preferences.getString(KEY_CONTACTS, null)
-        return try {
-            val parsed = json?.let { JSONObject(it) }
-            ContactsSettings.fromJson(parsed) ?: ContactsSettings.default()
-        } catch (ignored: JSONException) {
-            ContactsSettings.default()
-        }
-    }
-
-    fun saveContactsSettings(settings: ContactsSettings) {
-        preferences.edit { putString(KEY_CONTACTS, settings.toJsonString()) }
-        _contactsSettings.value = settings
-    }
-
-    fun setContactsIncludePhoneNumbers(enabled: Boolean) {
-        val current = _contactsSettings.value
-        if (current.includePhoneNumbers == enabled) return
-        saveContactsSettings(current.copy(includePhoneNumbers = enabled))
-    }
-
-    fun setContactsShowSimNumbers(enabled: Boolean) {
-        val current = _contactsSettings.value
-        if (current.showSimNumbers == enabled) return
-        saveContactsSettings(current.copy(showSimNumbers = enabled))
-    }
-
-    private fun loadTermuxSettings(): TermuxSettings {
-        val json = preferences.getString(KEY_TERMUX, null)
-        return try {
-            val parsed = json?.let { JSONObject(it) }
-            TermuxSettings.fromJson(parsed) ?: TermuxSettings.default()
-        } catch (ignored: JSONException) {
-            TermuxSettings.default()
-        }
-    }
-
-    fun saveTermuxSettings(settings: TermuxSettings) {
-        preferences.edit { putString(KEY_TERMUX, settings.toJsonString()) }
-        _termuxSettings.value = settings
     }
 
     fun setSettingsIconPosition(position: SettingsIconPosition) {
@@ -553,8 +194,11 @@ data class WebSearchSettings(
     val defaultSiteId: String,
     val sites: List<WebSearchSite>,
     val quicklinks: List<Quicklink> = emptyList(),
-) {
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
     companion object {
+        const val PROVIDER_ID = "web-search"
         private val DEFAULT_SITES =
             listOf(
                 WebSearchSite(
@@ -613,7 +257,6 @@ data class WebSearchSettings(
             val candidate = json.optString("defaultSiteId", sites.first().id)
             val defaultId = sites.firstOrNull { it.id == candidate }?.id ?: sites.first().id
 
-            // Parse quicklinks
             val quicklinksArray = json.optJSONArray("quicklinks") ?: JSONArray()
             val quicklinks = mutableListOf<Quicklink>()
             for (i in 0 until quicklinksArray.length()) {
@@ -626,7 +269,7 @@ data class WebSearchSettings(
 
     fun siteForId(id: String?): WebSearchSite? = sites.firstOrNull { it.id == id }
 
-    fun toJson(): JSONObject {
+    override fun toJson(): JSONObject {
         val root = JSONObject()
         root.put("defaultSiteId", defaultSiteId)
 
@@ -688,20 +331,12 @@ data class Quicklink(
     val url: String,
     val hasFavicon: Boolean = false,
 ) {
-    /**
-     * Returns the URL without the protocol for display.
-     * Example: "https://github.com/user/repo" -> "github.com/user/repo"
-     */
     fun displayUrl(): String =
         url
             .removePrefix("https://")
             .removePrefix("http://")
             .removeSuffix("/")
 
-    /**
-     * Extracts the domain from the URL for matching.
-     * Example: "https://github.com/user/repo" -> "github.com"
-     */
     fun domain(): String {
         val withoutProtocol =
             url
@@ -740,8 +375,12 @@ data class TextUtilitiesSettings(
     val disabledUtilities: Set<String> = emptySet(),
     val disabledKeywords: Map<String, Set<String>> = emptyMap(),
     val utilityDefaultModes: Map<String, TextUtilityDefaultMode> = emptyMap(),
-) {
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
     companion object {
+        const val PROVIDER_ID = "text-utilities"
+
         fun default(): TextUtilitiesSettings =
             TextUtilitiesSettings(
                 openDecodedUrls = true,
@@ -753,7 +392,6 @@ data class TextUtilitiesSettings(
         fun fromJson(json: JSONObject?): TextUtilitiesSettings? {
             if (json == null) return null
 
-            // Parse disabledUtilities
             val disabledUtilitiesArray = json.optJSONArray("disabledUtilities")
             val disabledUtilities =
                 buildSet {
@@ -764,7 +402,6 @@ data class TextUtilitiesSettings(
                     }
                 }
 
-            // Parse disabledKeywords
             val disabledKeywordsObj = json.optJSONObject("disabledKeywords")
             val disabledKeywords =
                 buildMap<String, Set<String>> {
@@ -786,7 +423,6 @@ data class TextUtilitiesSettings(
                     }
                 }
 
-            // Parse utilityDefaultModes
             val modesObj = json.optJSONObject("utilityDefaultModes")
             val utilityDefaultModes =
                 buildMap<String, TextUtilityDefaultMode> {
@@ -815,7 +451,7 @@ data class TextUtilitiesSettings(
         }
     }
 
-    fun toJson(): JSONObject =
+    override fun toJson(): JSONObject =
         JSONObject().apply {
             put("openDecodedUrls", openDecodedUrls)
             put("disabledUtilities", JSONArray(disabledUtilities.toList()))
@@ -851,7 +487,30 @@ data class FileSearchSettings(
     val syncIntervalMinutes: Int,
     val syncOnAppOpen: Boolean,
     val lastSyncTimestamp: Long,
-) {
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    override fun toJson(): JSONObject {
+        val json = JSONObject()
+        val rootsArray = JSONArray()
+        roots.forEach { rootsArray.put(it.toJson()) }
+        json.put("roots", rootsArray)
+        val metadata = JSONObject()
+        scanMetadata.forEach { (rootId, data) ->
+            metadata.put(rootId, data.toJson())
+        }
+        json.put("metadata", metadata)
+        json.put("includeDownloads", includeDownloads)
+        json.put("loadThumbnails", loadThumbnails)
+        json.put("thumbnailCropMode", thumbnailCropMode.name)
+        json.put("sortMode", sortMode.name)
+        json.put("sortAscending", sortAscending)
+        json.put("syncIntervalMinutes", syncIntervalMinutes)
+        json.put("syncOnAppOpen", syncOnAppOpen)
+        json.put("lastSyncTimestamp", lastSyncTimestamp)
+        return json
+    }
+
     fun toJsonString(): String {
         val json = JSONObject()
         val rootsArray = JSONArray()
@@ -880,6 +539,7 @@ data class FileSearchSettings(
     fun hasEnabledRoots(): Boolean = includeDownloads || roots.any { it.isEnabled }
 
     companion object {
+        const val PROVIDER_ID = "file-search"
         const val DOWNLOADS_ROOT_ID = "downloads-root"
         const val DEFAULT_SYNC_INTERVAL_MINUTES = 30
         const val DEFAULT_SYNC_ON_APP_OPEN = true
@@ -1097,8 +757,11 @@ data class AppSearchSettings(
     val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
     val hideAppListWhenResultsVisible: Boolean = true,
-) {
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
     companion object {
+        const val PROVIDER_ID = "app-list"
         fun default(): AppSearchSettings =
             AppSearchSettings(
                 includePackageName = false,
@@ -1135,7 +798,7 @@ data class AppSearchSettings(
         }
     }
 
-    fun toJson(): JSONObject =
+    override fun toJson(): JSONObject =
         JSONObject().apply {
             put("includePackageName", includePackageName)
             put("aiAssistantQueriesEnabled", aiAssistantQueriesEnabled)
@@ -1153,8 +816,12 @@ data class AppSearchSettings(
 
 data class SystemSettingsSettings(
     val developerToggleEnabled: Boolean,
-) {
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
     companion object {
+        const val PROVIDER_ID = "system-settings"
+
         fun default(): SystemSettingsSettings = SystemSettingsSettings(developerToggleEnabled = false)
 
         fun fromJson(json: JSONObject?): SystemSettingsSettings? {
@@ -1165,7 +832,7 @@ data class SystemSettingsSettings(
         }
     }
 
-    fun toJson(): JSONObject =
+    override fun toJson(): JSONObject =
         JSONObject().apply {
             put("developerToggleEnabled", developerToggleEnabled)
         }
@@ -1176,8 +843,12 @@ data class SystemSettingsSettings(
 data class ContactsSettings(
     val includePhoneNumbers: Boolean,
     val showSimNumbers: Boolean,
-) {
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
     companion object {
+        const val PROVIDER_ID = "contacts"
+
         fun default(): ContactsSettings =
             ContactsSettings(
                 includePhoneNumbers = true,
@@ -1193,7 +864,7 @@ data class ContactsSettings(
         }
     }
 
-    fun toJson(): JSONObject =
+    override fun toJson(): JSONObject =
         JSONObject().apply {
             put("includePhoneNumbers", includePhoneNumbers)
             put("showSimNumbers", showSimNumbers)

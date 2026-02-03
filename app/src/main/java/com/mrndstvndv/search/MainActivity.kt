@@ -84,16 +84,29 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
+import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
+import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.system.SettingsProvider
 import com.mrndstvndv.search.provider.termux.TermuxProvider
+import com.mrndstvndv.search.provider.termux.TermuxSettings
+import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.web.WebSearchProvider
-import com.mrndstvndv.search.ui.components.AppListRow
+import com.mrndstvndv.search.provider.apps.createAppSearchSettingsRepository
+import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
+import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
+import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
+import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
+import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
+import com.mrndstvndv.search.ui.components.AppListContainer
+import com.mrndstvndv.search.ui.components.AppListSection
 import com.mrndstvndv.search.ui.components.ContactActionData
 import com.mrndstvndv.search.ui.components.ContactActionSheet
 import com.mrndstvndv.search.ui.components.ItemsList
-import com.mrndstvndv.search.ui.components.RecentAppsList
 import com.mrndstvndv.search.ui.components.SearchField
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
@@ -127,8 +140,23 @@ class MainActivity : ComponentActivity() {
             val settingsRepository = remember(this@MainActivity) { ProviderSettingsRepository(this@MainActivity, coroutineScope) }
             val aliasRepository = remember(this@MainActivity) { AliasRepository(this@MainActivity, coroutineScope) }
             val aliasEntries by aliasRepository.aliases.collectAsState()
-            val webSearchSettings by settingsRepository.webSearchSettings.collectAsState()
-            val appSearchSettings by settingsRepository.appSearchSettings.collectAsState()
+
+            // Create new provider-specific settings repositories (auto-register for backup)
+            val webSearchSettingsRepo = remember(this@MainActivity) { createWebSearchSettingsRepository(this@MainActivity) }
+            val appSearchSettingsRepo = remember(this@MainActivity) { createAppSearchSettingsRepository(this@MainActivity) }
+            val textUtilitiesSettingsRepo = remember(this@MainActivity) { createTextUtilitiesSettingsRepository(this@MainActivity) }
+            val fileSearchSettingsRepo = remember(this@MainActivity) { createFileSearchSettingsRepository(this@MainActivity) }
+            val systemSettingsSettingsRepo = remember(this@MainActivity) { createSystemSettingsSettingsRepository(this@MainActivity) }
+            val contactsSettingsRepo = remember(this@MainActivity) { createContactsSettingsRepository(this@MainActivity) }
+            val termuxSettingsRepo = remember(this@MainActivity) { createTermuxSettingsRepository(this@MainActivity) }
+
+            // Collect settings from new repositories
+            val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
+            val appSearchSettings by appSearchSettingsRepo.flow.collectAsState()
+            val fileSearchSettings by fileSearchSettingsRepo.flow.collectAsState()
+            val systemSettingsSettings by systemSettingsSettingsRepo.flow.collectAsState()
+
+            // Collect UI/global settings from old repository
             val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
             val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
@@ -152,8 +180,8 @@ class MainActivity : ComponentActivity() {
                     RecentAppsRepository(this@MainActivity, defaultAppIconSize)
                 }
             val pinnedAppsRepository =
-                remember(this@MainActivity, settingsRepository) {
-                    PinnedAppsRepository(this@MainActivity, settingsRepository, defaultAppIconSize)
+                remember(this@MainActivity, appSearchSettingsRepo) {
+                    PinnedAppsRepository(this@MainActivity, appSearchSettingsRepo, defaultAppIconSize)
                 }
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
@@ -162,14 +190,14 @@ class MainActivity : ComponentActivity() {
             val providers =
                 remember(this@MainActivity) {
                     buildList {
-                        add(AppListProvider(this@MainActivity, settingsRepository, appListRepository))
-                        add(SettingsProvider(this@MainActivity, settingsRepository, developerSettingsManager))
+                        add(AppListProvider(this@MainActivity, appSearchSettingsRepo, appListRepository))
+                        add(SettingsProvider(this@MainActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
                         add(CalculatorProvider(this@MainActivity))
-                        add(TextUtilitiesProvider(this@MainActivity, settingsRepository))
-                        add(FileSearchProvider(this@MainActivity, settingsRepository, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(settingsRepository, contactsRepository))
-                        add(WebSearchProvider(this@MainActivity, settingsRepository))
-                        add(TermuxProvider(this@MainActivity, settingsRepository))
+                        add(TextUtilitiesProvider(this@MainActivity, textUtilitiesSettingsRepo))
+                        add(FileSearchProvider(this@MainActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
+                        add(ContactsProvider(settingsRepository, contactsSettingsRepo, contactsRepository))
+                        add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
+                        add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
                     }
                 }
 
@@ -181,9 +209,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Sync-on-open: trigger incremental file sync if enabled and enough time has passed
-            val fileSearchSettings by settingsRepository.fileSearchSettings.collectAsState()
-            val systemSettingsSettings by settingsRepository.systemSettingsSettings.collectAsState()
+
 
             // Initialize developer settings manager if feature is enabled
             LaunchedEffect(systemSettingsSettings.developerToggleEnabled) {
@@ -195,7 +221,7 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
-                    val settings = settingsRepository.fileSearchSettings.value
+                    val settings = fileSearchSettingsRepo.value
                     if (settings.syncOnAppOpen && settings.hasEnabledRoots()) {
                         val lastSync = settings.lastSyncTimestamp
                         val minGap = 60_000L // 1 minute
@@ -584,83 +610,37 @@ class MainActivity : ComponentActivity() {
                                     val shouldCenterAppList =
                                         appSearchSettings.centerAppList &&
                                             settingsIconPosition != SettingsIconPosition.BELOW
-                                val showAppList = appSearchSettings.appListEnabled &&
-                                    (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
+                                    val showAppList = appSearchSettings.appListEnabled &&
+                                        (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                     // Single unit animation: match spacer animation durations
                                     val isGoingDown = prevHasVisibleResults && !hasVisibleResults
                                     val appListEnterDuration = if (isGoingDown) 500 else 300
                                     val appListExitDuration = 200
-                                    motionAwareVisibility(
+                                    AppListContainer(
                                         visible = showAppList,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        enter =
-                                            fadeIn(animationSpec = tween(durationMillis = appListEnterDuration)) +
-                                                expandVertically(
-                                                    expandFrom = Alignment.Bottom,
-                                                    animationSpec = tween(durationMillis = appListEnterDuration),
-                                                ),
-                                        exit =
-                                            fadeOut(animationSpec = tween(durationMillis = appListExitDuration)) +
-                                                shrinkVertically(
-                                                    shrinkTowards = Alignment.Bottom,
-                                                    animationSpec = tween(durationMillis = appListExitDuration),
-                                                ),
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = if (shouldCenterAppList) Arrangement.Center else Arrangement.End,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            when (appSearchSettings.appListType) {
-                                                AppListType.RECENT -> {
-                                                    RecentAppsList(
-                                                        repository = recentAppsRepository,
-                                                        isReversed = appSearchSettings.reverseRecentAppsOrder,
-                                                        shouldCenter = shouldCenterAppList,
-                                                        modifier =
-                                                            Modifier
-                                                                .weight(1f)
-                                                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                    )
-                                                }
-
-                                                AppListType.PINNED -> {
-                                                    val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
-                                                    if (pinnedApps.isNotEmpty()) {
-                                                        AppListRow(
-                                                            apps = pinnedApps,
-                                                            isReversed = appSearchSettings.reversePinnedAppsOrder,
-                                                            shouldCenter = shouldCenterAppList,
-                                                            modifier =
-                                                                Modifier
-                                                                    .weight(1f)
-                                                                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-                                            if (settingsIconPosition == SettingsIconPosition.BELOW) {
-                                                VerticalDivider(
-                                                    modifier =
-                                                        Modifier
-                                                            .height(24.dp)
-                                                            .padding(horizontal = 4.dp),
-                                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                                )
-
-                                                IconButton(onClick = {
-                                                    val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                    startActivity(intent)
-                                                }) {
-                                                    Icon(
-                                                        imageVector = Icons.Outlined.Settings,
-                                                        contentDescription = "Settings",
-                                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                    )
-                                                }
-                                            }
+                                        enterDuration = appListEnterDuration,
+                                        exitDuration = appListExitDuration,
+                                        shouldCenter = shouldCenterAppList,
+                                        showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
+                                        onSettingsClick = {
+                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                            startActivity(intent)
                                         }
+                                    ) {
+                                        AppListSection(
+                                            appListType = appSearchSettings.appListType,
+                                            recentAppsRepository = recentAppsRepository,
+                                            pinnedAppsRepository = pinnedAppsRepository,
+                                            isReversed = if (appSearchSettings.appListType == AppListType.RECENT) {
+                                                appSearchSettings.reverseRecentAppsOrder
+                                            } else {
+                                                appSearchSettings.reversePinnedAppsOrder
+                                            },
+                                            shouldCenter = shouldCenterAppList,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                        )
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                 }
@@ -717,77 +697,31 @@ class MainActivity : ComponentActivity() {
                                 val isGoingDown = prevHasVisibleResults && !hasVisibleResults
                                 val appListEnterDuration = if (isGoingDown) 500 else 300
                                 val appListExitDuration = 200
-                                motionAwareVisibility(
+                                AppListContainer(
                                     visible = showAppList,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enter =
-                                        fadeIn(animationSpec = tween(durationMillis = appListEnterDuration)) +
-                                            expandVertically(
-                                                expandFrom = Alignment.Bottom,
-                                                animationSpec = tween(durationMillis = appListEnterDuration),
-                                            ),
-                                    exit =
-                                        fadeOut(animationSpec = tween(durationMillis = appListExitDuration)) +
-                                            shrinkVertically(
-                                                shrinkTowards = Alignment.Bottom,
-                                                animationSpec = tween(durationMillis = appListExitDuration),
-                                            ),
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = if (shouldCenterAppList) Arrangement.Center else Arrangement.End,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        when (appSearchSettings.appListType) {
-                                            AppListType.RECENT -> {
-                                                RecentAppsList(
-                                                    repository = recentAppsRepository,
-                                                    isReversed = appSearchSettings.reverseRecentAppsOrder,
-                                                    shouldCenter = shouldCenterAppList,
-                                                    modifier =
-                                                        Modifier
-                                                            .weight(1f)
-                                                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                )
-                                            }
-
-                                            AppListType.PINNED -> {
-                                                val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
-                                                if (pinnedApps.isNotEmpty()) {
-                                                    AppListRow(
-                                                        apps = pinnedApps,
-                                                        isReversed = appSearchSettings.reversePinnedAppsOrder,
-                                                        shouldCenter = shouldCenterAppList,
-                                                        modifier =
-                                                            Modifier
-                                                                .weight(1f)
-                                                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        if (settingsIconPosition == SettingsIconPosition.BELOW) {
-                                            VerticalDivider(
-                                                modifier =
-                                                    Modifier
-                                                        .height(24.dp)
-                                                        .padding(horizontal = 4.dp),
-                                                color = MaterialTheme.colorScheme.outlineVariant,
-                                            )
-
-                                            IconButton(onClick = {
-                                                val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                startActivity(intent)
-                                            }) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Settings,
-                                                    contentDescription = "Settings",
-                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                )
-                                            }
-                                        }
+                                    enterDuration = appListEnterDuration,
+                                    exitDuration = appListExitDuration,
+                                    shouldCenter = shouldCenterAppList,
+                                    showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
+                                    onSettingsClick = {
+                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                        startActivity(intent)
                                     }
+                                ) {
+                                    AppListSection(
+                                        appListType = appSearchSettings.appListType,
+                                        recentAppsRepository = recentAppsRepository,
+                                        pinnedAppsRepository = pinnedAppsRepository,
+                                        isReversed = if (appSearchSettings.appListType == AppListType.RECENT) {
+                                            appSearchSettings.reverseRecentAppsOrder
+                                        } else {
+                                            appSearchSettings.reversePinnedAppsOrder
+                                        },
+                                        shouldCenter = shouldCenterAppList,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                                    )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                             }

@@ -66,7 +66,7 @@ import com.mrndstvndv.search.provider.settings.FileSearchScanState
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.FileSearchSortMode
 import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -77,11 +77,11 @@ import java.util.UUID
 
 @Composable
 fun FileSearchSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<FileSearchSettings>,
     fileSearchRepository: FileSearchRepository,
     onBack: () -> Unit,
 ) {
-    val fileSearchSettings by settingsRepository.fileSearchSettings.collectAsState()
+    val fileSearchSettings by repository.flow.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val addFileRootLauncher =
@@ -90,7 +90,7 @@ fun FileSearchSettingsScreen(
                 handleFolderSelection(
                     uri = uri,
                     context = context,
-                    settingsRepository = settingsRepository,
+                    repository = repository,
                     fileSearchRepository = fileSearchRepository,
                 )
             }
@@ -103,14 +103,13 @@ fun FileSearchSettingsScreen(
 
     fun enableDownloadsIndexing() {
         coroutineScope.launch(Dispatchers.Default) {
-            settingsRepository.setDownloadsIndexingEnabled(true)
+            repository.update { it.copy(includeDownloads = true) }
             FileSearchRoot.downloadsRoot()?.let { root ->
-                settingsRepository.updateFileSearchScanState(
-                    rootId = root.id,
-                    state = FileSearchScanState.INDEXING,
-                    itemCount = 0,
-                    errorMessage = null,
-                )
+                repository.update { settings ->
+                    settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
+                        set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                    })
+                }
                 fileSearchRepository.scheduleFullIndex(root)
             }
         }
@@ -118,7 +117,7 @@ fun FileSearchSettingsScreen(
 
     fun disableDownloadsIndexing() {
         coroutineScope.launch(Dispatchers.Default) {
-            settingsRepository.setDownloadsIndexingEnabled(false)
+            repository.update { it.copy(includeDownloads = false) }
             fileSearchRepository.deleteRootEntries(FileSearchSettings.DOWNLOADS_ROOT_ID)
         }
     }
@@ -126,12 +125,11 @@ fun FileSearchSettingsScreen(
     fun rescanDownloads() {
         coroutineScope.launch(Dispatchers.Default) {
             FileSearchRoot.downloadsRoot()?.let { root ->
-                settingsRepository.updateFileSearchScanState(
-                    rootId = root.id,
-                    state = FileSearchScanState.INDEXING,
-                    itemCount = 0,
-                    errorMessage = null,
-                )
+                repository.update { settings ->
+                    settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
+                        set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                    })
+                }
                 fileSearchRepository.scheduleFullIndex(root)
             }
         }
@@ -204,27 +202,27 @@ fun FileSearchSettingsScreen(
                         title = "Load thumbnails",
                         subtitle = "Show previews for images, videos, and audio files in search results.",
                         checked = fileSearchSettings.loadThumbnails,
-                        onCheckedChange = { settingsRepository.setFileSearchThumbnailsEnabled(it) },
+                        onCheckedChange = { enabled -> repository.update { it.copy(loadThumbnails = enabled) } },
                     )
                     SettingsDivider()
                     ThumbnailCropModeRow(
                         selectedMode = fileSearchSettings.thumbnailCropMode,
                         enabled = fileSearchSettings.loadThumbnails,
-                        onModeSelected = { settingsRepository.setFileSearchThumbnailCropMode(it) },
+                        onModeSelected = { mode -> repository.update { settings -> settings.copy(thumbnailCropMode = mode) } },
                     )
                     SettingsDivider()
                     FileSearchSortRow(
                         sortMode = fileSearchSettings.sortMode,
                         sortAscending = fileSearchSettings.sortAscending,
-                        onModeSelected = { settingsRepository.setFileSearchSortMode(it) },
-                        onToggleAscending = { settingsRepository.setFileSearchSortAscending(it) },
+                        onModeSelected = { mode -> repository.update { settings -> settings.copy(sortMode = mode) } },
+                        onToggleAscending = { ascending -> repository.update { it.copy(sortAscending = ascending) } },
                     )
                     SettingsDivider()
                     SyncIntervalRow(
                         selectedInterval = fileSearchSettings.syncIntervalMinutes,
-                        onIntervalSelected = {
-                            settingsRepository.setFileSearchSyncInterval(it)
-                            fileSearchRepository.schedulePeriodicSync(it)
+                        onIntervalSelected = { minutes ->
+                            repository.update { it.copy(syncIntervalMinutes = minutes) }
+                            fileSearchRepository.schedulePeriodicSync(minutes)
                         },
                     )
                     SettingsDivider()
@@ -232,7 +230,7 @@ fun FileSearchSettingsScreen(
                         title = "Sync on app open",
                         subtitle = "Check for file changes when Search opens.",
                         checked = fileSearchSettings.syncOnAppOpen,
-                        onCheckedChange = { settingsRepository.setFileSearchSyncOnAppOpen(it) },
+                        onCheckedChange = { enabled -> repository.update { it.copy(syncOnAppOpen = enabled) } },
                     )
                     SettingsDivider()
                     FileSearchRootsCard(
@@ -245,14 +243,20 @@ fun FileSearchSettingsScreen(
                         onRescanDownloads = { rescanDownloads() },
                         onAddRoot = { addFileRootLauncher.launch(null) },
                         onToggleRoot = { root, enabled ->
-                            settingsRepository.setFileSearchRootEnabled(root.id, enabled)
+                            repository.update { settings ->
+                                settings.copy(roots = settings.roots.map { if (it.id == root.id) it.copy(isEnabled = enabled) else it })
+                            }
                         },
                         onRescanRoot = { root ->
-                            settingsRepository.updateFileSearchScanState(root.id, FileSearchScanState.INDEXING)
+                            repository.update { settings ->
+                                settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
+                                    set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                                })
+                            }
                             fileSearchRepository.scheduleFullIndex(root)
                         },
                         onRemoveRoot = { root ->
-                            settingsRepository.removeFileSearchRoot(root.id)
+                            repository.update { it.copy(roots = it.roots.filter { r -> r.id != root.id }) }
                             coroutineScope.launch(Dispatchers.IO) {
                                 fileSearchRepository.deleteRootEntries(root.id)
                             }
@@ -868,11 +872,11 @@ private fun formatRelativeTime(timestamp: Long): String {
 private fun handleFolderSelection(
     uri: Uri,
     context: android.content.Context,
-    settingsRepository: ProviderSettingsRepository,
+    repository: SettingsRepository<FileSearchSettings>,
     fileSearchRepository: FileSearchRepository,
 ) {
     val existingRoot =
-        settingsRepository.fileSearchSettings.value.roots
+        repository.flow.value.roots
             .firstOrNull { it.uri == uri }
     if (existingRoot != null) {
         val folderName =
@@ -909,8 +913,12 @@ private fun handleFolderSelection(
             addedAtMillis = System.currentTimeMillis(),
             parentDisplayName = parentDisplayName,
         )
-    settingsRepository.addFileSearchRoot(root)
-    settingsRepository.updateFileSearchScanState(root.id, FileSearchScanState.INDEXING)
+    repository.update { it.copy(roots = it.roots + root) }
+    repository.update { settings ->
+        settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
+            set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+        })
+    }
     fileSearchRepository.scheduleFullIndex(root)
 }
 
