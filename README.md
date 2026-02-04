@@ -20,6 +20,16 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Material 3 UI** — Adjustable blur, opacity, and motion
 - **Power-User Tools** — Deep Termux and Shizuku integration
 
+## Screenshots
+
+<p float="left">
+  <img src="screenshots/app.png" width="45%" />
+  <img src="screenshots/calculator.png" width="45%" />
+</p>
+<p float="left">
+  <img src="screenshots/file.png" width="45%" />
+</p>
+
 ## Building
 
 See [BUILDING.md](BUILDING.md) for local and CI build instructions.
