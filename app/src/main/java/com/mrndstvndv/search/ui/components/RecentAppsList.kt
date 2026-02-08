@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -98,8 +99,10 @@ fun RecentAppsList(
             val maxItems = (width / itemWidth).toInt().coerceAtLeast(0)
 
             if (maxItems > 0) {
-                val fetchLimit = if (excludePackages.isEmpty()) maxItems else maxItems + excludePackages.size
-                val recentApps by remember(maxItems, excludePackages) {
+                val fetchLimit = remember(maxItems, excludePackages.size) {
+                    (maxItems + excludePackages.size).coerceAtLeast(1)
+                }
+                val recentApps by remember(repository, fetchLimit) {
                     repository.getRecentApps(limit = fetchLimit)
                 }.collectAsState(initial = emptyList())
 
@@ -127,8 +130,7 @@ fun RecentAppsList(
                                 iconSizeDp = iconSizeDp,
                                 index = index,
                                 onClick = {
-                                    context.startActivity(app.launchIntent)
-                                    (context as ComponentActivity).finish()
+                                    safeLaunchApp(context, app.launchIntent)
                                 },
                                 visible = visible,
                             )
@@ -140,9 +142,6 @@ fun RecentAppsList(
     }
 }
 
-/**
- * Individual app icon with fade-in + scale animation.
- */
 @Composable
 fun AppIconItem(
     app: RecentApp,
@@ -151,8 +150,11 @@ fun AppIconItem(
     onClick: () -> Unit,
     visible: Boolean = true,
 ) {
-    if (app.icon != null) {
-        // Staggered fade-in and scale animation
+    val icon by produceState<android.graphics.Bitmap?>(initialValue = null, app.packageName) {
+        value = app.iconLoader()
+    }
+
+    if (icon != null) {
         val animationDelay = (index * 30).coerceAtMost(150)
         val alpha by rememberMotionAwareFloat(
             targetValue = if (visible) 1f else 0f,
@@ -168,7 +170,7 @@ fun AppIconItem(
         )
 
         Image(
-            bitmap = app.icon.asImageBitmap(),
+            bitmap = icon!!.asImageBitmap(),
             contentDescription = app.label,
             modifier =
                 Modifier
@@ -181,9 +183,6 @@ fun AppIconItem(
     }
 }
 
-/**
- * A reusable component for displaying a list of apps (either recent or pinned).
- */
 @Composable
 fun AppListRow(
     apps: List<RecentApp>,
@@ -222,7 +221,7 @@ fun AppListRow(
                     iconSizeDp = iconSizeDp,
                     index = index,
                     onClick = {
-                        context.startActivity(app.launchIntent)
+                        safeLaunchApp(context, app.launchIntent)
                     },
                     visible = visible,
                 )
@@ -231,9 +230,6 @@ fun AppListRow(
     }
 }
 
-/**
- * Container for app list with visibility animation and optional settings icon.
- */
 private enum class FadeEdge {
     START,
     END,
@@ -310,9 +306,6 @@ fun AppListContainer(
     }
 }
 
-/**
- * Unified app list section that handles both Recent and Pinned apps with animations.
- */
 @Composable
 fun AppListSection(
     appListType: AppListType,
@@ -453,5 +446,16 @@ fun AppListSection(
                 }
             }
         }
+    }
+}
+
+private fun safeLaunchApp(context: android.content.Context, launchIntent: android.content.Intent) {
+    try {
+        context.startActivity(launchIntent)
+        (context as? ComponentActivity)?.finish()
+    } catch (_: android.content.ActivityNotFoundException) {
+        // App uninstalled/disabled since loading
+    } catch (_: Exception) {
+        // Security exceptions, etc.
     }
 }

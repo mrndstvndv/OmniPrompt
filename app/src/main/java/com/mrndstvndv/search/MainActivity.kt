@@ -176,12 +176,12 @@ class MainActivity : ComponentActivity() {
             val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
             val appListRepository = remember(this@MainActivity) { AppListRepository.getInstance(this@MainActivity, defaultAppIconSize) }
             val recentAppsRepository =
-                remember(this@MainActivity) {
-                    RecentAppsRepository(this@MainActivity, defaultAppIconSize)
+                remember(this@MainActivity, appListRepository) {
+                    RecentAppsRepository(this@MainActivity, appListRepository)
                 }
             val pinnedAppsRepository =
-                remember(this@MainActivity, appSearchSettingsRepo) {
-                    PinnedAppsRepository(this@MainActivity, appSearchSettingsRepo, defaultAppIconSize)
+                remember(this@MainActivity, appSearchSettingsRepo, appListRepository) {
+                    PinnedAppsRepository(this@MainActivity, appSearchSettingsRepo, appListRepository)
                 }
             val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
             val providerOrder by rankingRepository.providerOrder.collectAsState()
