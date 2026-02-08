@@ -3,7 +3,6 @@ package com.mrndstvndv.search.ui.components
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,6 +56,7 @@ import com.mrndstvndv.search.provider.apps.RecentApp
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
+import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
 
 @Composable
 fun RecentAppsList(
@@ -154,14 +154,16 @@ fun AppIconItem(
     if (app.icon != null) {
         // Staggered fade-in and scale animation
         val animationDelay = (index * 30).coerceAtMost(150)
-        val alpha by animateFloatAsState(
+        val alpha by rememberMotionAwareFloat(
             targetValue = if (visible) 1f else 0f,
-            animationSpec = tween(durationMillis = 300, delayMillis = animationDelay),
+            durationMillis = 300,
+            delayMillis = animationDelay,
             label = "appIconAlpha_${app.packageName}"
         )
-        val scale by animateFloatAsState(
+        val scale by rememberMotionAwareFloat(
             targetValue = if (visible) 1f else 0f,
-            animationSpec = tween(durationMillis = 300, delayMillis = animationDelay),
+            durationMillis = 300,
+            delayMillis = animationDelay,
             label = "appIconScale_${app.packageName}"
         )
 

@@ -618,7 +618,11 @@ class MainActivity : ComponentActivity() {
                                         (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                     // Single unit animation: match spacer animation durations
                                     val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                                    val appListEnterDuration = if (isGoingDown) 500 else 300
+                                    val appListEnterDuration = when {
+                                        !isGoingDown -> 300
+                                        appSearchSettings.appListType == AppListType.BOTH -> 300
+                                        else -> 500
+                                    }
                                     val appListExitDuration = 200
                                     AppListContainer(
                                         visible = showAppList,
@@ -699,7 +703,11 @@ class MainActivity : ComponentActivity() {
                                     (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                 // Single unit animation: match spacer animation durations
                                 val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                                val appListEnterDuration = if (isGoingDown) 500 else 300
+                                val appListEnterDuration = when {
+                                    !isGoingDown -> 300
+                                    appSearchSettings.appListType == AppListType.BOTH -> 300
+                                    else -> 500
+                                }
                                 val appListExitDuration = 200
                                 AppListContainer(
                                     visible = showAppList,
