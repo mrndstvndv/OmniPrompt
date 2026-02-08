@@ -153,22 +153,25 @@ fun ItemsList(
 ) {
     if (results.isEmpty()) return
 
-    val displayResults = if (reverseOrder) results.reversed() else results
     val listState = rememberLazyListState()
     
-    LaunchedEffect(displayResults.firstOrNull()?.id) {
-        if (reverseOrder && displayResults.isNotEmpty()) {
-            listState.scrollToItem(displayResults.lastIndex)
-        } else {
+    // Scroll to the "first" item (index 0) whenever results change.
+    // In reverse layout, index 0 is at the bottom. In normal layout, it's at the top.
+    LaunchedEffect(results.firstOrNull()?.id) {
+        if (results.isNotEmpty()) {
             listState.scrollToItem(0)
         }
     }
 
-    val showTopFade by remember(listState) {
-        derivedStateOf { listState.canScrollBackward }
+    val showTopFade by remember(listState, reverseOrder) {
+        derivedStateOf {
+            if (reverseOrder) listState.canScrollForward else listState.canScrollBackward
+        }
     }
-    val showBottomFade by remember(listState) {
-        derivedStateOf { listState.canScrollForward }
+    val showBottomFade by remember(listState, reverseOrder) {
+        derivedStateOf {
+            if (reverseOrder) listState.canScrollBackward else listState.canScrollForward
+        }
     }
     val fadeModifier = Modifier.verticalEdgeFade(showTop = showTopFade, showBottom = showBottomFade)
 
@@ -177,30 +180,30 @@ fun ItemsList(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = verticalArrangement,
+            reverseLayout = reverseOrder,
         ) {
             itemsIndexed(
-                items = displayResults,
+                items = results,
                 key = { _, item -> item.id }
             ) { index, item ->
-                val singleItem = displayResults.size == 1
+                val singleItem = results.size == 1
+                val isTopItem = if (reverseOrder) index == results.lastIndex else index == 0
+                val isBottomItem = if (reverseOrder) index == 0 else index == results.lastIndex
+
                 val targetTopStart = when {
-                    singleItem -> 20.dp
-                    index == 0 -> 20.dp
+                    singleItem || isTopItem -> 20.dp
                     else -> 5.dp
                 }
                 val targetTopEnd = when {
-                    singleItem -> 20.dp
-                    index == 0 -> 20.dp
+                    singleItem || isTopItem -> 20.dp
                     else -> 5.dp
                 }
                 val targetBottomStart = when {
-                    singleItem -> 20.dp
-                    index == displayResults.lastIndex -> 20.dp
+                    singleItem || isBottomItem -> 20.dp
                     else -> 5.dp
                 }
                 val targetBottomEnd = when {
-                    singleItem -> 20.dp
-                    index == displayResults.lastIndex -> 20.dp
+                    singleItem || isBottomItem -> 20.dp
                     else -> 5.dp
                 }
 
