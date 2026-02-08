@@ -190,8 +190,15 @@ fun AppListRow(
     val context = LocalContext.current
     val displayApps = if (isReversed) apps else apps.asReversed()
     val iconSizeDp = 40.dp
-
     val scrollState = rememberScrollState()
+
+    LaunchedEffect(apps, isReversed) {
+        if (isReversed) {
+            scrollState.scrollTo(0)
+        } else {
+            scrollState.scrollTo(scrollState.maxValue)
+        }
+    }
 
     Row(
         modifier =
