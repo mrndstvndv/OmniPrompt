@@ -32,9 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -258,6 +256,96 @@ fun AppSearchSettingsScreen(
                                     onAddClick = { isAddAppDialogOpen = true },
                                 )
                             }
+
+                            AppListType.BOTH -> {
+                                Box(
+                                    modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
+                                ) {
+                                    SettingsSwitch(
+                                        title = "Reverse recent order",
+                                        subtitle = "Place the most recently used app on the right side.",
+                                        checked = appSearchSettings.reverseRecentAppsOrder,
+                                        enabled = appListEnabled,
+                                        onCheckedChange = { newValue ->
+                                            repository.update { it.copy(reverseRecentAppsOrder = newValue) }
+                                        },
+                                    )
+                                }
+
+                                SettingsDivider()
+
+                                Box(
+                                    modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
+                                ) {
+                                    SettingsSwitch(
+                                        title = "Reverse pinned order",
+                                        subtitle = "Display the first pinned app on the right side.",
+                                        checked = appSearchSettings.reversePinnedAppsOrder,
+                                        enabled = appListEnabled,
+                                        onCheckedChange = { newValue ->
+                                            repository.update { it.copy(reversePinnedAppsOrder = newValue) }
+                                        },
+                                    )
+                                }
+
+                                SettingsDivider()
+
+                                Box(
+                                    modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
+                                ) {
+                                    SettingsSwitch(
+                                        title = "Pinned apps on left",
+                                        subtitle = "Show pinned apps on the left and recent apps on the right.",
+                                        checked = appSearchSettings.bothLayoutPinnedOnLeft,
+                                        enabled = appListEnabled,
+                                        onCheckedChange = { newValue ->
+                                            repository.update { it.copy(bothLayoutPinnedOnLeft = newValue) }
+                                        },
+                                    )
+                                }
+
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+
+                                // Pinned apps list (same as PINNED)
+                                PinnedAppsSection(
+                                    appListRepository = appListRepository,
+                                    pinnedApps = appSearchSettings.pinnedApps,
+                                    enabled = appListEnabled,
+                                    onMoveUp = { packageName ->
+                                        repository.update {
+                                            val currentList = it.pinnedApps.toMutableList()
+                                            val index = currentList.indexOf(packageName)
+                                            if (index > 0) {
+                                                val temp = currentList[index]
+                                                currentList[index] = currentList[index - 1]
+                                                currentList[index - 1] = temp
+                                                it.copy(pinnedApps = currentList)
+                                            } else {
+                                                it
+                                            }
+                                        }
+                                    },
+                                    onMoveDown = { packageName ->
+                                        repository.update {
+                                            val currentList = it.pinnedApps.toMutableList()
+                                            val index = currentList.indexOf(packageName)
+                                            if (index >= 0 && index < currentList.size - 1) {
+                                                val temp = currentList[index]
+                                                currentList[index] = currentList[index + 1]
+                                                currentList[index + 1] = temp
+                                                it.copy(pinnedApps = currentList)
+                                            } else {
+                                                it
+                                            }
+                                        }
+                                    },
+                                    onRemove = { packageName -> repository.update { it.copy(pinnedApps = it.pinnedApps - packageName) } },
+                                    onAddClick = { isAddAppDialogOpen = true },
+                                )
+                            }
                         }
                     }
                 }
@@ -304,28 +392,19 @@ private fun AppListTypeChooser(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        val options = listOf(AppListType.RECENT, AppListType.PINNED)
-        SingleChoiceSegmentedButtonRow(
+        val options = listOf(AppListType.RECENT, AppListType.PINNED, AppListType.BOTH)
+        SettingsSingleChoiceSegmentedButtons(
+            options = options,
+            selectedOption = selectedType,
+            enabled = enabled,
+            label = { type -> type.userFacingLabel() },
+            onOptionSelected = onTypeSelected,
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
-        ) {
-            options.forEachIndexed { index, type ->
-                SegmentedButton(
-                    selected = type == selectedType,
-                    onClick = {
-                        if (type != selectedType && enabled) {
-                            onTypeSelected(type)
-                        }
-                    },
-                    enabled = enabled,
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                ) {
-                    Text(text = type.userFacingLabel())
-                }
-            }
-        }
+            showSelectedIcon = false,
+        )
     }
 }
 

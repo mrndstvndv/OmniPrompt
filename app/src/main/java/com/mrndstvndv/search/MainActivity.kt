@@ -635,11 +635,9 @@ class MainActivity : ComponentActivity() {
                                             appListType = appSearchSettings.appListType,
                                             recentAppsRepository = recentAppsRepository,
                                             pinnedAppsRepository = pinnedAppsRepository,
-                                            isReversed = if (appSearchSettings.appListType == AppListType.RECENT) {
-                                                appSearchSettings.reverseRecentAppsOrder
-                                            } else {
-                                                appSearchSettings.reversePinnedAppsOrder
-                                            },
+                                            isReversedRecent = appSearchSettings.reverseRecentAppsOrder,
+                                            isReversedPinned = appSearchSettings.reversePinnedAppsOrder,
+                                            pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
                                             shouldCenter = shouldCenterAppList,
                                             modifier = Modifier
                                                 .weight(1f)
@@ -717,11 +715,9 @@ class MainActivity : ComponentActivity() {
                                         appListType = appSearchSettings.appListType,
                                         recentAppsRepository = recentAppsRepository,
                                         pinnedAppsRepository = pinnedAppsRepository,
-                                        isReversed = if (appSearchSettings.appListType == AppListType.RECENT) {
-                                            appSearchSettings.reverseRecentAppsOrder
-                                        } else {
-                                            appSearchSettings.reversePinnedAppsOrder
-                                        },
+                                        isReversedRecent = appSearchSettings.reverseRecentAppsOrder,
+                                        isReversedPinned = appSearchSettings.reversePinnedAppsOrder,
+                                        pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
                                         shouldCenter = shouldCenterAppList,
                                         modifier = Modifier
                                             .weight(1f)

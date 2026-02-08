@@ -731,6 +731,7 @@ enum class FileSearchSortMode {
 enum class AppListType {
     RECENT,
     PINNED,
+    BOTH,
     ;
 
     companion object {
@@ -744,6 +745,7 @@ enum class AppListType {
         when (this) {
             RECENT -> "Recent Apps"
             PINNED -> "Pinned Apps"
+            BOTH -> "Both"
         }
 }
 
@@ -754,6 +756,7 @@ data class AppSearchSettings(
     val appListType: AppListType = AppListType.RECENT,
     val reverseRecentAppsOrder: Boolean = false,
     val reversePinnedAppsOrder: Boolean = false,
+    val bothLayoutPinnedOnLeft: Boolean = false,
     val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
     val hideAppListWhenResultsVisible: Boolean = true,
@@ -770,6 +773,7 @@ data class AppSearchSettings(
                 appListType = AppListType.RECENT,
                 reverseRecentAppsOrder = false,
                 reversePinnedAppsOrder = false,
+                bothLayoutPinnedOnLeft = false,
                 centerAppList = false,
                 pinnedApps = emptyList(),
                 hideAppListWhenResultsVisible = true,
@@ -791,6 +795,7 @@ data class AppSearchSettings(
                 appListType = AppListType.fromStorageValue(json.optString("appListType")),
                 reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
                 reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
+                bothLayoutPinnedOnLeft = json.optBoolean("bothLayoutPinnedOnLeft", false),
                 centerAppList = json.optBoolean("centerAppList", false),
                 pinnedApps = pinnedApps,
                 hideAppListWhenResultsVisible = json.optBoolean("hideAppListWhenResultsVisible", true),
@@ -806,6 +811,7 @@ data class AppSearchSettings(
             put("appListType", appListType.name)
             put("reverseRecentAppsOrder", reverseRecentAppsOrder)
             put("reversePinnedAppsOrder", reversePinnedAppsOrder)
+            put("bothLayoutPinnedOnLeft", bothLayoutPinnedOnLeft)
             put("centerAppList", centerAppList)
             put("pinnedApps", JSONArray(pinnedApps))
             put("hideAppListWhenResultsVisible", hideAppListWhenResultsVisible)

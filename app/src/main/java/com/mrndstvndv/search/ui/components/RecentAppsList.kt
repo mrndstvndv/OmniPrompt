@@ -15,6 +15,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -263,7 +265,9 @@ fun AppListSection(
     appListType: AppListType,
     recentAppsRepository: RecentAppsRepository,
     pinnedAppsRepository: PinnedAppsRepository,
-    isReversed: Boolean,
+    isReversedRecent: Boolean,
+    isReversedPinned: Boolean,
+    pinnedOnLeft: Boolean,
     shouldCenter: Boolean,
     modifier: Modifier = Modifier,
     visible: Boolean = true,
@@ -272,7 +276,7 @@ fun AppListSection(
         AppListType.RECENT -> {
             RecentAppsList(
                 repository = recentAppsRepository,
-                isReversed = isReversed,
+                isReversed = isReversedRecent,
                 shouldCenter = shouldCenter,
                 modifier = modifier,
                 visible = visible,
@@ -284,11 +288,71 @@ fun AppListSection(
             if (pinnedApps.isNotEmpty()) {
                 AppListRow(
                     apps = pinnedApps,
-                    isReversed = isReversed,
+                    isReversed = isReversedPinned,
                     shouldCenter = shouldCenter,
                     modifier = modifier,
                     visible = visible,
                 )
+            }
+        }
+
+        AppListType.BOTH -> {
+            val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+            val recentContent: @Composable RowScope.() -> Unit = {
+                RecentAppsList(
+                    repository = recentAppsRepository,
+                    isReversed = isReversedRecent,
+                    shouldCenter = false,
+                    modifier = Modifier.weight(1f).padding(end = 4.dp),
+                    visible = visible,
+                )
+            }
+            val pinnedContent: @Composable RowScope.() -> Unit = {
+                if (pinnedApps.isNotEmpty()) {
+                    AppListRow(
+                        apps = pinnedApps,
+                        isReversed = isReversedPinned,
+                        shouldCenter = false,
+                        modifier = Modifier.weight(1f).padding(start = 4.dp),
+                        visible = visible,
+                    )
+                } else {
+                    androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+                        Text(
+                            text = "No pinned apps",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = modifier,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (pinnedOnLeft) {
+                    pinnedContent()
+
+                    VerticalDivider(
+                        modifier = Modifier
+                            .height(40.dp)
+                            .padding(horizontal = 4.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+
+                    recentContent()
+                } else {
+                    recentContent()
+
+                    VerticalDivider(
+                        modifier = Modifier
+                            .height(40.dp)
+                            .padding(horizontal = 4.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+
+                    pinnedContent()
+                }
             }
         }
     }
