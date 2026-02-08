@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -298,60 +299,82 @@ fun AppListSection(
 
         AppListType.BOTH -> {
             val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
-            val recentContent: @Composable RowScope.() -> Unit = {
-                RecentAppsList(
-                    repository = recentAppsRepository,
-                    isReversed = isReversedRecent,
-                    shouldCenter = false,
-                    modifier = Modifier.weight(1f).padding(end = 4.dp),
-                    visible = visible,
-                )
-            }
-            val pinnedContent: @Composable RowScope.() -> Unit = {
-                if (pinnedApps.isNotEmpty()) {
-                    AppListRow(
-                        apps = pinnedApps,
-                        isReversed = isReversedPinned,
+            BoxWithConstraints(modifier = modifier) {
+                val itemWidth = 48.dp
+                val maxPinnedWidth = maxWidth / 2
+                val estimatedPinnedWidth = (itemWidth * pinnedApps.size) + 16.dp
+                val pinnedWidth =
+                    if (pinnedApps.isEmpty()) {
+                        minOf(maxPinnedWidth, 120.dp)
+                    } else {
+                        minOf(maxPinnedWidth, estimatedPinnedWidth)
+                    }
+                val recentPaddingStart = if (pinnedOnLeft) 4.dp else 0.dp
+                val recentPaddingEnd = if (pinnedOnLeft) 0.dp else 4.dp
+                val pinnedPaddingStart = if (pinnedOnLeft) 0.dp else 4.dp
+                val pinnedPaddingEnd = if (pinnedOnLeft) 4.dp else 0.dp
+                val pinnedModifier =
+                    Modifier
+                        .width(pinnedWidth)
+                        .padding(
+                            start = pinnedPaddingStart,
+                            end = pinnedPaddingEnd,
+                        )
+                val recentContent: @Composable RowScope.() -> Unit = {
+                    RecentAppsList(
+                        repository = recentAppsRepository,
+                        isReversed = isReversedRecent,
                         shouldCenter = false,
-                        modifier = Modifier.weight(1f).padding(start = 4.dp),
+                        modifier = Modifier.weight(1f).padding(start = recentPaddingStart, end = recentPaddingEnd),
                         visible = visible,
                     )
-                } else {
-                    androidx.compose.foundation.layout.Box(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                        Text(
-                            text = "No pinned apps",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                }
+                val pinnedContent: @Composable RowScope.() -> Unit = {
+                    if (pinnedApps.isNotEmpty()) {
+                        AppListRow(
+                            apps = pinnedApps,
+                            isReversed = isReversedPinned,
+                            shouldCenter = false,
+                            modifier = pinnedModifier,
+                            visible = visible,
                         )
+                    } else {
+                        androidx.compose.foundation.layout.Box(modifier = pinnedModifier) {
+                            Text(
+                                text = "No pinned apps",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
-            }
-            Row(
-                modifier = modifier,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (pinnedOnLeft) {
-                    pinnedContent()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (pinnedOnLeft) {
+                        pinnedContent()
 
-                    VerticalDivider(
-                        modifier = Modifier
-                            .height(40.dp)
-                            .padding(horizontal = 4.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .padding(horizontal = 4.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
 
-                    recentContent()
-                } else {
-                    recentContent()
+                        recentContent()
+                    } else {
+                        recentContent()
 
-                    VerticalDivider(
-                        modifier = Modifier
-                            .height(40.dp)
-                            .padding(horizontal = 4.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
+                        VerticalDivider(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .padding(horizontal = 4.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
 
-                    pinnedContent()
+                        pinnedContent()
+                    }
                 }
             }
         }
