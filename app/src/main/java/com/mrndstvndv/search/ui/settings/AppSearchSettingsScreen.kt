@@ -304,6 +304,22 @@ fun AppSearchSettingsScreen(
                                     )
                                 }
 
+                                SettingsDivider()
+
+                                Box(
+                                    modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
+                                ) {
+                                    SettingsSwitch(
+                                        title = "Hide pinned from recents",
+                                        subtitle = "Exclude pinned apps from the recent list in both mode.",
+                                        checked = appSearchSettings.filterPinnedFromRecentsInBoth,
+                                        enabled = appListEnabled,
+                                        onCheckedChange = { newValue ->
+                                            repository.update { it.copy(filterPinnedFromRecentsInBoth = newValue) }
+                                        },
+                                    )
+                                }
+
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 20.dp),
                                     color = MaterialTheme.colorScheme.outlineVariant,

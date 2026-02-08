@@ -638,6 +638,7 @@ class MainActivity : ComponentActivity() {
                                             isReversedRecent = appSearchSettings.reverseRecentAppsOrder,
                                             isReversedPinned = appSearchSettings.reversePinnedAppsOrder,
                                             pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
+                                            filterPinnedFromRecentsInBoth = appSearchSettings.filterPinnedFromRecentsInBoth,
                                             shouldCenter = shouldCenterAppList,
                                             modifier = Modifier
                                                 .weight(1f)
@@ -718,6 +719,7 @@ class MainActivity : ComponentActivity() {
                                         isReversedRecent = appSearchSettings.reverseRecentAppsOrder,
                                         isReversedPinned = appSearchSettings.reversePinnedAppsOrder,
                                         pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
+                                        filterPinnedFromRecentsInBoth = appSearchSettings.filterPinnedFromRecentsInBoth,
                                         shouldCenter = shouldCenterAppList,
                                         modifier = Modifier
                                             .weight(1f)

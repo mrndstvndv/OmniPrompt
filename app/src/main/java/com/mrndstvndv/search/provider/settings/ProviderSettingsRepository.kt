@@ -757,6 +757,7 @@ data class AppSearchSettings(
     val reverseRecentAppsOrder: Boolean = false,
     val reversePinnedAppsOrder: Boolean = false,
     val bothLayoutPinnedOnLeft: Boolean = false,
+    val filterPinnedFromRecentsInBoth: Boolean = true,
     val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
     val hideAppListWhenResultsVisible: Boolean = true,
@@ -774,6 +775,7 @@ data class AppSearchSettings(
                 reverseRecentAppsOrder = false,
                 reversePinnedAppsOrder = false,
                 bothLayoutPinnedOnLeft = false,
+                filterPinnedFromRecentsInBoth = true,
                 centerAppList = false,
                 pinnedApps = emptyList(),
                 hideAppListWhenResultsVisible = true,
@@ -796,6 +798,7 @@ data class AppSearchSettings(
                 reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
                 reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
                 bothLayoutPinnedOnLeft = json.optBoolean("bothLayoutPinnedOnLeft", false),
+                filterPinnedFromRecentsInBoth = json.optBoolean("filterPinnedFromRecentsInBoth", true),
                 centerAppList = json.optBoolean("centerAppList", false),
                 pinnedApps = pinnedApps,
                 hideAppListWhenResultsVisible = json.optBoolean("hideAppListWhenResultsVisible", true),
@@ -812,6 +815,7 @@ data class AppSearchSettings(
             put("reverseRecentAppsOrder", reverseRecentAppsOrder)
             put("reversePinnedAppsOrder", reversePinnedAppsOrder)
             put("bothLayoutPinnedOnLeft", bothLayoutPinnedOnLeft)
+            put("filterPinnedFromRecentsInBoth", filterPinnedFromRecentsInBoth)
             put("centerAppList", centerAppList)
             put("pinnedApps", JSONArray(pinnedApps))
             put("hideAppListWhenResultsVisible", hideAppListWhenResultsVisible)

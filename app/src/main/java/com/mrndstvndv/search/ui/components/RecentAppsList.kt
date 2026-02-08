@@ -65,6 +65,7 @@ fun RecentAppsList(
     modifier: Modifier = Modifier,
     shouldCenter: Boolean = false,
     visible: Boolean = true,
+    excludePackages: Set<String> = emptySet(),
 ) {
     val context = LocalContext.current
     val hasPermission = remember(repository) { repository.hasPermission() }
@@ -97,11 +98,13 @@ fun RecentAppsList(
             val maxItems = (width / itemWidth).toInt().coerceAtLeast(0)
 
             if (maxItems > 0) {
-                val recentApps by remember(maxItems) {
-                    repository.getRecentApps(limit = maxItems)
+                val fetchLimit = if (excludePackages.isEmpty()) maxItems else maxItems + excludePackages.size
+                val recentApps by remember(maxItems, excludePackages) {
+                    repository.getRecentApps(limit = fetchLimit)
                 }.collectAsState(initial = emptyList())
 
-                val displayApps = if (isReversed) recentApps else recentApps.asReversed()
+                val filteredApps = recentApps.filterNot { app -> app.packageName in excludePackages }.take(maxItems)
+                val displayApps = if (isReversed) filteredApps else filteredApps.asReversed()
                 val scrollState = rememberScrollState()
 
                 LaunchedEffect(recentApps, isReversed) {
@@ -316,6 +319,7 @@ fun AppListSection(
     isReversedRecent: Boolean,
     isReversedPinned: Boolean,
     pinnedOnLeft: Boolean,
+    filterPinnedFromRecentsInBoth: Boolean,
     shouldCenter: Boolean,
     modifier: Modifier = Modifier,
     visible: Boolean = true,
@@ -356,6 +360,11 @@ fun AppListSection(
 
         AppListType.BOTH -> {
             val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+            val excludePackages = if (filterPinnedFromRecentsInBoth) {
+                pinnedApps.map { it.packageName }.toSet()
+            } else {
+                emptySet()
+            }
             BoxWithConstraints(modifier = modifier) {
                 val itemWidth = 48.dp
                 val minRecentWidth = 120.dp
@@ -386,6 +395,7 @@ fun AppListSection(
                         shouldCenter = false,
                         modifier = Modifier.weight(1f).padding(start = recentPaddingStart, end = recentPaddingEnd),
                         visible = visible,
+                        excludePackages = excludePackages,
                     )
                 }
                 val pinnedContent: @Composable RowScope.() -> Unit = {
