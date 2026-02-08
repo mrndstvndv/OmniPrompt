@@ -13,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -22,6 +23,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -36,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -94,12 +102,17 @@ fun RecentAppsList(
                 }.collectAsState(initial = emptyList())
 
                 val displayApps = if (isReversed) recentApps else recentApps.asReversed()
+                val scrollState = rememberScrollState()
+
+                LaunchedEffect(recentApps, isReversed) {
+                    scrollState.scrollTo(0)
+                }
 
                 Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
+                            .horizontalScroll(scrollState)
                             .padding(horizontal = 8.dp),
                     horizontalArrangement = if (shouldCenter) Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally) else Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -178,11 +191,13 @@ fun AppListRow(
     val displayApps = if (isReversed) apps else apps.asReversed()
     val iconSizeDp = 40.dp
 
+    val scrollState = rememberScrollState()
+
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
+                .horizontalScroll(scrollState)
                 .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, if (shouldCenter) Alignment.CenterHorizontally else if (isReversed) Alignment.Start else Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
@@ -206,6 +221,30 @@ fun AppListRow(
 /**
  * Container for app list with visibility animation and optional settings icon.
  */
+private enum class FadeEdge {
+    START,
+    END,
+}
+
+private fun Modifier.edgeFade(edge: FadeEdge, fadeWidth: Dp = 24.dp): Modifier =
+    graphicsLayer { alpha = 0.99f }.drawWithContent {
+        drawContent()
+        val fadeWidthPx = fadeWidth.toPx()
+        val (startX, endX, colors) =
+            when (edge) {
+                FadeEdge.START -> Triple(0f, fadeWidthPx, listOf(Color.Transparent, Color.Black))
+                FadeEdge.END -> Triple(size.width - fadeWidthPx, size.width, listOf(Color.Black, Color.Transparent))
+            }
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = colors,
+                startX = startX,
+                endX = endX,
+            ),
+            blendMode = BlendMode.DstIn,
+        )
+    }
+
 @Composable
 fun AppListContainer(
     visible: Boolean,
@@ -287,13 +326,22 @@ fun AppListSection(
         AppListType.PINNED -> {
             val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
             if (pinnedApps.isNotEmpty()) {
-                AppListRow(
-                    apps = pinnedApps,
-                    isReversed = isReversedPinned,
-                    shouldCenter = shouldCenter,
-                    modifier = modifier,
-                    visible = visible,
-                )
+                BoxWithConstraints(modifier = modifier) {
+                    val itemWidth = 48.dp
+                    val contentWidth = (itemWidth * pinnedApps.size) + 16.dp
+                    val shouldFade = contentWidth > maxWidth
+                    val fadeEdge = if (isReversedPinned) FadeEdge.START else FadeEdge.END
+                    val fadeModifier = if (shouldFade) Modifier.edgeFade(fadeEdge) else Modifier
+                    Box(modifier = Modifier.fillMaxWidth().then(fadeModifier)) {
+                        AppListRow(
+                            apps = pinnedApps,
+                            isReversed = isReversedPinned,
+                            shouldCenter = shouldCenter,
+                            modifier = Modifier.fillMaxWidth(),
+                            visible = visible,
+                        )
+                    }
+                }
             }
         }
 
@@ -301,8 +349,9 @@ fun AppListSection(
             val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
             BoxWithConstraints(modifier = modifier) {
                 val itemWidth = 48.dp
-                val maxPinnedWidth = maxWidth / 2
+                val minRecentWidth = 120.dp
                 val estimatedPinnedWidth = (itemWidth * pinnedApps.size) + 16.dp
+                val maxPinnedWidth = (maxWidth - minRecentWidth).coerceAtLeast(itemWidth)
                 val pinnedWidth =
                     if (pinnedApps.isEmpty()) {
                         minOf(maxPinnedWidth, 120.dp)
@@ -320,6 +369,7 @@ fun AppListSection(
                             start = pinnedPaddingStart,
                             end = pinnedPaddingEnd,
                         )
+                val shouldFadePinned = estimatedPinnedWidth > pinnedWidth
                 val recentContent: @Composable RowScope.() -> Unit = {
                     RecentAppsList(
                         repository = recentAppsRepository,
@@ -331,15 +381,19 @@ fun AppListSection(
                 }
                 val pinnedContent: @Composable RowScope.() -> Unit = {
                     if (pinnedApps.isNotEmpty()) {
-                        AppListRow(
-                            apps = pinnedApps,
-                            isReversed = isReversedPinned,
-                            shouldCenter = false,
-                            modifier = pinnedModifier,
-                            visible = visible,
-                        )
+                        val fadeEdge = if (pinnedOnLeft) FadeEdge.START else FadeEdge.END
+                        val fadeModifier = if (shouldFadePinned) Modifier.edgeFade(fadeEdge) else Modifier
+                        Box(modifier = pinnedModifier.then(fadeModifier)) {
+                            AppListRow(
+                                apps = pinnedApps,
+                                isReversed = isReversedPinned,
+                                shouldCenter = false,
+                                modifier = Modifier.fillMaxWidth(),
+                                visible = visible,
+                            )
+                        }
                     } else {
-                        androidx.compose.foundation.layout.Box(modifier = pinnedModifier) {
+                        Box(modifier = pinnedModifier) {
                             Text(
                                 text = "No pinned apps",
                                 style = MaterialTheme.typography.bodySmall,
