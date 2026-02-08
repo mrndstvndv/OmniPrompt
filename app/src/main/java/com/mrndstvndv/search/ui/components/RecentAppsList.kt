@@ -191,8 +191,9 @@ fun AppListRow(
     val displayApps = if (isReversed) apps else apps.asReversed()
     val iconSizeDp = 40.dp
     val scrollState = rememberScrollState()
+    val listKey = remember(apps) { apps.joinToString("|") { it.packageName } }
 
-    LaunchedEffect(apps, isReversed) {
+    LaunchedEffect(listKey, isReversed) {
         if (isReversed) {
             scrollState.scrollTo(0)
         } else {
@@ -339,11 +340,12 @@ fun AppListSection(
                     val shouldFade = contentWidth > maxWidth
                     val fadeEdge = if (isReversedPinned) FadeEdge.START else FadeEdge.END
                     val fadeModifier = if (shouldFade) Modifier.edgeFade(fadeEdge) else Modifier
+                    val allowCenter = shouldCenter && !shouldFade
                     Box(modifier = Modifier.fillMaxWidth().then(fadeModifier)) {
                         AppListRow(
                             apps = pinnedApps,
                             isReversed = isReversedPinned,
-                            shouldCenter = shouldCenter,
+                            shouldCenter = allowCenter,
                             modifier = Modifier.fillMaxWidth(),
                             visible = visible,
                         )
