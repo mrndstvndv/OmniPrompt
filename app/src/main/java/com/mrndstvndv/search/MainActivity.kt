@@ -41,12 +41,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,38 +68,38 @@ import com.mrndstvndv.search.provider.apps.AppListProvider
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
+import com.mrndstvndv.search.provider.apps.createAppSearchSettingsRepository
 import com.mrndstvndv.search.provider.calculator.CalculatorProvider
 import com.mrndstvndv.search.provider.contacts.ContactsProvider
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.contacts.PhoneNumber
+import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
 import com.mrndstvndv.search.provider.files.FileSearchProvider
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.FileThumbnailRepository
+import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.AppListType
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.provider.settings.ContactsSettings
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
-import com.mrndstvndv.search.provider.settings.WebSearchSettings
-import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
-import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
-import com.mrndstvndv.search.provider.settings.ContactsSettings
+import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
+import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.system.SettingsProvider
+import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
 import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
-import com.mrndstvndv.search.provider.web.WebSearchProvider
-import com.mrndstvndv.search.provider.apps.createAppSearchSettingsRepository
-import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
-import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
-import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
-import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
 import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
+import com.mrndstvndv.search.provider.web.WebSearchProvider
+import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
 import com.mrndstvndv.search.ui.components.AppListContainer
 import com.mrndstvndv.search.ui.components.AppListSection
 import com.mrndstvndv.search.ui.components.ContactActionData
@@ -114,11 +112,14 @@ import com.mrndstvndv.search.ui.theme.motionAwareVisibility
 import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -209,8 +210,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-
-
             // Initialize developer settings manager if feature is enabled
             LaunchedEffect(systemSettingsSettings.developerToggleEnabled) {
                 if (systemSettingsSettings.developerToggleEnabled) {
@@ -236,7 +235,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val providerResults = remember { mutableStateListOf<ProviderResult>() }
+            var providerResults by remember { mutableStateOf(listOf<ProviderResult>()) }
             var shouldShowResults by remember { mutableStateOf(false) }
             var pendingQueryJob by remember { mutableStateOf<Job?>(null) }
             var refreshTrigger by remember { mutableStateOf(0) }
@@ -327,31 +326,30 @@ class MainActivity : ComponentActivity() {
                         currentNormalizedQuery = normalizedText
                         val query = Query(normalizedText, originalText = currentText)
 
-                        val aggregated = mutableListOf<ProviderResult>()
-                        val seenIds = mutableSetOf<String>()
                         val matchingProviders =
                             providers
                                 .filter { enabledProviders[it.id] ?: true }
                                 .filter { it.canHandle(query) }
                         val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
 
-                        // Use supervisorScope to isolate provider failures
-                        supervisorScope {
-                            matchingProviders.forEach { provider ->
-                                launch {
-                                    try {
-                                        val results = withContext(Dispatchers.IO) { provider.query(query) }
-                                        val newItems = results.filterNot { seenIds.contains(it.id) }
-                                        if (newItems.isNotEmpty()) {
-                                            newItems.forEach { seenIds.add(it.id) }
-                                            aggregated += newItems
+                        // Use async/awaitAll to isolate provider failures without shared mutable state
+                        val allResults =
+                            supervisorScope {
+                                matchingProviders
+                                    .map { provider ->
+                                        async {
+                                            try {
+                                                withContext(Dispatchers.IO) { provider.query(query) }
+                                            } catch (e: CancellationException) {
+                                                throw e
+                                            } catch (_: Exception) {
+                                                emptyList()
+                                            }
                                         }
-                                    } catch (error: Exception) {
-                                        // Silently ignore individual provider failures
-                                    }
-                                }
+                                    }.awaitAll()
                             }
-                        }
+                        val seenIds = mutableSetOf<String>()
+                        val aggregated = allResults.flatten().filter { seenIds.add(it.id) }
 
                         // Final update after all providers complete - only if results changed
                         val filtered =
@@ -400,8 +398,7 @@ class MainActivity : ComponentActivity() {
 
                         // Only update UI if results actually changed
                         if (providerResults != newResults) {
-                            providerResults.clear()
-                            providerResults.addAll(newResults)
+                            providerResults = newResults
                         }
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
@@ -421,13 +418,14 @@ class MainActivity : ComponentActivity() {
                     // Going down (hiding results): slow (500ms)
                     // But when app list will appear (going down), snap spacer immediately
                     val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                    val shouldSnap = isGoingDown && appSearchSettings.appListEnabled &&
-                        (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
+                    val shouldSnap =
+                        isGoingDown && appSearchSettings.appListEnabled &&
+                            (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                     val durationMillis = if (hasVisibleResults) 300 else 500
                     if (motionPreferences.animationsEnabled && !shouldSnap) {
                         spacerAnimatable.animateTo(
                             targetValue = targetValue,
-                            animationSpec = tween(durationMillis = durationMillis)
+                            animationSpec = tween(durationMillis = durationMillis),
                         )
                     } else {
                         spacerAnimatable.snapTo(targetValue)
@@ -527,7 +525,7 @@ class MainActivity : ComponentActivity() {
                                                 Modifier.weight(1f)
                                             } else {
                                                 Modifier
-                                            }
+                                            },
                                         ),
                             ) {
                                 val containerHeight = maxHeight
@@ -536,11 +534,12 @@ class MainActivity : ComponentActivity() {
                                 val totalContentHeight = searchBarHeight + appListHeight + 10.dp // padding
 
                                 // Calculate centering padding for "no results" state
-                                val centeringPadding = if (!hasVisibleResults) {
-                                    (containerHeight - totalContentHeight) / 2
-                                } else {
-                                    0.dp
-                                }
+                                val centeringPadding =
+                                    if (!hasVisibleResults) {
+                                        (containerHeight - totalContentHeight) / 2
+                                    } else {
+                                        0.dp
+                                    }
 
                                 // Calculate if centered content would overlap with keyboard
                                 val centeredBottomPosition = containerHeight / 2 + totalContentHeight / 2
@@ -551,23 +550,25 @@ class MainActivity : ComponentActivity() {
                                 val needsKeyboardPadding = hasVisibleResults && keyboardHeightPx > 0
 
                                 // Animate the bottom padding for smooth keyboard transitions
-                                val targetPadding = when {
-                                    needsKeyboardPadding -> keyboardHeightDp
-                                    shouldPushUp -> keyboardHeightDp
-                                    !hasVisibleResults -> centeringPadding
-                                    else -> 0.dp
-                                }
+                                val targetPadding =
+                                    when {
+                                        needsKeyboardPadding -> keyboardHeightDp
+                                        shouldPushUp -> keyboardHeightDp
+                                        !hasVisibleResults -> centeringPadding
+                                        else -> 0.dp
+                                    }
                                 val animatedBottomPadding by animateDpAsState(
                                     targetValue = targetPadding,
                                     animationSpec = tween(durationMillis = 250),
-                                    label = "keyboardPadding"
+                                    label = "keyboardPadding",
                                 )
 
                                 Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.BottomCenter)
-                                        .padding(bottom = animatedBottomPadding),
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = animatedBottomPadding),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
                                     SearchField(
@@ -614,15 +615,17 @@ class MainActivity : ComponentActivity() {
                                     val shouldCenterAppList =
                                         appSearchSettings.centerAppList &&
                                             settingsIconPosition != SettingsIconPosition.BELOW
-                                    val showAppList = appSearchSettings.appListEnabled &&
-                                        (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
+                                    val showAppList =
+                                        appSearchSettings.appListEnabled &&
+                                            (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                     // Single unit animation: match spacer animation durations
                                     val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                                    val appListEnterDuration = when {
-                                        !isGoingDown -> 300
-                                        appSearchSettings.appListType == AppListType.BOTH -> 300
-                                        else -> 500
-                                    }
+                                    val appListEnterDuration =
+                                        when {
+                                            !isGoingDown -> 300
+                                            appSearchSettings.appListType == AppListType.BOTH -> 300
+                                            else -> 500
+                                        }
                                     val appListExitDuration = 200
                                     AppListContainer(
                                         visible = showAppList,
@@ -633,7 +636,7 @@ class MainActivity : ComponentActivity() {
                                         onSettingsClick = {
                                             val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                                             startActivity(intent)
-                                        }
+                                        },
                                     ) {
                                         AppListSection(
                                             appListType = appSearchSettings.appListType,
@@ -644,9 +647,10 @@ class MainActivity : ComponentActivity() {
                                             pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
                                             filterPinnedFromRecentsInBoth = appSearchSettings.filterPinnedFromRecentsInBoth,
                                             shouldCenter = shouldCenterAppList,
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                                            modifier =
+                                                Modifier
+                                                    .weight(1f)
+                                                    .padding(horizontal = 4.dp, vertical = 4.dp),
                                             visible = showAppList,
                                         )
                                     }
@@ -699,15 +703,17 @@ class MainActivity : ComponentActivity() {
                                 val shouldCenterAppList =
                                     appSearchSettings.centerAppList &&
                                         settingsIconPosition != SettingsIconPosition.BELOW
-                                val showAppList = appSearchSettings.appListEnabled &&
-                                    (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
+                                val showAppList =
+                                    appSearchSettings.appListEnabled &&
+                                        (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
                                 // Single unit animation: match spacer animation durations
                                 val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                                val appListEnterDuration = when {
-                                    !isGoingDown -> 300
-                                    appSearchSettings.appListType == AppListType.BOTH -> 300
-                                    else -> 500
-                                }
+                                val appListEnterDuration =
+                                    when {
+                                        !isGoingDown -> 300
+                                        appSearchSettings.appListType == AppListType.BOTH -> 300
+                                        else -> 500
+                                    }
                                 val appListExitDuration = 200
                                 AppListContainer(
                                     visible = showAppList,
@@ -718,7 +724,7 @@ class MainActivity : ComponentActivity() {
                                     onSettingsClick = {
                                         val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                                         startActivity(intent)
-                                    }
+                                    },
                                 ) {
                                     AppListSection(
                                         appListType = appSearchSettings.appListType,
@@ -729,9 +735,10 @@ class MainActivity : ComponentActivity() {
                                         pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
                                         filterPinnedFromRecentsInBoth = appSearchSettings.filterPinnedFromRecentsInBoth,
                                         shouldCenter = shouldCenterAppList,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                                        modifier =
+                                            Modifier
+                                                .weight(1f)
+                                                .padding(horizontal = 4.dp, vertical = 4.dp),
                                         visible = showAppList,
                                     )
                                 }

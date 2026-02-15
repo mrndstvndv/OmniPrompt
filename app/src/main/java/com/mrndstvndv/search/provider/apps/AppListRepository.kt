@@ -91,10 +91,10 @@ class AppListRepository private constructor(
     fun getAllApps(): StateFlow<List<AppInfo>> = _apps
 
     suspend fun getIcon(packageName: String): Bitmap? {
-        iconCache[packageName]?.let { return it }
-
         return cacheMutex.withLock {
-            iconCache[packageName]?.let { return it }
+            if (packageName in iconCache) {
+                return@withLock iconCache[packageName]
+            }
 
             val icon =
                 withContext(Dispatchers.IO) {

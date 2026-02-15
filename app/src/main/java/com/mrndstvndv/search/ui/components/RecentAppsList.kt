@@ -4,9 +4,9 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -22,12 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -35,23 +29,34 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentApp
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
@@ -69,7 +74,13 @@ fun RecentAppsList(
     excludePackages: Set<String> = emptySet(),
 ) {
     val context = LocalContext.current
-    val hasPermission = remember(repository) { repository.hasPermission() }
+    var hasPermission by remember(repository) { mutableStateOf(repository.hasPermission()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(repository, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            hasPermission = repository.refreshPermissionState()
+        }
+    }
 
     BoxWithConstraints(modifier = modifier) {
         if (!hasPermission) {
@@ -99,9 +110,10 @@ fun RecentAppsList(
             val maxItems = (width / itemWidth).toInt().coerceAtLeast(0)
 
             if (maxItems > 0) {
-                val fetchLimit = remember(maxItems, excludePackages.size) {
-                    (maxItems + excludePackages.size).coerceAtLeast(1)
-                }
+                val fetchLimit =
+                    remember(maxItems, excludePackages.size) {
+                        (maxItems + excludePackages.size).coerceAtLeast(1)
+                    }
                 val recentApps by remember(repository, fetchLimit) {
                     repository.getRecentApps(limit = fetchLimit)
                 }.collectAsState(initial = emptyList())
@@ -120,7 +132,15 @@ fun RecentAppsList(
                             .fillMaxWidth()
                             .horizontalScroll(scrollState)
                             .padding(horizontal = 8.dp),
-                    horizontalArrangement = if (shouldCenter) Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally) else Arrangement.SpaceBetween,
+                    horizontalArrangement =
+                        if (shouldCenter) {
+                            Arrangement.spacedBy(
+                                8.dp,
+                                Alignment.CenterHorizontally,
+                            )
+                        } else {
+                            Arrangement.SpaceBetween
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     displayApps.forEachIndexed { index, app ->
@@ -160,13 +180,13 @@ fun AppIconItem(
             targetValue = if (visible) 1f else 0f,
             durationMillis = 300,
             delayMillis = animationDelay,
-            label = "appIconAlpha_${app.packageName}"
+            label = "appIconAlpha_${app.packageName}",
         )
         val scale by rememberMotionAwareFloat(
             targetValue = if (visible) 1f else 0f,
             durationMillis = 300,
             delayMillis = animationDelay,
-            label = "appIconScale_${app.packageName}"
+            label = "appIconScale_${app.packageName}",
         )
 
         Image(
@@ -211,7 +231,17 @@ fun AppListRow(
                 .fillMaxWidth()
                 .horizontalScroll(scrollState)
                 .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, if (shouldCenter) Alignment.CenterHorizontally else if (isReversed) Alignment.Start else Alignment.End),
+        horizontalArrangement =
+            Arrangement.spacedBy(
+                8.dp,
+                if (shouldCenter) {
+                    Alignment.CenterHorizontally
+                } else if (isReversed) {
+                    Alignment.Start
+                } else {
+                    Alignment.End
+                },
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         displayApps.forEachIndexed { index, app ->
@@ -235,7 +265,10 @@ private enum class FadeEdge {
     END,
 }
 
-private fun Modifier.edgeFade(edge: FadeEdge, fadeWidth: Dp = 24.dp): Modifier =
+private fun Modifier.edgeFade(
+    edge: FadeEdge,
+    fadeWidth: Dp = 24.dp,
+): Modifier =
     graphicsLayer { alpha = 0.99f }.drawWithContent {
         drawContent()
         val fadeWidthPx = fadeWidth.toPx()
@@ -245,11 +278,12 @@ private fun Modifier.edgeFade(edge: FadeEdge, fadeWidth: Dp = 24.dp): Modifier =
                 FadeEdge.END -> Triple(size.width - fadeWidthPx, size.width, listOf(Color.Black, Color.Transparent))
             }
         drawRect(
-            brush = Brush.horizontalGradient(
-                colors = colors,
-                startX = startX,
-                endX = endX,
-            ),
+            brush =
+                Brush.horizontalGradient(
+                    colors = colors,
+                    startX = startX,
+                    endX = endX,
+                ),
             blendMode = BlendMode.DstIn,
         )
     }
@@ -268,16 +302,18 @@ fun AppListContainer(
     motionAwareVisibility(
         visible = visible,
         modifier = modifier.fillMaxWidth(),
-        enter = fadeIn(animationSpec = tween(durationMillis = enterDuration)) +
-            expandVertically(
-                expandFrom = Alignment.Bottom,
-                animationSpec = tween(durationMillis = enterDuration),
-            ),
-        exit = fadeOut(animationSpec = tween(durationMillis = exitDuration)) +
-            shrinkVertically(
-                shrinkTowards = Alignment.Bottom,
-                animationSpec = tween(durationMillis = exitDuration),
-            ),
+        enter =
+            fadeIn(animationSpec = tween(durationMillis = enterDuration)) +
+                expandVertically(
+                    expandFrom = Alignment.Bottom,
+                    animationSpec = tween(durationMillis = enterDuration),
+                ),
+        exit =
+            fadeOut(animationSpec = tween(durationMillis = exitDuration)) +
+                shrinkVertically(
+                    shrinkTowards = Alignment.Bottom,
+                    animationSpec = tween(durationMillis = exitDuration),
+                ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -288,9 +324,10 @@ fun AppListContainer(
 
             if (showSettingsIcon) {
                 VerticalDivider(
-                    modifier = Modifier
-                        .height(24.dp)
-                        .padding(horizontal = 4.dp),
+                    modifier =
+                        Modifier
+                            .height(24.dp)
+                            .padding(horizontal = 4.dp),
                     color = MaterialTheme.colorScheme.outlineVariant,
                 )
 
@@ -331,7 +368,8 @@ fun AppListSection(
         }
 
         AppListType.PINNED -> {
-            val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
+            val pinnedAppsFlow = remember(pinnedAppsRepository) { pinnedAppsRepository.getPinnedApps() }
+            val pinnedApps by pinnedAppsFlow.collectAsState(initial = emptyList())
             if (pinnedApps.isNotEmpty()) {
                 BoxWithConstraints(modifier = modifier) {
                     val itemWidth = 48.dp
@@ -354,12 +392,14 @@ fun AppListSection(
         }
 
         AppListType.BOTH -> {
-            val pinnedApps by pinnedAppsRepository.getPinnedApps().collectAsState(initial = emptyList())
-            val excludePackages = if (filterPinnedFromRecentsInBoth) {
-                pinnedApps.map { it.packageName }.toSet()
-            } else {
-                emptySet()
-            }
+            val pinnedAppsFlow = remember(pinnedAppsRepository) { pinnedAppsRepository.getPinnedApps() }
+            val pinnedApps by pinnedAppsFlow.collectAsState(initial = emptyList())
+            val excludePackages =
+                if (filterPinnedFromRecentsInBoth) {
+                    pinnedApps.map { it.packageName }.toSet()
+                } else {
+                    emptySet()
+                }
             BoxWithConstraints(modifier = modifier) {
                 val itemWidth = 48.dp
                 val minRecentWidth = 120.dp
@@ -424,9 +464,10 @@ fun AppListSection(
                         pinnedContent()
 
                         VerticalDivider(
-                            modifier = Modifier
-                                .height(40.dp)
-                                .padding(horizontal = 4.dp),
+                            modifier =
+                                Modifier
+                                    .height(40.dp)
+                                    .padding(horizontal = 4.dp),
                             color = MaterialTheme.colorScheme.outlineVariant,
                         )
 
@@ -435,9 +476,10 @@ fun AppListSection(
                         recentContent()
 
                         VerticalDivider(
-                            modifier = Modifier
-                                .height(40.dp)
-                                .padding(horizontal = 4.dp),
+                            modifier =
+                                Modifier
+                                    .height(40.dp)
+                                    .padding(horizontal = 4.dp),
                             color = MaterialTheme.colorScheme.outlineVariant,
                         )
 
@@ -449,13 +491,18 @@ fun AppListSection(
     }
 }
 
-private fun safeLaunchApp(context: android.content.Context, launchIntent: android.content.Intent) {
+private fun safeLaunchApp(
+    context: android.content.Context,
+    launchIntent: android.content.Intent,
+) {
     try {
         context.startActivity(launchIntent)
         (context as? ComponentActivity)?.finish()
     } catch (_: android.content.ActivityNotFoundException) {
-        // App uninstalled/disabled since loading
-    } catch (_: Exception) {
-        // Security exceptions, etc.
+        android.widget.Toast
+            .makeText(context, "App is no longer available", android.widget.Toast.LENGTH_SHORT)
+            .show()
+    } catch (e: Exception) {
+        android.util.Log.w("AppList", "Failed to launch app", e)
     }
 }
