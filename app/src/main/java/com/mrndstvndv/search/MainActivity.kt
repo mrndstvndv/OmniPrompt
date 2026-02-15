@@ -1,10 +1,16 @@
 package com.mrndstvndv.search
 
+import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Patterns
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -129,11 +135,93 @@ class MainActivity : ComponentActivity() {
 
     private val defaultAppIconSize by lazy { resources.getDimensionPixelSize(android.R.dimen.app_icon_size) }
 
+    // When launched via the assistant gesture, the system delivers the gesture's
+    // ongoing touch events (ACTION_MOVE, ACTION_UP) to this activity's window.
+    // These stray events hit the full-screen background clickable and trigger finish().
+    // Fix: swallow all touch events until we see a fresh ACTION_DOWN, which means the
+    // user has lifted their finger from the gesture and is now intentionally tapping.
+    private var hasSeenFreshDown = false
+
+    // Track whether this instance was launched from the assist gesture so we can
+    // fight the system's attempt to immediately background us.
+    private var launchedFromAssist = false
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        val action = event.actionMasked
+        if (action == MotionEvent.ACTION_DOWN) {
+            hasSeenFreshDown = true
+        }
+        if (!hasSeenFreshDown) {
+            return true // Consume the event silently
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+
+        // Rewrite assist actions to escape session lifecycle
+        val effectiveIntent =
+            if (intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS") {
+                Intent(intent).apply { action = Intent.ACTION_MAIN }
+            } else {
+                intent
+            }
+        setIntent(effectiveIntent)
+        // Reset touch gate for the new gesture
+        hasSeenFreshDown = false
+    }
+
+    override fun onPause() {
+        // When the system backgrounds us as part of assist session teardown (isFinishing=false),
+        // fight back by bringing our task to the front. Done in onPause (not onStop) because
+        // on API 29+ the app is still considered foreground here, so moveTaskToFront succeeds.
+        if (!isFinishing && launchedFromAssist) {
+            launchedFromAssist = false // Only fight once to avoid infinite loops
+            val hasReorderPermission = checkSelfPermission(android.Manifest.permission.REORDER_TASKS) == PackageManager.PERMISSION_GRANTED
+            if (!hasReorderPermission) {
+                try {
+                    val relaunchIntent =
+                        Intent(this, MainActivity::class.java).apply {
+                            action = Intent.ACTION_MAIN
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        }
+                    startActivity(relaunchIntent)
+                    overridePendingTransition(0, 0)
+                } catch (_: Exception) {
+                }
+            } else {
+                try {
+                    val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                    am.moveTaskToFront(taskId, ActivityManager.MOVE_TASK_WITH_HOME)
+                } catch (_: SecurityException) {
+                }
+            }
+        }
+        super.onPause()
+    }
+
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // When launched via ACTION_ASSIST, the system treats this activity as an ephemeral
+        // assist session and may immediately pause/stop it once the gesture animation completes.
+        // Work around this by replacing the intent action so the system no longer considers
+        // this activity part of the assist session lifecycle.
+        if (intent?.action == Intent.ACTION_ASSIST || intent?.action == "android.intent.action.SEARCH_LONG_PRESS") {
+            launchedFromAssist = true
+            intent =
+                Intent(intent).apply {
+                    action = Intent.ACTION_MAIN
+                }
+            setIntent(intent)
+        }
+
         enableEdgeToEdge()
+        // enableEdgeToEdge() overrides the transparent window background set by the theme,
+        // causing a white flash on first launch. Reset it.
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
             val textState = remember { mutableStateOf(TextFieldValue("")) }
             val focusRequester = remember { FocusRequester() }

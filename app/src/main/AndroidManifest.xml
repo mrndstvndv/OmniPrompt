@@ -51,7 +51,7 @@
         <activity
                 android:name=".MainActivity"
                 android:excludeFromRecents="true"
-                android:launchMode="singleTask"
+                android:launchMode="singleTop"
                 android:exported="true"
                 android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
                 android:theme="@style/Theme.Search">

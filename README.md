@@ -33,3 +33,7 @@ A keyboard-first Android command palette that unifies app launching, device sear
 ## Building
 
 See [BUILDING.md](BUILDING.md) for local and CI build instructions.
+
+## Assist Behavior
+
+For details about assist-session lifecycle behavior, current mitigations, side effects (including possible flicker), and alternative approaches, see [ASSIST_LIFECYCLE.md](ASSIST_LIFECYCLE.md).
