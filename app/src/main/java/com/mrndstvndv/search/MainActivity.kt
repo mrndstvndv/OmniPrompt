@@ -151,25 +151,37 @@ class MainActivity : ComponentActivity() {
         if (action == MotionEvent.ACTION_DOWN) {
             hasSeenFreshDown = true
         }
-        if (!hasSeenFreshDown) {
-            return true // Consume the event silently
+        if (hasSeenFreshDown) {
+            return super.dispatchTouchEvent(event)
         }
-        return super.dispatchTouchEvent(event)
+        return true // Consume the event silently
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
+        val isAssistAction = intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS"
         // Rewrite assist actions to escape session lifecycle
         val effectiveIntent =
-            if (intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS") {
+            if (isAssistAction) {
+                launchedFromAssist = true
                 Intent(intent).apply { action = Intent.ACTION_MAIN }
             } else {
+                launchedFromAssist = false
                 intent
             }
         setIntent(effectiveIntent)
         // Reset touch gate for the new gesture
-        hasSeenFreshDown = false
+        if (isAssistAction) {
+            hasSeenFreshDown = false
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // If the user is intentionally leaving the activity (e.g. starting settings),
+        // we should not fight the system's attempt to background us later.
+        launchedFromAssist = false
     }
 
     override fun onPause() {
