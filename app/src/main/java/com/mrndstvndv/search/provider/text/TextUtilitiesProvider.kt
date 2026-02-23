@@ -381,6 +381,37 @@ class TextUtilitiesProvider(
         }
     }
 
+    private class RemoveNewlinesUtility : TextUtility {
+        override val id: String = "remove-newlines"
+        override val displayName: String = "Remove Newlines"
+        override val description: String = "Replace line breaks with a single space"
+        override val primaryKeyword: String = "rnl"
+        override val keywords: Set<String> = setOf("rnl", "removenl", "removelines", "stripnl", "stripnewlines")
+        override val invalidInputHint: String = "rnl hello\nworld → hello world"
+        override val supportsBothModes: Boolean = false
+        override val defaultMode: TransformMode = TransformMode.DECODE
+
+        override fun transform(
+            mode: TransformMode,
+            text: String,
+        ): TransformOutcome {
+            val trimmed = text.trim()
+            if (trimmed.isEmpty()) {
+                return TransformOutcome.InvalidInput("No text provided")
+            }
+            val result =
+                trimmed
+                    .replace("\\r\\n|\\r|\\n".toRegex(), " ")
+                    .replace("\\s+".toRegex(), " ")
+                    .trim()
+            return if (result.isEmpty()) {
+                TransformOutcome.InvalidInput("Nothing left after removing newlines")
+            } else {
+                TransformOutcome.Success(result)
+            }
+        }
+    }
+
     private class MessengerUrlExtractorUtility : TextUtility {
         override val id: String = "messenger-url"
         override val displayName: String = "Extract Messenger URL"
@@ -481,6 +512,7 @@ class TextUtilitiesProvider(
                 Base64Utility(),
                 TrimUtility(),
                 RemoveWhitespacesUtility(),
+                RemoveNewlinesUtility(),
                 MessengerUrlExtractorUtility(),
                 UrlEncodeUtility(),
             )
