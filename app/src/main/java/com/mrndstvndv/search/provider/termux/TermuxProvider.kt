@@ -224,10 +224,16 @@ class TermuxProvider(
                 command.workingDir?.let { workDir ->
                     putExtra(EXTRA_COMMAND_WORKDIR, workDir)
                 }
-                putExtra(EXTRA_COMMAND_BACKGROUND, command.runInBackground)
+                // Use EXTRA_RUNNER instead of deprecated EXTRA_BACKGROUND
+                // Valid values: "terminal-session" (foreground) or "app-shell" (background)
+                putExtra(
+                    EXTRA_COMMAND_RUNNER,
+                    if (command.runInBackground) "app-shell" else "terminal-session"
+                )
                 // sessionAction must be String: "0", "1", "2", "3"
                 putExtra(EXTRA_COMMAND_SESSION_ACTION, command.sessionAction.toString())
                 putExtra(EXTRA_COMMAND_PENDING_INTENT, pendingIntent)
+                putExtra(EXTRA_COMMAND_LABEL, command.displayName)
             }
 
             try {
@@ -242,23 +248,28 @@ class TermuxProvider(
                     }
                 }
 
-                // 5. Deliver the command. Try startService first, fallback to broadcast.
+                // 5. Deliver the command. Use startService on older Android,
+                // but PendingIntent.send() on Android 8+ to bypass background restrictions.
                 val serviceIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE)
                 try {
-                    // On Android 12+, PendingIntent.send() can sometimes bypass background restrictions
-                    // that startService() fails on.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        val pi = android.app.PendingIntent.getService(activity, 0, serviceIntent, 
-                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                    // Background service start restrictions began in Android 8.0 (API 26).
+                    // PendingIntent.send() can bypass these restrictions.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val pi = android.app.PendingIntent.getService(
+                            activity, 0, serviceIntent,
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                        )
                         pi.send()
                     } else {
                         activity.startService(serviceIntent)
                     }
                 } catch (e: Exception) {
-                    // Fallback: Use the Receiver which forwards to the Service internally
-                    val broadcastIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_RECEIVER)
-                    broadcastIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND or Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-                    activity.sendBroadcast(broadcastIntent)
+                    // Fallback to direct startService if PendingIntent fails
+                    try {
+                        activity.startService(serviceIntent)
+                    } catch (e2: Exception) {
+                        throw e2
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(activity, "Failed to send command: ${e.message}", Toast.LENGTH_LONG).show()
@@ -280,14 +291,14 @@ class TermuxProvider(
         const val TERMUX_PACKAGE = "com.termux"
         const val TERMUX_RUN_COMMAND_PERMISSION = "com.termux.permission.RUN_COMMAND"
         private const val TERMUX_RUN_COMMAND_SERVICE = "com.termux.app.RunCommandService"
-        private const val TERMUX_RUN_COMMAND_RECEIVER = "com.termux.app.TermuxReceiver"
         private const val ACTION_RUN_COMMAND = "com.termux.RUN_COMMAND"
         private const val EXTRA_COMMAND_PATH = "com.termux.RUN_COMMAND_PATH"
         private const val EXTRA_COMMAND_ARGUMENTS = "com.termux.RUN_COMMAND_ARGUMENTS"
         private const val EXTRA_COMMAND_WORKDIR = "com.termux.RUN_COMMAND_WORKDIR"
-        private const val EXTRA_COMMAND_BACKGROUND = "com.termux.RUN_COMMAND_BACKGROUND"
+        private const val EXTRA_COMMAND_RUNNER = "com.termux.RUN_COMMAND_RUNNER"
         private const val EXTRA_COMMAND_SESSION_ACTION = "com.termux.RUN_COMMAND_SESSION_ACTION"
         private const val EXTRA_COMMAND_PENDING_INTENT = "com.termux.RUN_COMMAND_PENDING_INTENT"
+        private const val EXTRA_COMMAND_LABEL = "com.termux.RUN_COMMAND_COMMAND_LABEL"
 
         private const val PATH_MATCH_PENALTY = 10
 
