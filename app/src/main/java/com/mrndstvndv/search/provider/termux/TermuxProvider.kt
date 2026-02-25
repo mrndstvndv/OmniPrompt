@@ -53,18 +53,26 @@ class TermuxProvider(
         val commands = settings.commands
         if (commands.isEmpty()) return emptyList()
 
+        // Parse query: "ytdl url_link" -> commandPart="ytdl", argsPart="url_link"
+        val spaceIndex = cleaned.indexOf(' ')
+        val commandPart = if (spaceIndex > 0) cleaned.substring(0, spaceIndex) else cleaned
+        val argsPart = if (spaceIndex > 0) cleaned.substring(spaceIndex + 1).trim() else ""
+        val queryArgs = if (argsPart.isBlank()) emptyList() else argsPart.split(' ')
+
         data class ScoredCommand(
             val command: TermuxCommand,
             val score: Int,
             val matchedTitleIndices: List<Int>,
             val matchedSubtitleIndices: List<Int>,
+            val queryArgs: List<String>,
+            val argsText: String,
         )
 
         val scored =
             commands
                 .mapNotNull { command ->
-                    val titleMatch = FuzzyMatcher.match(cleaned, command.displayName)
-                    val pathMatch = FuzzyMatcher.match(cleaned, command.executablePath)
+                    val titleMatch = FuzzyMatcher.match(commandPart, command.displayName)
+                    val pathMatch = FuzzyMatcher.match(commandPart, command.executablePath)
 
                     // Apply penalty to path matches
                     val pathScoreWithPenalty = pathMatch?.let { it.score - PATH_MATCH_PENALTY }
@@ -83,6 +91,8 @@ class TermuxProvider(
                                 score = titleMatch.score,
                                 matchedTitleIndices = titleMatch.matchedIndices,
                                 matchedSubtitleIndices = pathMatch?.matchedIndices ?: emptyList(),
+                                queryArgs = queryArgs,
+                                argsText = argsPart,
                             )
                         }
 
@@ -92,6 +102,8 @@ class TermuxProvider(
                                 score = pathScoreWithPenalty!!,
                                 matchedTitleIndices = emptyList(),
                                 matchedSubtitleIndices = pathMatch.matchedIndices,
+                                queryArgs = queryArgs,
+                                argsText = argsPart,
                             )
                         }
 
@@ -101,14 +113,16 @@ class TermuxProvider(
                     }
                 }.sortedByDescending { it.score }
 
-        return scored.map { (command, _, matchedTitleIndices, matchedSubtitleIndices) ->
+        return scored.map { (command, _, matchedTitleIndices, matchedSubtitleIndices, queryArgs, argsText) ->
+            val resolvedArgs = resolveArguments(command.arguments, queryArgs, argsText)
+            val preview = buildCommandPreview(command.executablePath, resolvedArgs)
             ProviderResult(
                 id = "$id:${command.id}",
-                title = command.displayName,
-                subtitle = command.executablePath,
+                title = if (argsText.isBlank()) command.displayName else "${command.displayName} \"$argsText\"",
+                subtitle = preview,
                 vectorIcon = Icons.Outlined.Terminal,
                 providerId = id,
-                onSelect = { executeTermuxCommand(command) },
+                onSelect = { executeTermuxCommand(command, queryArgs, argsText) },
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedTitleIndices,
                 matchedSubtitleIndices = matchedSubtitleIndices,
@@ -116,20 +130,75 @@ class TermuxProvider(
         }
     }
 
-    private suspend fun executeTermuxCommand(command: TermuxCommand) {
+    /**
+     * Resolves dynamic argument placeholders like $1, $2, $* with actual query arguments.
+     * Supports inline placeholders within arguments (e.g., "shep $1").
+     */
+    private fun resolveArguments(
+        arguments: String?,
+        queryArgs: List<String>,
+        argsText: String,
+    ): List<String> {
+        if (arguments.isNullOrBlank()) return emptyList()
+
+        return arguments.split(",").map { it.trim() }.map { arg ->
+            resolvePlaceholders(arg, queryArgs, argsText)
+        }
+    }
+
+    /**
+     * Replaces $1, $2, $* placeholders within a string.
+     */
+    private fun resolvePlaceholders(
+        input: String,
+        queryArgs: List<String>,
+        argsText: String,
+    ): String {
+        var result = input
+
+        // Replace $* first (all remaining text)
+        result = result.replace("$*", argsText)
+
+        // Replace $1, $2, etc. with corresponding query arguments
+        val placeholderPattern = Regex("\\$([0-9]+)")
+        result = placeholderPattern.replace(result) { matchResult ->
+            val index = matchResult.groupValues[1].toIntOrNull()
+            if (index != null && index > 0) {
+                queryArgs.getOrNull(index - 1) ?: matchResult.value
+            } else {
+                matchResult.value
+            }
+        }
+
+        return result
+    }
+
+    /**
+     * Builds a command preview string showing the executable and resolved arguments.
+     */
+    private fun buildCommandPreview(executablePath: String, resolvedArgs: List<String>): String {
+        return if (resolvedArgs.isEmpty()) {
+            executablePath
+        } else {
+            "$executablePath ${resolvedArgs.joinToString(" ")}"
+        }
+    }
+
+    private suspend fun executeTermuxCommand(
+        command: TermuxCommand,
+        queryArgs: List<String>,
+        argsText: String,
+    ) {
         withContext(Dispatchers.Main) {
+            val resolvedArgs = resolveArguments(command.arguments, queryArgs, argsText)
             val intent =
                 Intent().apply {
                     setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE)
                     action = ACTION_RUN_COMMAND
                     putExtra(EXTRA_COMMAND_PATH, command.executablePath)
 
-                    // Arguments are comma-separated
-                    command.arguments?.let { args ->
-                        val argArray = args.split(",").map { it.trim() }.toTypedArray()
-                        if (argArray.isNotEmpty()) {
-                            putExtra(EXTRA_COMMAND_ARGUMENTS, argArray)
-                        }
+                    if (resolvedArgs.isNotEmpty()) {
+                        putExtra(EXTRA_COMMAND_ARGUMENTS, resolvedArgs.toTypedArray())
                     }
 
                     command.workingDir?.let { workDir ->

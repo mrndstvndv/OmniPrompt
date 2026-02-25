@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Terminal
@@ -268,6 +270,18 @@ fun TermuxSettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Dynamic arguments:",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "• \$1, \$2, etc. = arguments after query (space-separated)\n• \$* = all remaining text after command\n• Works inline: cmd \$1, or standalone: \$1\nExample: -f, ba+bv, \$1 → resolves to -f, ba+bv, url",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -486,7 +500,10 @@ private fun TermuxCommandAddDialog(
         onAdd(command)
     }
 
-    ScrimDialog(onDismiss = onDismiss) {
+    ScrimDialog(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxWidth(0.92f)
+    ) {
         TermuxCommandDialogContent(
             title = "Add Command",
             displayName = displayName,
@@ -540,7 +557,10 @@ private fun TermuxCommandEditDialog(
         onSave(updated)
     }
 
-    ScrimDialog(onDismiss = onDismiss) {
+    ScrimDialog(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxWidth(0.92f)
+    ) {
         TermuxCommandDialogContent(
             title = "Edit Command",
             displayName = displayName,
@@ -586,11 +606,19 @@ private fun TermuxCommandDialogContent(
     onSave: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(24.dp)) {
+        // Title (sticky)
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Scrollable content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
 
         // Display Name
         TextField(
@@ -631,8 +659,8 @@ private fun TermuxCommandDialogContent(
             value = arguments,
             onValueChange = onArgumentsChange,
             label = { Text("Arguments (optional)") },
-            placeholder = { Text("arg1,arg2,arg3") },
-            supportingText = { Text("Comma-separated values") },
+            placeholder = { Text("-f, ba+bv, \$1") },
+            supportingText = { Text("Comma-separated. Use \$1, \$2 for args, \$* for all text") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors =
@@ -640,6 +668,40 @@ private fun TermuxCommandDialogContent(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                 ),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Command Preview
+        val previewArgs =
+            if (arguments.isBlank()) {
+                ""
+            } else {
+                arguments
+                    .split(",")
+                    .map { it.trim() }
+                    .joinToString(" ") { arg ->
+                        when {
+                            arg.contains("\$*") -> arg.replace("\$*", "<args>")
+                            arg.contains(Regex("\\\$\\d+")) ->
+                                arg.replace(Regex("\\\$(\\d+)")) { match ->
+                                    "<arg${match.groupValues[1]}>"
+                                }
+                            else -> arg
+                        }
+                    }
+            }
+        Text(
+            text = "Preview:",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = if (previewArgs.isBlank()) executablePath else "$executablePath $previewArgs",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -716,11 +778,12 @@ private fun TermuxCommandDialogContent(
                 enabled = !runInBackground,
                 onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN) },
             )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Action buttons
+        // Action buttons (sticky at bottom)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
