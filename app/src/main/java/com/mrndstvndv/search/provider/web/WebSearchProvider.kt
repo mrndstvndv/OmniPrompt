@@ -142,24 +142,26 @@ class WebSearchProvider(
         if (sites.isEmpty()) return emptyList()
 
         val defaultSite = settings.siteForId(settings.defaultSiteId) ?: sites.first()
-        val triggerToken =
-            query.originalText.trimStart().takeWhile { char ->
-                !char.isWhitespace() && char != ':'
-            }
+        // Use first word (space-separated) as trigger token
+        val trimmedOriginal = query.originalText.trimStart()
+        val firstSpace = trimmedOriginal.indexOf(' ')
+        val triggerToken = if (firstSpace == -1) trimmedOriginal else trimmedOriginal.substring(0, firstSpace)
 
-        // Use fuzzy matching for trigger tokens
-        val triggerMatches =
+        // Use fuzzy matching for trigger tokens and keep matched indices for highlighting
+        val triggerMatchMap: Map<String, com.mrndstvndv.search.util.FuzzyMatchResult> =
             if (triggerToken.isBlank()) {
-                emptyList()
+                emptyMap()
             } else {
                 sites
                     .filter { it.id != defaultSite.id }
                     .mapNotNull { site ->
                         val match = FuzzyMatcher.match(triggerToken, site.displayName)
-                        match?.let { site to it }
+                        match?.let { site.id to it }
                     }.sortedByDescending { it.second.score }
-                    .map { it.first }
+                    .toMap()
             }
+
+        val triggerMatches = triggerMatchMap.keys.mapNotNull { id -> sites.firstOrNull { it.id == id } }
 
         val searchTerms = dropTriggerToken(cleaned, triggerToken).ifBlank { cleaned }.trim()
         val visibleSites =
@@ -193,6 +195,10 @@ class WebSearchProvider(
                 aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
                 keepOverlayUntilExit = true,
                 excludeFromFrequencyRanking = true,
+                // Highlight trigger token matches in the subtitle (site display name)
+                matchedSubtitleIndices = triggerMatchMap[site.id]?.matchedIndices ?: emptyList(),
+                // Use stable frequency key without query hash so dynamic queries aggregate under site
+                frequencyKey = "$id:${site.id}",
             )
         }
     }

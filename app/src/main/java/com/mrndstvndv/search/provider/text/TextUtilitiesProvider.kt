@@ -73,7 +73,8 @@ class TextUtilitiesProvider(
                 ),
             onSelect = action,
             keepOverlayUntilExit = autoLaunchUri != null,
-            excludeFromFrequencyRanking = true,
+            // Aggregate frequency by utility id (exclude dynamic payload)
+            frequencyKey = "$id:${command.utility.id}",
         )
     }
 

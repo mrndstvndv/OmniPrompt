@@ -355,13 +355,25 @@ class MainActivity : ComponentActivity() {
             var contactActionData by remember { mutableStateOf<ContactActionData?>(null) }
             var currentNormalizedQuery by remember { mutableStateOf("") }
 
+            fun frequencyQueryFor(query: String, providerId: String): String {
+                val trimmed = query.trim()
+                if (trimmed.isEmpty()) return ""
+                return if (providerId in setOf("web-search", "termux", "text-utilities")) {
+                    trimmed.split(' ', limit = 2)[0]
+                } else {
+                    trimmed
+                }
+            }
+
             fun startPendingAction(result: ProviderResult?) {
                 val action = result?.onSelect ?: return
                 if (isPerformingAction) return
                 isPerformingAction = true
                 // Track result usage frequency when result is selected
                 if (!result.excludeFromFrequencyRanking) {
-                    rankingRepository.incrementResultUsage(result.id, currentNormalizedQuery)
+                    val freqId = result.frequencyKey ?: result.id
+                    val freqQuery = frequencyQueryFor(currentNormalizedQuery, result.providerId)
+                    rankingRepository.incrementResultUsage(freqId, freqQuery)
                 }
                 pendingAction = PendingAction(action, result.keepOverlayUntilExit)
             }
@@ -400,7 +412,9 @@ class MainActivity : ComponentActivity() {
                         )
                     // Track usage for contacts too
                     if (!candidate.excludeFromFrequencyRanking) {
-                        rankingRepository.incrementResultUsage(candidate.id, currentNormalizedQuery)
+                        val freqId = candidate.frequencyKey ?: candidate.id
+                        val freqQuery = frequencyQueryFor(currentNormalizedQuery, candidate.providerId)
+                        rankingRepository.incrementResultUsage(freqId, freqQuery)
                     }
                     return true
                 }
@@ -468,12 +482,16 @@ class MainActivity : ComponentActivity() {
                                     compareBy(
                                         { result ->
                                             // Primary: items with score (>0) come first, then items without (=0)
-                                            val score = rankingRepository.getResultFrequency(result.id, normalizedText)
+                                            val freqId = result.frequencyKey ?: result.id
+                                            val fq = frequencyQueryFor(normalizedText, result.providerId)
+                                            val score = rankingRepository.getResultFrequency(freqId, fq)
                                             if (score > 0f) 0 else 1
                                         },
                                         { result ->
                                             // Secondary: within each group, sort appropriately
-                                            val score = rankingRepository.getResultFrequency(result.id, normalizedText)
+                                            val freqId = result.frequencyKey ?: result.id
+                                            val fq = frequencyQueryFor(normalizedText, result.providerId)
+                                            val score = rankingRepository.getResultFrequency(freqId, fq)
                                             if (score > 0f) {
                                                 // For items with score, sort by score descending (negative for descending)
                                                 -score
@@ -1051,6 +1069,8 @@ class MainActivity : ComponentActivity() {
                     onSelect = action,
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
+                    // Aggregate frequency by site rather than per-query
+                    frequencyKey = "web-search:${resolvedSite.id}",
                 )
             }
 

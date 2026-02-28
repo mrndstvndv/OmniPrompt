@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout -b:*)",
+      "Bash(./gradlew :app:assembleDebug:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\noption A: match animation durations when going down\n\nWhen clearing search results \\(going down\\), the recent apps list was\nexpanding in 250ms while the search bar took 500ms to descend. This\ncaused a visual stutter where the apps would finish expanding while\nthe search bar was still moving, creating an abrupt upward bump.\n\nNow the app list enter animation uses 500ms when going down to match\nthe search bar descent duration, keeping them in sync.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch -D:*)"
+    ]
+  }
+}
