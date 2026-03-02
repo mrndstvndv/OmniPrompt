@@ -19,9 +19,9 @@ data class IntentSettings(
         const val PROVIDER_ID = "intent"
 
         /**
-         * Create default settings with pre-loaded intents.
+         * Create default settings with an empty list of intent configurations.
          */
-        fun default(): IntentSettings = IntentSettings(configs = defaultIntentConfigs)
+        fun default(): IntentSettings = IntentSettings(configs = emptyList())
 
         /**
          * Deserialize from JSON.
