@@ -345,6 +345,7 @@ class SettingsActivity : ComponentActivity() {
                             BackHandler { currentScreen = Screen.Providers }
                             IntentSettingsScreen(
                                 repository = intentSettingsRepo,
+                                appListRepository = appListRepository,
                                 onBack = { currentScreen = Screen.Providers },
                             )
                         }

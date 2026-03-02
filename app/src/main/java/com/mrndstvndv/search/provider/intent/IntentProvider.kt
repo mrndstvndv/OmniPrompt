@@ -44,7 +44,7 @@ class IntentProvider(
         val configs = settings.configs
         if (configs.isEmpty()) return emptyList()
 
-        // Extract first word for matching (like TermuxProvider)
+        // Extract first word for matching
         val spaceIndex = cleaned.indexOf(' ')
         val searchTerm = if (spaceIndex > 0) cleaned.substring(0, spaceIndex) else cleaned
 
@@ -60,34 +60,48 @@ class IntentProvider(
 
         if (scored.isEmpty()) return emptyList()
 
-        // Use remaining text after best matched title as payload
-        val bestMatch = scored.first().first
-        val payload = cleaned.removePrefix(bestMatch.title).trim()
+        // Use remaining text after the first word as raw payload
+        val rawPayload = if (spaceIndex > 0) cleaned.substring(spaceIndex + 1).trim() else ""
         
         return scored.map { (config, score, matchedIndices) ->
-            val resolvedExtra = config.extraValue?.replace("\$query", payload)
-            
-            // For the best match use actual payload, for others show "(type to see payload)"
-            val displayPayload = if (config == bestMatch && payload.isNotEmpty()) {
-                payload
+            // For the best match use actual payload, for others show hint if payload is needed
+            val displayPayload = if (config == scored.first().first) {
+                if (rawPayload.isNotEmpty()) {
+                    rawPayload
+                } else if (config.requiresPayload) {
+                    "(type to add payload)"
+                } else {
+                    ""
+                }
             } else {
-                "(type to see payload)"
+                if (config.requiresPayload) "(type to add payload)" else ""
             }
             
             ProviderResult(
                 id = "$id:${config.id}",
                 title = config.title,
-                subtitle = "$displayPayload → ${config.packageName.ifEmpty { "System" }}",
+                subtitle = if (displayPayload.isNotEmpty()) {
+                    "$displayPayload → ${config.packageName.ifEmpty { "System" }}"
+                } else {
+                    config.packageName.ifEmpty { "System" }
+                },
                 vectorIcon = Icons.Outlined.Share,
                 providerId = id,
-                onSelect = { executeIntent(config, payload, resolvedExtra) },
+                onSelect = { executeIntent(config, rawPayload) },
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedIndices,
             )
         }
     }
 
-    private suspend fun executeIntent(config: IntentConfig, payload: String, resolvedExtra: String?) {
+    private fun executeIntent(config: IntentConfig, rawPayload: String) {
+        // Resolve payload using template
+        val resolvedPayload = when {
+            config.payloadTemplate == null -> rawPayload
+            config.payloadTemplate.contains("\$query") -> config.payloadTemplate.replace("\$query", rawPayload)
+            else -> config.payloadTemplate // Fixed template
+        }
+
         val intent = Intent().apply {
             action = config.action
             type = config.type
@@ -97,24 +111,27 @@ class IntentProvider(
                 setPackage(config.packageName)
             }
 
-            // Add extras
+            // Standard intent handling based on action
             when (config.action) {
                 Intent.ACTION_SEND -> {
-                    putExtra(Intent.EXTRA_TEXT, payload)
+                    putExtra(Intent.EXTRA_TEXT, resolvedPayload)
                 }
                 Intent.ACTION_VIEW -> {
-                    // For VIEW, payload could be a URL
-                    if (payload.isNotEmpty()) {
-                        data = android.net.Uri.parse(payload)
+                    if (resolvedPayload.isNotEmpty()) {
+                        data = android.net.Uri.parse(resolvedPayload)
+                    }
+                }
+                Intent.ACTION_SENDTO -> {
+                    if (resolvedPayload.isNotEmpty()) {
+                        data = android.net.Uri.parse(resolvedPayload)
                     }
                 }
             }
 
-            // Add custom extra if specified
-            config.extraKey?.let { key ->
-                resolvedExtra?.let { value ->
-                    putExtra(key, value)
-                }
+            // Custom extras with $query replacement
+            config.extras.forEach { extra ->
+                val resolvedExtraValue = extra.value.replace("\$query", rawPayload)
+                putExtra(extra.key, resolvedExtraValue)
             }
 
             // Clear launch flags for external apps
@@ -124,16 +141,17 @@ class IntentProvider(
         try {
             activity.startActivity(intent)
         } catch (e: Exception) {
-            // If the intent fails (e.g., app not found), try ACTION_VIEW as fallback for URLs
-            if (config.action == Intent.ACTION_SEND && payload.isNotEmpty()) {
+            // Fallback for ACTION_SEND with URL
+            if (config.action == Intent.ACTION_SEND && resolvedPayload.isNotEmpty() && 
+                (resolvedPayload.startsWith("http://") || resolvedPayload.startsWith("https://"))) {
                 val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = android.net.Uri.parse(payload)
+                    data = android.net.Uri.parse(resolvedPayload)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 try {
                     activity.startActivity(fallbackIntent)
                 } catch (e2: Exception) {
-                    // Both failed - ignore
+                    // Both failed
                 }
             }
         }
