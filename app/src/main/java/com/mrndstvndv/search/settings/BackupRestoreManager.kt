@@ -14,6 +14,7 @@ import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.termux.TermuxSettings
+import com.mrndstvndv.search.provider.intent.IntentSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -56,6 +57,7 @@ class BackupRestoreManager(
         private const val KEY_SYSTEM_SETTINGS = "systemSettings"
         private const val KEY_CONTACTS = "contacts"
         private const val KEY_TERMUX = "termux"
+        private const val KEY_INTENT = "intent"
         private const val KEY_ENABLED_PROVIDERS = "enabledProviders"
 
         // Appearance Keys
@@ -137,6 +139,7 @@ class BackupRestoreManager(
         systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
         contactsSettingsRepo: SettingsRepository<ContactsSettings>,
         termuxSettingsRepo: SettingsRepository<TermuxSettings>,
+        intentSettingsRepo: SettingsRepository<IntentSettings>,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): JSONObject =
@@ -158,6 +161,7 @@ class BackupRestoreManager(
             providerSettings.put(KEY_SYSTEM_SETTINGS, systemSettingsSettingsRepo.value.toJson())
             providerSettings.put(KEY_CONTACTS, contactsSettingsRepo.value.toJson())
             providerSettings.put(KEY_TERMUX, termuxSettingsRepo.value.toJson())
+            providerSettings.put(KEY_INTENT, intentSettingsRepo.value.toJson())
 
             // Appearance settings
             val appearance = JSONObject()
@@ -331,6 +335,7 @@ class BackupRestoreManager(
         systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
         contactsSettingsRepo: SettingsRepository<ContactsSettings>,
         termuxSettingsRepo: SettingsRepository<TermuxSettings>,
+        intentSettingsRepo: SettingsRepository<IntentSettings>,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): RestoreResult =
@@ -475,6 +480,19 @@ class BackupRestoreManager(
                         }
                     } catch (e: Exception) {
                         warnings.add("Failed to restore Termux settings")
+                    }
+                }
+
+                // Restore Intent Settings
+                providerSettings?.optJSONObject(KEY_INTENT)?.let { intentJson ->
+                    try {
+                        val settings = IntentSettings.fromJson(intentJson)
+                        if (settings != null) {
+                            intentSettingsRepo.replace(settings)
+                            settingsRestored++
+                        }
+                    } catch (e: Exception) {
+                        warnings.add("Failed to restore Intent settings")
                     }
                 }
 

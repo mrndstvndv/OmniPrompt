@@ -200,6 +200,7 @@ fun ProvidersSettingsScreen(
     onOpenSystemSettingsSettings: () -> Unit,
     onOpenContactsSettings: () -> Unit,
     onOpenTermuxSettings: () -> Unit,
+    onOpenIntentSettings: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -354,6 +355,15 @@ fun ProvidersSettingsScreen(
                     },
                     onClick = if (isTermuxInstalled) onOpenTermuxSettings else null,
                     toggleEnabled = isTermuxInstalled,
+                )
+                SettingsDivider()
+                ProviderRow(
+                    id = "intent",
+                    name = "Intent Launcher",
+                    description = "Launch apps with triggers",
+                    enabled = enabledProviders["intent"] ?: true,
+                    onToggle = { settingsRepository.setProviderEnabled("intent", it) },
+                    onClick = onOpenIntentSettings,
                 )
             }
         }

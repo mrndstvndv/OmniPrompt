@@ -30,6 +30,8 @@ import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
+import com.mrndstvndv.search.provider.intent.IntentSettings
+import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
@@ -53,6 +55,7 @@ import com.mrndstvndv.search.ui.settings.BehaviorSettingsScreen
 import com.mrndstvndv.search.ui.settings.ContactsSettingsScreen
 import com.mrndstvndv.search.ui.settings.FileSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.GeneralSettingsScreen
+import com.mrndstvndv.search.ui.settings.IntentSettingsScreen
 import com.mrndstvndv.search.ui.settings.ProviderListScreen
 import com.mrndstvndv.search.ui.settings.ProvidersSettingsScreen
 import com.mrndstvndv.search.ui.settings.ResultRankingSettingsScreen
@@ -86,6 +89,7 @@ class SettingsActivity : ComponentActivity() {
         ContactsSettings,
         BackupRestore,
         TermuxSettings,
+        IntentSettings,
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +110,7 @@ class SettingsActivity : ComponentActivity() {
             val systemSettingsSettingsRepo = remember { createSystemSettingsSettingsRepository(this@SettingsActivity) }
             val contactsSettingsRepo = remember { createContactsSettingsRepository(this@SettingsActivity) }
             val termuxSettingsRepo = remember { createTermuxSettingsRepository(this@SettingsActivity) }
+            val intentSettingsRepo = remember { createIntentSettingsRepository(this@SettingsActivity) }
 
             val fileSearchRepository = remember { FileSearchRepository.getInstance(this@SettingsActivity) }
             val rankingRepository = remember { ProviderRankingRepository.getInstance(this@SettingsActivity, coroutineScope) }
@@ -188,6 +193,7 @@ class SettingsActivity : ComponentActivity() {
                                 onOpenSystemSettingsSettings = { currentScreen = Screen.SystemSettings },
                                 onOpenContactsSettings = { currentScreen = Screen.ContactsSettings },
                                 onOpenTermuxSettings = { currentScreen = Screen.TermuxSettings },
+                                onOpenIntentSettings = { currentScreen = Screen.IntentSettings },
                                 onBack = {
                                     if (initialScreen == Screen.Providers) {
                                         finish()
@@ -319,6 +325,7 @@ class SettingsActivity : ComponentActivity() {
                                 systemSettingsSettingsRepo = systemSettingsSettingsRepo,
                                 contactsSettingsRepo = contactsSettingsRepo,
                                 termuxSettingsRepo = termuxSettingsRepo,
+                                intentSettingsRepo = intentSettingsRepo,
                                 rankingRepository = rankingRepository,
                                 aliasRepository = aliasRepository,
                                 onBack = { currentScreen = Screen.Home },
@@ -330,6 +337,14 @@ class SettingsActivity : ComponentActivity() {
                             TermuxSettingsScreen(
                                 repository = termuxSettingsRepo,
                                 isTermuxInstalled = TermuxProvider.isTermuxInstalled(this@SettingsActivity),
+                                onBack = { currentScreen = Screen.Providers },
+                            )
+                        }
+
+                        Screen.IntentSettings -> {
+                            BackHandler { currentScreen = Screen.Providers }
+                            IntentSettingsScreen(
+                                repository = intentSettingsRepo,
                                 onBack = { currentScreen = Screen.Providers },
                             )
                         }

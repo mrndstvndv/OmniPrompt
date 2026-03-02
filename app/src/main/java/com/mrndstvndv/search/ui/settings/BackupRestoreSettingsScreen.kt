@@ -57,6 +57,7 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.provider.termux.TermuxSettings
+import com.mrndstvndv.search.provider.intent.IntentSettings
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.settings.BackupRestoreManager
@@ -76,6 +77,7 @@ fun BackupRestoreSettingsScreen(
     systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
     contactsSettingsRepo: SettingsRepository<ContactsSettings>,
     termuxSettingsRepo: SettingsRepository<TermuxSettings>,
+    intentSettingsRepo: SettingsRepository<IntentSettings>,
     rankingRepository: ProviderRankingRepository,
     aliasRepository: AliasRepository,
     onBack: () -> Unit,
@@ -117,6 +119,7 @@ fun BackupRestoreSettingsScreen(
                             systemSettingsSettingsRepo = systemSettingsSettingsRepo,
                             contactsSettingsRepo = contactsSettingsRepo,
                             termuxSettingsRepo = termuxSettingsRepo,
+                            intentSettingsRepo = intentSettingsRepo,
                             rankingRepository = rankingRepository,
                             aliasRepository = aliasRepository,
                         )
@@ -220,6 +223,7 @@ fun BackupRestoreSettingsScreen(
                                     systemSettingsSettingsRepo = systemSettingsSettingsRepo,
                                     contactsSettingsRepo = contactsSettingsRepo,
                                     termuxSettingsRepo = termuxSettingsRepo,
+                                    intentSettingsRepo = intentSettingsRepo,
                                     rankingRepository = rankingRepository,
                                     aliasRepository = aliasRepository,
                                 )

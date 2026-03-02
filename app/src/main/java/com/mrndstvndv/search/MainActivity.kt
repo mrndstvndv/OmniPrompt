@@ -102,6 +102,8 @@ import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsReposit
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
 import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
+import com.mrndstvndv.search.provider.intent.IntentProvider
+import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
 import com.mrndstvndv.search.provider.web.WebSearchProvider
@@ -250,6 +252,7 @@ class MainActivity : ComponentActivity() {
             val systemSettingsSettingsRepo = remember(this@MainActivity) { createSystemSettingsSettingsRepository(this@MainActivity) }
             val contactsSettingsRepo = remember(this@MainActivity) { createContactsSettingsRepository(this@MainActivity) }
             val termuxSettingsRepo = remember(this@MainActivity) { createTermuxSettingsRepository(this@MainActivity) }
+            val intentSettingsRepo = remember(this@MainActivity) { createIntentSettingsRepository(this@MainActivity) }
 
             // Collect settings from new repositories
             val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
@@ -299,6 +302,7 @@ class MainActivity : ComponentActivity() {
                         add(ContactsProvider(settingsRepository, contactsSettingsRepo, contactsRepository))
                         add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
                         add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
+                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo))
                     }
                 }
 
