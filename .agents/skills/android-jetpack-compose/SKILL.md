@@ -121,6 +121,42 @@ fun UserScreen(viewModel: UserViewModel = viewModel()) {
 
 ## Best Practices
 
+### Clickable Surfaces with Proper Ripple Clipping
+
+When making a Surface or Card clickable, use the built-in `onClick` parameter instead of `Modifier.clickable()` to ensure the ripple effect is properly clipped to the shape:
+
+```kotlin
+// Good - ripple clips to shape automatically
+@Composable
+fun ClickableCard(
+    title: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp
+    ) {
+        Text(text = title, modifier = Modifier.padding(16.dp))
+    }
+}
+
+// Bad - ripple is square/rectangular, not clipped to shape
+@Composable
+fun BadClickableCard(
+    title: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp
+    ) {
+        Text(text = title, modifier = Modifier.padding(16.dp))
+    }
+}
+```
+
 ### Composable Function Guidelines
 
 ```kotlin
