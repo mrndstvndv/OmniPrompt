@@ -19,10 +19,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -320,6 +323,22 @@ fun ItemsList(
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
+                        }
+
+                        // Alias indicator - small bookmark icon in top-right corner
+                        // TODO: This implementation is hacky - using id prefix check is fragile.
+                        // The alias feature should be refactored to have a proper "isAlias" flag
+                        // on ProviderResult, and the visual positioning needs rework (currently
+                        // using offset which doesn't properly align with the card boundaries).
+                        if (item.id.startsWith("alias:")) {
+                            Icon(
+                                imageVector = Icons.Filled.Bookmark,
+                                contentDescription = "Alias",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .offset(x = 4.dp, y = (-8).dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            )
                         }
                     }
                 }

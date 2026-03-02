@@ -108,6 +108,8 @@ import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
 import com.mrndstvndv.search.provider.web.WebSearchProvider
 import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
+import com.mrndstvndv.search.util.FaviconLoader
+import com.mrndstvndv.search.util.loadAppIconBitmap
 import com.mrndstvndv.search.ui.components.AppListContainer
 import com.mrndstvndv.search.ui.components.AppListSection
 import com.mrndstvndv.search.ui.components.ContactActionData
@@ -1048,6 +1050,11 @@ class MainActivity : ComponentActivity() {
         finish()
     }
 
+    // TODO: The alias feature needs a proper refactor:
+    // - Add an explicit "isAlias" field to ProviderResult instead of relying on id prefix
+    // - Consider creating a dedicated AliasResult class that wraps ProviderResult
+    // - The icon loading should be handled more elegantly (maybe a separate IconResolver)
+    // - Consider caching loaded icons to avoid repeated loading
     private fun buildAliasResult(
         entry: AliasEntry,
         query: String,
@@ -1075,6 +1082,8 @@ class MainActivity : ComponentActivity() {
                     keepOverlayUntilExit = true,
                     // Aggregate frequency by site rather than per-query
                     frequencyKey = "web-search:${resolvedSite.id}",
+                    // Load favicon from the site's URL
+                    iconLoader = { FaviconLoader.loadFavicon(this@MainActivity, resolvedSite.id) },
                 )
             }
 
@@ -1096,6 +1105,8 @@ class MainActivity : ComponentActivity() {
                     onSelect = action,
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
+                    // Load app icon from PackageManager
+                    iconLoader = { loadAppIconBitmap(packageManager, target.packageName, defaultAppIconSize) },
                 )
             }
 
