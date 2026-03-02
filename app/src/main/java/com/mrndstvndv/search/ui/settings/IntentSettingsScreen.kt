@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Share
@@ -48,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.intent.IntentConfig
 import com.mrndstvndv.search.provider.intent.IntentSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
-import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -434,139 +432,16 @@ private fun IntentConfigDialogContent(
     var actionExpanded by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
 
-    ScrimDialog(
+    ContentDialog(
         onDismiss = onDismiss,
-        modifier = Modifier.fillMaxWidth(0.92f)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            // Title (sticky)
+        modifier = Modifier.fillMaxWidth(0.92f),
+        title = {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Scrollable content
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Title
-                OutlinedTextField(
-                    value = title_,
-                    onValueChange = onTitleChange,
-                    label = { Text("Title") },
-                    placeholder = { Text("Download Video") },
-                    supportingText = { Text("Display name - fuzzy matched when searching") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Package Name
-                OutlinedTextField(
-                    value = packageName,
-                    onValueChange = onPackageNameChange,
-                    label = { Text("Package Name (optional)") },
-                    placeholder = { Text("com.deniscerri.ytdl") },
-                    supportingText = { Text("Target app's package (leave empty for system)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Action dropdown
-                ExposedDropdownMenuBox(
-                    expanded = actionExpanded,
-                    onExpandedChange = { actionExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = action.substringAfterLast("."),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Action") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = actionExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = actionExpanded,
-                        onDismissRequest = { actionExpanded = false }
-                    ) {
-                        actionOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.substringAfterLast(".")) },
-                                onClick = {
-                                    onActionChange(option)
-                                    actionExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Type dropdown
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = type,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("MIME Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
-                    ) {
-                        typeOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    onTypeChange(option)
-                                    typeExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Extra Key
-                OutlinedTextField(
-                    value = extraKey,
-                    onValueChange = onExtraKeyChange,
-                    label = { Text("Extra Key (optional)") },
-                    placeholder = { Text("TYPE") },
-                    supportingText = { Text("Custom intent extra key") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Extra Value
-                OutlinedTextField(
-                    value = extraValue,
-                    onValueChange = onExtraValueChange,
-                    label = { Text("Extra Value (optional)") },
-                    placeholder = { Text("video") },
-                    supportingText = { Text("Use \$query to include the payload") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Action buttons (sticky at bottom)
+        },
+        buttons = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -596,6 +471,112 @@ private fun IntentConfigDialogContent(
                     }
                 }
             }
-        }
-    }
+        },
+        content = {
+            OutlinedTextField(
+                value = title_,
+                onValueChange = onTitleChange,
+                label = { Text("Title") },
+                placeholder = { Text("Download Video") },
+                supportingText = { Text("Display name - fuzzy matched when searching") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = packageName,
+                onValueChange = onPackageNameChange,
+                label = { Text("Package Name (optional)") },
+                placeholder = { Text("com.deniscerri.ytdl") },
+                supportingText = { Text("Target app's package (leave empty for system)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = actionExpanded,
+                onExpandedChange = { actionExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = action.substringAfterLast("."),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Action") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = actionExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                )
+                ExposedDropdownMenu(
+                    expanded = actionExpanded,
+                    onDismissRequest = { actionExpanded = false }
+                ) {
+                    actionOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.substringAfterLast(".")) },
+                            onClick = {
+                                onActionChange(option)
+                                actionExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = typeExpanded,
+                onExpandedChange = { typeExpanded = it },
+            ) {
+                OutlinedTextField(
+                    value = type,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("MIME Type") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                )
+                ExposedDropdownMenu(
+                    expanded = typeExpanded,
+                    onDismissRequest = { typeExpanded = false }
+                ) {
+                    typeOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                onTypeChange(option)
+                                typeExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = extraKey,
+                onValueChange = onExtraKeyChange,
+                label = { Text("Extra Key (optional)") },
+                placeholder = { Text("TYPE") },
+                supportingText = { Text("Custom intent extra key") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = extraValue,
+                onValueChange = onExtraValueChange,
+                label = { Text("Extra Value (optional)") },
+                placeholder = { Text("video") },
+                supportingText = { Text("Use \$query to include the payload") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    )
 }

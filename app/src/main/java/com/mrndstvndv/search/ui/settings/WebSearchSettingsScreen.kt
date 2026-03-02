@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSite
-import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsSection
@@ -515,14 +515,27 @@ private fun QuicklinkAddDialog(
         )
     }
 
-    ScrimDialog(onDismiss = onDismiss) {
-        Column(modifier = Modifier.padding(24.dp)) {
+    ContentDialog(
+        onDismiss = onDismiss,
+        title = {
             Text(
                 text = "Add Quicklink",
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
+        },
+        buttons = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { save() },
+                enabled = canSave,
+            ) {
+                Text("Save")
+            }
+        },
+        content = {
             TextField(
                 value = title,
                 onValueChange = { title = it },
@@ -541,7 +554,6 @@ private fun QuicklinkAddDialog(
                 value = url,
                 onValueChange = {
                     url = it
-                    // Reset favicon if URL changes
                     if (fetchedFavicon != null) {
                         FaviconLoader.deleteFavicon(context, quicklinkId)
                         fetchedFavicon = null
@@ -568,13 +580,11 @@ private fun QuicklinkAddDialog(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Favicon section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Favicon preview
                 Box(
                     modifier =
                         Modifier
@@ -643,27 +653,8 @@ private fun QuicklinkAddDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { save() },
-                    enabled = canSave,
-                ) {
-                    Text("Save")
-                }
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -776,14 +767,42 @@ private fun QuicklinkEditDialog(
         )
     }
 
-    ScrimDialog(onDismiss = onDismiss) {
-        Column(modifier = Modifier.padding(24.dp)) {
+    ContentDialog(
+        onDismiss = onDismiss,
+        title = {
             Text(
                 text = "Edit Quicklink",
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(modifier = Modifier.height(16.dp))
+        },
+        buttons = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onRemove) {
+                    Text(
+                        text = "Remove",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
 
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { save() },
+                        enabled = canSave,
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+        },
+        content = {
             TextField(
                 value = title,
                 onValueChange = { title = it },
@@ -802,7 +821,6 @@ private fun QuicklinkEditDialog(
                 value = url,
                 onValueChange = { newUrl ->
                     url = newUrl
-                    // Reset favicon state if URL changes
                     val normalizedNew = normalizeUrl(newUrl)
                     if (normalizedNew != quicklink.url) {
                         fetchedFavicon = null
@@ -828,13 +846,11 @@ private fun QuicklinkEditDialog(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Favicon section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Favicon preview
                 Box(
                     modifier =
                         Modifier
@@ -894,36 +910,8 @@ private fun QuicklinkEditDialog(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onRemove) {
-                    Text(
-                        text = "Remove",
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-
-                Row {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { save() },
-                        enabled = canSave,
-                    ) {
-                        Text("Save")
-                    }
-                }
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -996,18 +984,50 @@ private fun WebSearchSiteEditDialog(
     val placeholder = WebSearchSettings.QUERY_PLACEHOLDER
     val isValid = displayName.isNotBlank() && urlTemplate.contains(placeholder)
 
-    ScrimDialog(
+    ContentDialog(
         onDismiss = onDismiss,
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-        ) {
+        title = {
             Text(
                 text = "Edit Search Engine",
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(modifier = Modifier.height(16.dp))
+        },
+        buttons = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (canRemove) {
+                    TextButton(
+                        onClick = onRemove,
+                    ) {
+                        Text(
+                            text = "Remove",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
 
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text(text = "Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            onSave(site.copy(displayName = displayName.trim(), urlTemplate = urlTemplate.trim()))
+                        },
+                        enabled = isValid,
+                    ) {
+                        Text(text = "Save")
+                    }
+                }
+            }
+        },
+        content = {
             TextField(
                 value = displayName,
                 onValueChange = { displayName = it },
@@ -1044,44 +1064,8 @@ private fun WebSearchSiteEditDialog(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (canRemove) {
-                    TextButton(
-                        onClick = onRemove,
-                    ) {
-                        Text(
-                            text = "Remove",
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
-                }
-
-                Row {
-                    TextButton(onClick = onDismiss) {
-                        Text(text = "Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            onSave(site.copy(displayName = displayName.trim(), urlTemplate = urlTemplate.trim()))
-                        },
-                        enabled = isValid,
-                    ) {
-                        Text(text = "Save")
-                    }
-                }
-            }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -1095,18 +1079,31 @@ private fun WebSearchSiteAddDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val isValid = displayName.isNotBlank() && urlTemplate.contains(placeholder)
 
-    ScrimDialog(
+    ContentDialog(
         onDismiss = onDismiss,
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-        ) {
+        title = {
             Text(
                 text = "Add Search Engine",
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
+        },
+        buttons = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    onAdd(displayName, urlTemplate) { error ->
+                        errorMessage = error
+                    }
+                },
+                enabled = isValid,
+            ) {
+                Text(text = "Add")
+            }
+        },
+        content = {
             TextField(
                 value = displayName,
                 onValueChange = { displayName = it },
@@ -1152,29 +1149,6 @@ private fun WebSearchSiteAddDialog(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(text = "Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = {
-                        onAdd(displayName, urlTemplate) { error ->
-                            errorMessage = error
-                        }
-                    },
-                    enabled = isValid,
-                ) {
-                    Text(text = "Add")
-                }
-            }
-        }
-    }
+        },
+    )
 }

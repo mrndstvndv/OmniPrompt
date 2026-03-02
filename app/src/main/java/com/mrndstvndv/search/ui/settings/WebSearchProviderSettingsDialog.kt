@@ -6,19 +6,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import com.mrndstvndv.search.ui.components.ContentDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,7 +47,6 @@ fun WebSearchProviderSettingsDialog(
     }
 
     val allTemplatesValid = sites.all { it.urlTemplate.contains(placeholder) }
-    val scrollState = rememberScrollState()
 
     fun updateSite(index: Int, updater: (WebSearchSite) -> WebSearchSite) {
         val mutable = sites.toMutableList()
@@ -98,152 +93,136 @@ fun WebSearchProviderSettingsDialog(
 
     val isSaveEnabled = sites.isNotEmpty() && allTemplatesValid && defaultSiteId.isNotBlank()
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 12.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 600.dp)
-                    .verticalScroll(scrollState)
-                    .padding(20.dp)
+    ContentDialog(
+        onDismiss = onDismiss,
+        title = {
+            Text(
+                text = "Web Search Sites",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        buttons = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    val resolvedDefault = sites.firstOrNull { it.id == defaultSiteId }?.id
+                        ?: sites.firstOrNull()?.id
+                        ?: ""
+                    if (resolvedDefault.isNotBlank()) {
+                        onSave(WebSearchSettings(resolvedDefault, sites))
+                    }
+                },
+                enabled = isSaveEnabled
             ) {
-                Text(
-                    text = "Web Search Sites",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Pick your preferred search engine and add custom websites. Use $placeholder as the query placeholder.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Save")
+            }
+        },
+        content = {
+            Text(
+                text = "Pick your preferred search engine and add custom websites. Use $placeholder as the query placeholder.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-                sites.forEachIndexed { index, site ->
-                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = defaultSiteId == site.id,
-                                    onClick = { defaultSiteId = site.id }
-                                )
-                                Text(text = "Default", fontSize = 12.sp)
-                            }
-                            if (sites.size > 1) {
-                                TextButton(onClick = { removeSite(index) }) {
-                                    Text(text = "Remove")
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TextField(
-                            value = site.displayName,
-                            onValueChange = { newValue ->
-                                updateSite(index) { it.copy(displayName = newValue) }
-                            },
-                            label = { Text("Display name") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        TextField(
-                            value = site.urlTemplate,
-                            onValueChange = { newValue ->
-                                updateSite(index) { it.copy(urlTemplate = newValue) }
-                            },
-                            label = { Text("URL template") },
-                            supportingText = {
-                                Text(text = "Example: https://www.example.com/search?q={query}")
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        if (!site.urlTemplate.contains(placeholder)) {
-                            Text(
-                                text = "Template is missing $placeholder",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall
+            sites.forEachIndexed { index, site ->
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = defaultSiteId == site.id,
+                                onClick = { defaultSiteId = site.id }
                             )
+                            Text(text = "Default", fontSize = 12.sp)
                         }
+                        if (sites.size > 1) {
+                            TextButton(onClick = { removeSite(index) }) {
+                                Text(text = "Remove")
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextField(
+                        value = site.displayName,
+                        onValueChange = { newValue ->
+                            updateSite(index) { it.copy(displayName = newValue) }
+                        },
+                        label = { Text("Display name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextField(
+                        value = site.urlTemplate,
+                        onValueChange = { newValue ->
+                            updateSite(index) { it.copy(urlTemplate = newValue) }
+                        },
+                        label = { Text("URL template") },
+                        supportingText = {
+                            Text(text = "Example: https://www.example.com/search?q={query}")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (!site.urlTemplate.contains(placeholder)) {
                         Text(
-                            text = "Preview: ${site.buildUrl("compose")}",
+                            text = "Template is missing $placeholder",
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(text = "Add a custom site", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = newSiteName,
-                    onValueChange = { newSiteName = it },
-                    label = { Text("Display name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                TextField(
-                    value = newSiteTemplate,
-                    onValueChange = { newSiteTemplate = it },
-                    label = { Text("URL template") },
-                    supportingText = { Text(text = "Include $placeholder in the template") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Button(onClick = ::addCustomSite) {
-                        Text(text = "Add site")
-                    }
-                }
-
-                if (!allTemplatesValid) {
                     Text(
-                        text = "Every template needs $placeholder",
-                        color = MaterialTheme.colorScheme.error,
+                        text = "Preview: ${site.buildUrl("compose")}",
                         style = MaterialTheme.typography.bodySmall
                     )
-                }
-                errorMessage?.let { message ->
-                    Text(
-                        text = message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(text = "Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            val resolvedDefault = sites.firstOrNull { it.id == defaultSiteId }?.id
-                                ?: sites.firstOrNull()?.id
-                                ?: ""
-                            if (resolvedDefault.isNotBlank()) {
-                                onSave(WebSearchSettings(resolvedDefault, sites))
-                            }
-                        },
-                        enabled = isSaveEnabled
-                    ) {
-                        Text(text = "Save")
-                    }
                 }
             }
-        }
-    }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(text = "Add a custom site", style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            TextField(
+                value = newSiteName,
+                onValueChange = { newSiteName = it },
+                label = { Text("Display name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            TextField(
+                value = newSiteTemplate,
+                onValueChange = { newSiteTemplate = it },
+                label = { Text("URL template") },
+                supportingText = { Text(text = "Include $placeholder in the template") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Button(onClick = ::addCustomSite) {
+                    Text(text = "Add site")
+                }
+            }
+
+            if (!allTemplatesValid) {
+                Text(
+                    text = "Every template needs $placeholder",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        },
+    )
 }

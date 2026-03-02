@@ -58,7 +58,7 @@ import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
-import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -617,16 +617,20 @@ private fun AddPinnedAppDialog(
         }
     }
 
-    ScrimDialog(onDismiss = onDismiss) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-        ) {
+    ContentDialog(
+        onDismiss = onDismiss,
+        title = {
             Text(
                 text = "Add Pinned App",
                 style = MaterialTheme.typography.titleLarge,
             )
-            Spacer(modifier = Modifier.height(16.dp))
-
+        },
+        buttons = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel")
+            }
+        },
+        content = {
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -692,17 +696,6 @@ private fun AddPinnedAppDialog(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(text = "Cancel")
-                }
-            }
-        }
-    }
+        },
+    )
 }

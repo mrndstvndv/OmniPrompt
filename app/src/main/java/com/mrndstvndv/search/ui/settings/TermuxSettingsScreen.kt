@@ -19,10 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Terminal
@@ -57,7 +55,7 @@ import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxCommand
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
-import com.mrndstvndv.search.ui.components.ScrimDialog
+import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -500,31 +498,54 @@ private fun TermuxCommandAddDialog(
         onAdd(command)
     }
 
-    ScrimDialog(
+    ContentDialog(
         onDismiss = onDismiss,
-        modifier = Modifier.fillMaxWidth(0.92f)
-    ) {
-        TermuxCommandDialogContent(
-            title = "Add Command",
-            displayName = displayName,
-            onDisplayNameChange = { displayName = it },
-            executablePath = executablePath,
-            onExecutablePathChange = { executablePath = it },
-            arguments = arguments,
-            onArgumentsChange = { arguments = it },
-            workingDir = workingDir,
-            onWorkingDirChange = { workingDir = it },
-            runInBackground = runInBackground,
-            onRunInBackgroundChange = { runInBackground = it },
-            sessionAction = sessionAction,
-            onSessionActionChange = { sessionAction = it },
-            canSave = canSave,
-            showRemove = false,
-            onRemove = {},
-            onDismiss = onDismiss,
-            onSave = { save() },
-        )
-    }
+        modifier = Modifier.fillMaxWidth(0.92f),
+        title = {
+            Text(
+                text = "Add Command",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        buttons = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Spacer(modifier = Modifier.width(1.dp))
+
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { save() },
+                        enabled = canSave,
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+        },
+        content = {
+            TermuxCommandDialogContent(
+                displayName = displayName,
+                onDisplayNameChange = { displayName = it },
+                executablePath = executablePath,
+                onExecutablePathChange = { executablePath = it },
+                arguments = arguments,
+                onArgumentsChange = { arguments = it },
+                workingDir = workingDir,
+                onWorkingDirChange = { workingDir = it },
+                runInBackground = runInBackground,
+                onRunInBackgroundChange = { runInBackground = it },
+                sessionAction = sessionAction,
+                onSessionActionChange = { sessionAction = it },
+            )
+        },
+    )
 }
 
 @Composable
@@ -557,36 +578,63 @@ private fun TermuxCommandEditDialog(
         onSave(updated)
     }
 
-    ScrimDialog(
+    ContentDialog(
         onDismiss = onDismiss,
-        modifier = Modifier.fillMaxWidth(0.92f)
-    ) {
-        TermuxCommandDialogContent(
-            title = "Edit Command",
-            displayName = displayName,
-            onDisplayNameChange = { displayName = it },
-            executablePath = executablePath,
-            onExecutablePathChange = { executablePath = it },
-            arguments = arguments,
-            onArgumentsChange = { arguments = it },
-            workingDir = workingDir,
-            onWorkingDirChange = { workingDir = it },
-            runInBackground = runInBackground,
-            onRunInBackgroundChange = { runInBackground = it },
-            sessionAction = sessionAction,
-            onSessionActionChange = { sessionAction = it },
-            canSave = canSave,
-            showRemove = true,
-            onRemove = onRemove,
-            onDismiss = onDismiss,
-            onSave = { save() },
-        )
-    }
+        modifier = Modifier.fillMaxWidth(0.92f),
+        title = {
+            Text(
+                text = "Edit Command",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        buttons = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onRemove) {
+                    Text(
+                        text = "Remove",
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                Row {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { save() },
+                        enabled = canSave,
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+        },
+        content = {
+            TermuxCommandDialogContent(
+                displayName = displayName,
+                onDisplayNameChange = { displayName = it },
+                executablePath = executablePath,
+                onExecutablePathChange = { executablePath = it },
+                arguments = arguments,
+                onArgumentsChange = { arguments = it },
+                workingDir = workingDir,
+                onWorkingDirChange = { workingDir = it },
+                runInBackground = runInBackground,
+                onRunInBackgroundChange = { runInBackground = it },
+                sessionAction = sessionAction,
+                onSessionActionChange = { sessionAction = it },
+            )
+        },
+    )
 }
 
 @Composable
 private fun TermuxCommandDialogContent(
-    title: String,
     displayName: String,
     onDisplayNameChange: (String) -> Unit,
     executablePath: String,
@@ -599,220 +647,164 @@ private fun TermuxCommandDialogContent(
     onRunInBackgroundChange: (Boolean) -> Unit,
     sessionAction: Int,
     onSessionActionChange: (Int) -> Unit,
-    canSave: Boolean,
-    showRemove: Boolean,
-    onRemove: () -> Unit,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(24.dp)) {
-        // Title (sticky)
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+    // Display Name
+    TextField(
+        value = displayName,
+        onValueChange = onDisplayNameChange,
+        label = { Text("Display Name") },
+        placeholder = { Text("My Script") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+    )
+    Spacer(modifier = Modifier.height(12.dp))
 
-        // Scrollable content
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-        ) {
+    // Executable Path
+    TextField(
+        value = executablePath,
+        onValueChange = onExecutablePathChange,
+        label = { Text("Executable Path") },
+        placeholder = { Text("~/myscript.sh") },
+        supportingText = { Text("Use ~/ for home, \$PREFIX/ for usr") },
+        singleLine = true,
+        isError = executablePath.isBlank(),
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+    )
+    Spacer(modifier = Modifier.height(12.dp))
 
-        // Display Name
-        TextField(
-            value = displayName,
-            onValueChange = onDisplayNameChange,
-            label = { Text("Display Name") },
-            placeholder = { Text("My Script") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                ),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+    // Arguments
+    TextField(
+        value = arguments,
+        onValueChange = onArgumentsChange,
+        label = { Text("Arguments (optional)") },
+        placeholder = { Text("-f, ba+bv, \$1") },
+        supportingText = { Text("Comma-separated. Use \$1, \$2 for args, \$* for all text") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+    )
+    Spacer(modifier = Modifier.height(8.dp))
 
-        // Executable Path
-        TextField(
-            value = executablePath,
-            onValueChange = onExecutablePathChange,
-            label = { Text("Executable Path") },
-            placeholder = { Text("~/myscript.sh") },
-            supportingText = { Text("Use ~/ for home, \$PREFIX/ for usr") },
-            singleLine = true,
-            isError = executablePath.isBlank(),
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                ),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Arguments
-        TextField(
-            value = arguments,
-            onValueChange = onArgumentsChange,
-            label = { Text("Arguments (optional)") },
-            placeholder = { Text("-f, ba+bv, \$1") },
-            supportingText = { Text("Comma-separated. Use \$1, \$2 for args, \$* for all text") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                ),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Command Preview
-        val previewArgs =
-            if (arguments.isBlank()) {
-                ""
-            } else {
-                arguments
-                    .split(",")
-                    .map { it.trim() }
-                    .joinToString(" ") { arg ->
-                        when {
-                            arg.contains("\$*") -> arg.replace("\$*", "<args>")
-                            arg.contains(Regex("\\\$\\d+")) ->
-                                arg.replace(Regex("\\\$(\\d+)")) { match ->
-                                    "<arg${match.groupValues[1]}>"
-                                }
-                            else -> arg
-                        }
+    val previewArgs =
+        if (arguments.isBlank()) {
+            ""
+        } else {
+            arguments
+                .split(",")
+                .map { it.trim() }
+                .joinToString(" ") { arg ->
+                    when {
+                        arg.contains("\$*") -> arg.replace("\$*", "<args>")
+                        arg.contains(Regex("\\\$\\d+")) ->
+                            arg.replace(Regex("\\\$(\\d+)")) { match ->
+                                "<arg${match.groupValues[1]}>"
+                            }
+                        else -> arg
                     }
-            }
-        Text(
-            text = "Preview:",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = if (previewArgs.isBlank()) executablePath else "$executablePath $previewArgs",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+                }
+        }
+    Text(
+        text = "Preview:",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+        text = if (previewArgs.isBlank()) executablePath else "$executablePath $previewArgs",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(modifier = Modifier.height(12.dp))
 
-        // Working Directory
-        TextField(
-            value = workingDir,
-            onValueChange = onWorkingDirChange,
-            label = { Text("Working Directory (optional)") },
-            placeholder = { Text("~/projects") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors =
-                TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                ),
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+    // Working Directory
+    TextField(
+        value = workingDir,
+        onValueChange = onWorkingDirChange,
+        label = { Text("Working Directory (optional)") },
+        placeholder = { Text("~/projects") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+    )
+    Spacer(modifier = Modifier.height(16.dp))
 
-        // Run in Background switch
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Run in Background",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    text = "Execute without opening Termux UI",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = runInBackground,
-                onCheckedChange = onRunInBackgroundChange,
+    // Run in Background switch
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Run in Background",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = "Execute without opening Termux UI",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Session Action
-        Text(
-            text = "Session Action",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.secondary,
+        Switch(
+            checked = runInBackground,
+            onCheckedChange = onRunInBackgroundChange,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+    }
+    Spacer(modifier = Modifier.height(16.dp))
 
-        Column(modifier = Modifier.selectableGroup()) {
-            SessionActionOption(
-                selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_AND_OPEN,
-                label = "New session, open Termux",
-                enabled = !runInBackground,
-                onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_AND_OPEN) },
-            )
-            SessionActionOption(
-                selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN,
-                label = "Current session, open Termux",
-                enabled = !runInBackground,
-                onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN) },
-            )
-            SessionActionOption(
-                selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_NO_OPEN,
-                label = "New session, don't open",
-                enabled = !runInBackground,
-                onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_NO_OPEN) },
-            )
-            SessionActionOption(
-                selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN,
-                label = "Current session, don't open",
-                enabled = !runInBackground,
-                onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN) },
-            )
-            }
-        }
+    // Session Action
+    Text(
+        text = "Session Action",
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.secondary,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Action buttons (sticky at bottom)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (showRemove) {
-                TextButton(onClick = onRemove) {
-                    Text(
-                        text = "Remove",
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.width(1.dp))
-            }
-
-            Row {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = onSave,
-                    enabled = canSave,
-                ) {
-                    Text("Save")
-                }
-            }
-        }
+    Column(modifier = Modifier.selectableGroup()) {
+        SessionActionOption(
+            selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_AND_OPEN,
+            label = "New session, open Termux",
+            enabled = !runInBackground,
+            onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_AND_OPEN) },
+        )
+        SessionActionOption(
+            selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN,
+            label = "Current session, open Termux",
+            enabled = !runInBackground,
+            onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN) },
+        )
+        SessionActionOption(
+            selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_NO_OPEN,
+            label = "New session, don't open",
+            enabled = !runInBackground,
+            onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_NO_OPEN) },
+        )
+        SessionActionOption(
+            selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN,
+            label = "Current session, don't open",
+            enabled = !runInBackground,
+            onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN) },
+        )
     }
 }
 
