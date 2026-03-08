@@ -9,6 +9,7 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Patterns
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
@@ -24,6 +25,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
@@ -695,45 +697,59 @@ class MainActivity : ComponentActivity() {
                                             .padding(bottom = animatedBottomPadding),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
-                                    SearchField(
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .focusRequester(focusRequester),
-                                        value = textState.value,
-                                        onValueChange = { textState.value = it },
-                                        singleLine = true,
-                                        placeholder = { Text("Search") },
-                                        trailingIcon = {
-                                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                                IconButton(
-                                                    modifier = Modifier.padding(end = 6.dp),
-                                                    onClick = {
-                                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                        startActivity(intent)
-                                                    },
-                                                ) {
+                                    Box {
+                                        SearchField(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .focusRequester(focusRequester),
+                                            value = textState.value,
+                                            onValueChange = { textState.value = it },
+                                            singleLine = true,
+                                            placeholder = { Text("Search") },
+                                            trailingIcon = {
+                                                if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                     Icon(
                                                         imageVector = Icons.Outlined.Settings,
-                                                        contentDescription = "Settings",
+                                                        contentDescription = null,
                                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     )
                                                 }
-                                            }
-                                        },
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        keyboardActions =
-                                            KeyboardActions(onDone = {
-                                                val primaryResult = providerResults.firstOrNull()
-                                                val handled = handleResultSelection(primaryResult)
-                                                if (!handled) {
-                                                    val query = textState.value.text.trim()
-                                                    if (query.isNotEmpty()) {
-                                                        handleQuerySubmission(query)
+                                            },
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                            keyboardActions =
+                                                KeyboardActions(onDone = {
+                                                    val primaryResult = providerResults.firstOrNull()
+                                                    val handled = handleResultSelection(primaryResult)
+                                                    if (!handled) {
+                                                        val query = textState.value.text.trim()
+                                                        if (query.isNotEmpty()) {
+                                                            handleQuerySubmission(query)
+                                                        }
                                                     }
-                                                }
-                                            }),
-                                    )
+                                                }),
+                                        )
+
+                                        if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.CenterEnd)
+                                                    .padding(end = 6.dp)
+                                                    .size(48.dp)
+                                                    .combinedClickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null,
+                                                        onClick = {
+                                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                            startActivity(intent)
+                                                        },
+                                                        onLongClick = {
+                                                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                                                        },
+                                                    ),
+                                            )
+                                        }
+                                    }
 
                                     Spacer(modifier = Modifier.height(4.dp))
                                     val shouldCenterAppList =
@@ -761,6 +777,9 @@ class MainActivity : ComponentActivity() {
                                             val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                                             startActivity(intent)
                                         },
+                                        onSettingsLongClick = {
+                                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                                        },
                                     ) {
                                         AppListSection(
                                             appListType = appSearchSettings.appListType,
@@ -783,45 +802,59 @@ class MainActivity : ComponentActivity() {
                             }
                         } else {
                             Column(Modifier.fillMaxWidth()) {
-                                SearchField(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .focusRequester(focusRequester),
-                                    value = textState.value,
-                                    onValueChange = { textState.value = it },
-                                    singleLine = true,
-                                    placeholder = { Text("Search") },
-                                    trailingIcon = {
-                                        if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                            IconButton(
-                                                modifier = Modifier.padding(end = 6.dp),
-                                                onClick = {
-                                                    val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                    startActivity(intent)
-                                                },
-                                            ) {
+                                Box {
+                                    SearchField(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .focusRequester(focusRequester),
+                                        value = textState.value,
+                                        onValueChange = { textState.value = it },
+                                        singleLine = true,
+                                        placeholder = { Text("Search") },
+                                        trailingIcon = {
+                                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                 Icon(
                                                     imageVector = Icons.Outlined.Settings,
-                                                    contentDescription = "Settings",
+                                                    contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
-                                        }
-                                    },
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                    keyboardActions =
-                                        KeyboardActions(onDone = {
-                                            val primaryResult = providerResults.firstOrNull()
-                                            val handled = handleResultSelection(primaryResult)
-                                            if (!handled) {
-                                                val query = textState.value.text.trim()
-                                                if (query.isNotEmpty()) {
-                                                    handleQuerySubmission(query)
+                                        },
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardActions =
+                                            KeyboardActions(onDone = {
+                                                val primaryResult = providerResults.firstOrNull()
+                                                val handled = handleResultSelection(primaryResult)
+                                                if (!handled) {
+                                                    val query = textState.value.text.trim()
+                                                    if (query.isNotEmpty()) {
+                                                        handleQuerySubmission(query)
+                                                    }
                                                 }
-                                            }
-                                        }),
-                                )
+                                            }),
+                                    )
+
+                                    if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.CenterEnd)
+                                                .padding(end = 6.dp)
+                                                .size(48.dp)
+                                                .combinedClickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null,
+                                                    onClick = {
+                                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                        startActivity(intent)
+                                                    },
+                                                    onLongClick = {
+                                                        startActivity(Intent(Settings.ACTION_SETTINGS))
+                                                    },
+                                                ),
+                                        )
+                                    }
+                                }
 
                                 Spacer(modifier = Modifier.height(4.dp))
                                 val shouldCenterAppList =
@@ -848,6 +881,9 @@ class MainActivity : ComponentActivity() {
                                     onSettingsClick = {
                                         val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                                         startActivity(intent)
+                                    },
+                                    onSettingsLongClick = {
+                                        startActivity(Intent(Settings.ACTION_SETTINGS))
                                     },
                                 ) {
                                     AppListSection(
