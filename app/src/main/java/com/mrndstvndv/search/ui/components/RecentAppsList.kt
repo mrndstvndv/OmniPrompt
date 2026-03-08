@@ -10,7 +10,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -296,6 +298,7 @@ fun AppListContainer(
     shouldCenter: Boolean,
     showSettingsIcon: Boolean,
     onSettingsClick: () -> Unit,
+    onSettingsLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -331,10 +334,20 @@ fun AppListContainer(
                     color = MaterialTheme.colorScheme.outlineVariant,
                 )
 
-                IconButton(onClick = onSettingsClick) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onSettingsClick,
+                            onLongClick = onSettingsLongClick,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = "Settings (long press for Android settings)",
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
