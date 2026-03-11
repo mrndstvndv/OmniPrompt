@@ -37,3 +37,7 @@ See [BUILDING.md](BUILDING.md) for local and CI build instructions.
 ## Assist Behavior
 
 For details about assist-session lifecycle behavior, current mitigations, side effects (including possible flicker), and alternative approaches, see [ASSIST_LIFECYCLE.md](ASSIST_LIFECYCLE.md).
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for the full text.
