@@ -13,13 +13,6 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Text Utils** — Base64, URL encode/decode, redirect cleaning
 - **Web Search** — Multi-engine with quicklinks (`g`, `ddg`)
 
-## Features
-
-- **Alias System** — Create custom keywords for apps and searches
-- **Smart Ranking** — Learns from usage with competitive decay
-- **Material 3 UI** — Adjustable blur, opacity, and motion
-- **Power-User Tools** — Deep Termux and Shizuku integration
-
 ## Screenshots
 
 <p float="left">
@@ -29,6 +22,13 @@ A keyboard-first Android command palette that unifies app launching, device sear
 <p float="left">
   <img src="screenshots/file.png" width="45%" />
 </p>
+
+## Features
+
+- **Alias System** — Create custom keywords for apps and searches
+- **Smart Ranking** — Learns from usage with competitive decay
+- **Material 3 UI** — Adjustable blur, opacity, and motion
+- **Power-User Tools** — Deep Termux and Shizuku integration
 
 ## Building
 
