@@ -22,8 +22,10 @@ data class ProviderResult(
     val matchedTitleIndices: List<Int> = emptyList(),
     /** Indices of matched characters in [subtitle] for fuzzy search highlighting */
     val matchedSubtitleIndices: List<Int> = emptyList(),
-    /** Optional key to use for frequency counting (defaults to [id] if null). Use this to aggregate dynamic-query results under a single stable key. */
-    val frequencyKey: String? = null,
+    /** Optional key to use for frequency counting (defaults to [id]). Use this to aggregate dynamic-query results under a single stable key. */
+    val frequencyKey: String = id,
+    /** Optional query string to use for frequency counting. If null, the ranking system will use the full query. */
+    val frequencyQuery: String? = null,
     /** When true, this result will not be tracked for frequency-based ranking */
     val excludeFromFrequencyRanking: Boolean = false,
 )

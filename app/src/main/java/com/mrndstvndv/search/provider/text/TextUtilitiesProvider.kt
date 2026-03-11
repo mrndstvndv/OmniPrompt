@@ -75,6 +75,7 @@ class TextUtilitiesProvider(
             keepOverlayUntilExit = autoLaunchUri != null,
             // Aggregate frequency by utility id (exclude dynamic payload)
             frequencyKey = "$id:${command.utility.id}",
+            frequencyQuery = command.canonicalKeyword,
         )
     }
 
