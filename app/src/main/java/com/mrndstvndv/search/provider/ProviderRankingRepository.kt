@@ -44,7 +44,8 @@ class ProviderRankingRepository private constructor(
                 "termux",
                 "web-search",
                 "system-settings",
-                "debug-long-operation",
+                "contacts",
+                "intent",
             )
 
         @Volatile
@@ -341,12 +342,20 @@ class ProviderRankingRepository private constructor(
     private fun loadProviderOrder(): List<String> =
         try {
             val json = preferences.getString(KEY_PROVIDER_ORDER, null)
-            if (json != null) {
-                val array = JSONArray(json)
-                (0 until array.length()).map { array.getString(it) }
-            } else {
-                DEFAULT_PROVIDER_ORDER
-            }
+            val savedOrder =
+                if (json != null) {
+                    val array = JSONArray(json)
+                    (0 until array.length()).map { array.getString(it) }
+                } else {
+                    DEFAULT_PROVIDER_ORDER
+                }
+
+            // Ensure all current default providers are present and remove obsolete ones
+            val currentProviders = DEFAULT_PROVIDER_ORDER.toSet()
+            val filteredSaved = savedOrder.filter { it in currentProviders }
+            val missing = DEFAULT_PROVIDER_ORDER.filter { it !in filteredSaved.toSet() }
+
+            filteredSaved + missing
         } catch (e: JSONException) {
             DEFAULT_PROVIDER_ORDER
         }

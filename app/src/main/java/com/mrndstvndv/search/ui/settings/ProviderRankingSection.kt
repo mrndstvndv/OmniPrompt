@@ -314,6 +314,8 @@ private fun getProviderDisplayName(providerId: String): String =
         "file-search" -> "Files & Folders"
         "web-search" -> "Web Search"
         "system-settings" -> "System Settings"
-        "debug-long-operation" -> "Debug • Long Operation"
+        "contacts" -> "Contacts"
+        "termux" -> "Termux"
+        "intent" -> "Intent Launcher"
         else -> providerId
     }

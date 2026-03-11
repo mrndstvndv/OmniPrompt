@@ -366,7 +366,7 @@ class MainActivity : ComponentActivity() {
             fun frequencyQueryFor(query: String, providerId: String): String {
                 val trimmed = query.trim()
                 if (trimmed.isEmpty()) return ""
-                return if (providerId in setOf("web-search", "termux", "text-utilities")) {
+                return if (providerId in setOf("web-search", "termux", "text-utilities", "intent")) {
                     trimmed.split(' ', limit = 2)[0]
                 } else {
                     trimmed
