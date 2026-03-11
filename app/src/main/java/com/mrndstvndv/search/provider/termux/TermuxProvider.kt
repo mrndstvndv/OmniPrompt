@@ -127,6 +127,7 @@ class TermuxProvider(
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedTitleIndices,
                 matchedSubtitleIndices = matchedSubtitleIndices,
+                frequencyQuery = commandPart,
             )
         }
     }

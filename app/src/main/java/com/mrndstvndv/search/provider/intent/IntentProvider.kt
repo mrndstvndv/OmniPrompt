@@ -90,6 +90,7 @@ class IntentProvider(
                 onSelect = { executeIntent(config, rawPayload) },
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedIndices,
+                frequencyQuery = searchTerm,
             )
         }
     }
