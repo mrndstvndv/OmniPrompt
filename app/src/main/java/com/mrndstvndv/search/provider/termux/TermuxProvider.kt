@@ -228,6 +228,8 @@ class TermuxProvider(
                 putExtra(EXTRA_COMMAND_BACKGROUND, command.runInBackground)
                 // sessionAction must be String: "0", "1", "2", "3"
                 putExtra(EXTRA_COMMAND_SESSION_ACTION, command.sessionAction.toString())
+                command.shellName?.let { putExtra(EXTRA_COMMAND_SHELL_NAME, it) }
+                command.shellCreateMode?.let { putExtra(EXTRA_COMMAND_SHELL_CREATE_MODE, it) }
                 putExtra(EXTRA_COMMAND_PENDING_INTENT, pendingIntent)
             }
 
@@ -288,6 +290,8 @@ class TermuxProvider(
         private const val EXTRA_COMMAND_WORKDIR = "com.termux.RUN_COMMAND_WORKDIR"
         private const val EXTRA_COMMAND_BACKGROUND = "com.termux.RUN_COMMAND_BACKGROUND"
         private const val EXTRA_COMMAND_SESSION_ACTION = "com.termux.RUN_COMMAND_SESSION_ACTION"
+        private const val EXTRA_COMMAND_SHELL_NAME = "com.termux.RUN_COMMAND_SHELL_NAME"
+        private const val EXTRA_COMMAND_SHELL_CREATE_MODE = "com.termux.RUN_COMMAND_SHELL_CREATE_MODE"
         private const val EXTRA_COMMAND_PENDING_INTENT = "com.termux.RUN_COMMAND_PENDING_INTENT"
 
         private const val PATH_MATCH_PENALTY = 10

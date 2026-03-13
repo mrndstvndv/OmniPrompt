@@ -480,6 +480,8 @@ private fun TermuxCommandAddDialog(
     var workingDir by remember { mutableStateOf("") }
     var runInBackground by remember { mutableStateOf(false) }
     var sessionAction by remember { mutableIntStateOf(TermuxCommand.SESSION_ACTION_NEW_AND_OPEN) }
+    var shellName by remember { mutableStateOf("") }
+    var shellCreateMode by remember { mutableStateOf("") }
 
     val canSave = displayName.isNotBlank() && executablePath.isNotBlank()
 
@@ -494,6 +496,8 @@ private fun TermuxCommandAddDialog(
                 workingDir = workingDir.trim().takeIf { it.isNotBlank() },
                 runInBackground = runInBackground,
                 sessionAction = sessionAction,
+                shellName = shellName.trim().takeIf { it.isNotBlank() },
+                shellCreateMode = shellCreateMode.trim().takeIf { it.isNotBlank() },
             )
         onAdd(command)
     }
@@ -543,6 +547,10 @@ private fun TermuxCommandAddDialog(
                 onRunInBackgroundChange = { runInBackground = it },
                 sessionAction = sessionAction,
                 onSessionActionChange = { sessionAction = it },
+                shellName = shellName,
+                onShellNameChange = { shellName = it },
+                shellCreateMode = shellCreateMode,
+                onShellCreateModeChange = { shellCreateMode = it },
             )
         },
     )
@@ -561,6 +569,8 @@ private fun TermuxCommandEditDialog(
     var workingDir by remember { mutableStateOf(command.workingDir ?: "") }
     var runInBackground by remember { mutableStateOf(command.runInBackground) }
     var sessionAction by remember { mutableIntStateOf(command.sessionAction) }
+    var shellName by remember { mutableStateOf(command.shellName ?: "") }
+    var shellCreateMode by remember { mutableStateOf(command.shellCreateMode ?: "") }
 
     val canSave = displayName.isNotBlank() && executablePath.isNotBlank()
 
@@ -574,6 +584,8 @@ private fun TermuxCommandEditDialog(
                 workingDir = workingDir.trim().takeIf { it.isNotBlank() },
                 runInBackground = runInBackground,
                 sessionAction = sessionAction,
+                shellName = shellName.trim().takeIf { it.isNotBlank() },
+                shellCreateMode = shellCreateMode.trim().takeIf { it.isNotBlank() },
             )
         onSave(updated)
     }
@@ -628,6 +640,10 @@ private fun TermuxCommandEditDialog(
                 onRunInBackgroundChange = { runInBackground = it },
                 sessionAction = sessionAction,
                 onSessionActionChange = { sessionAction = it },
+                shellName = shellName,
+                onShellNameChange = { shellName = it },
+                shellCreateMode = shellCreateMode,
+                onShellCreateModeChange = { shellCreateMode = it },
             )
         },
     )
@@ -647,6 +663,10 @@ private fun TermuxCommandDialogContent(
     onRunInBackgroundChange: (Boolean) -> Unit,
     sessionAction: Int,
     onSessionActionChange: (Int) -> Unit,
+    shellName: String,
+    onShellNameChange: (String) -> Unit,
+    shellCreateMode: String,
+    onShellCreateModeChange: (String) -> Unit,
 ) {
     // Display Name
     TextField(
@@ -738,6 +758,40 @@ private fun TermuxCommandDialogContent(
         onValueChange = onWorkingDirChange,
         label = { Text("Working Directory (optional)") },
         placeholder = { Text("~/projects") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Shell Name
+    TextField(
+        value = shellName,
+        onValueChange = onShellNameChange,
+        label = { Text("Shell Name (optional)") },
+        placeholder = { Text("my-session") },
+        supportingText = { Text("Used to identify the session") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+            ),
+    )
+    Spacer(modifier = Modifier.height(12.dp))
+
+    // Shell Create Mode
+    TextField(
+        value = shellCreateMode,
+        onValueChange = onShellCreateModeChange,
+        label = { Text("Shell Create Mode (optional)") },
+        placeholder = { Text("no-shell-with-name") },
+        supportingText = { Text("e.g. no-shell-with-name to reuse session") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors =

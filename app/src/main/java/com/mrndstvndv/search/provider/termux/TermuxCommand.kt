@@ -13,6 +13,8 @@ data class TermuxCommand(
     val workingDir: String? = null,
     val runInBackground: Boolean = false,
     val sessionAction: Int = SESSION_ACTION_NEW_AND_OPEN,
+    val shellName: String? = null,
+    val shellCreateMode: String? = null,
 ) {
     companion object {
         // Session action values per Termux RUN_COMMAND spec
@@ -35,6 +37,8 @@ data class TermuxCommand(
                 workingDir = json.optString("workingDir").takeIf { it.isNotBlank() },
                 runInBackground = json.optBoolean("runInBackground", false),
                 sessionAction = json.optInt("sessionAction", SESSION_ACTION_NEW_AND_OPEN),
+                shellName = json.optString("shellName").takeIf { it.isNotBlank() },
+                shellCreateMode = json.optString("shellCreateMode").takeIf { it.isNotBlank() },
             )
         }
     }
@@ -48,5 +52,7 @@ data class TermuxCommand(
             workingDir?.let { put("workingDir", it) }
             put("runInBackground", runInBackground)
             put("sessionAction", sessionAction)
+            shellName?.let { put("shellName", it) }
+            shellCreateMode?.let { put("shellCreateMode", it) }
         }
 }
