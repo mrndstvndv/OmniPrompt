@@ -234,34 +234,41 @@ class TermuxProvider(
             }
 
             try {
-                // 4. Deliver the command. Try startService first, fallback to broadcast.
+                // 4. Deliver the command.
                 val serviceIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE)
-                try {
-                    // On Android 12+, PendingIntent.send() can sometimes bypass background restrictions
-                    // that startService() fails on.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        val pi = android.app.PendingIntent.getService(activity, 0, serviceIntent, 
-                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
-                        pi.send()
-                    } else {
-                        activity.startService(serviceIntent)
-                    }
-                } catch (e: Exception) {
-                    // Fallback: Use the Receiver which forwards to the Service internally
-                    val broadcastIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_RECEIVER)
-                    broadcastIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND or Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
-                    activity.sendBroadcast(broadcastIntent)
+                
+                // Android 14+ requires explicit ActivityOptions when granting a PendingIntent
+                // permission to start activities from the background.
+                val options = android.app.ActivityOptions.makeBasic()
+
+                if (Build.VERSION.SDK_INT >= 36) {
+                    options.setPendingIntentBackgroundActivityStartMode(
+                        android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS,
+                    )
+                } else if (Build.VERSION.SDK_INT >= 34) {
+                    options.setPendingIntentBackgroundActivityStartMode(
+                        PENDING_INTENT_BACKGROUND_ACTIVITY_START_ALLOWED,
+                    )
                 }
 
-                // 5. If we need to ensure Termux is awake (like for foreground session, though Termux service does this),
-                // we can launch the intent AFTER the service has received the execution command to avoid race conditions
-                // where Termux boots completely empty and spawns a failsafe session before the service intent arrives.
-                if (!command.runInBackground) {
-                    kotlinx.coroutines.delay(100) // Brief pause to let service process command into pending list
-                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE)
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                        activity.startActivity(launchIntent)
+                try {
+                    // Use PendingIntent to reliably deliver the intent from a "closing" activity.
+                    // We use getForegroundService because RunCommandService calls startForeground().
+                    val pi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        android.app.PendingIntent.getForegroundService(activity, 0, serviceIntent, 
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                    } else {
+                        android.app.PendingIntent.getService(activity, 0, serviceIntent, 
+                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+                    }
+                    
+                    pi.send(activity, 0, null, null, null, null, options.toBundle())
+                } catch (e: Exception) {
+                    // Direct start as fallback
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        activity.startForegroundService(serviceIntent)
+                    } else {
+                        activity.startService(serviceIntent)
                     }
                 }
             } catch (e: Exception) {
@@ -269,7 +276,7 @@ class TermuxProvider(
             }
 
             // 6. CRITICAL: Stay in foreground long enough for delivery to complete.
-            kotlinx.coroutines.delay(600)
+            kotlinx.coroutines.delay(800)
             activity.finish()
         }
     }
@@ -284,7 +291,6 @@ class TermuxProvider(
         const val TERMUX_PACKAGE = "com.termux"
         const val TERMUX_RUN_COMMAND_PERMISSION = "com.termux.permission.RUN_COMMAND"
         private const val TERMUX_RUN_COMMAND_SERVICE = "com.termux.app.RunCommandService"
-        private const val TERMUX_RUN_COMMAND_RECEIVER = "com.termux.app.TermuxReceiver"
         private const val ACTION_RUN_COMMAND = "com.termux.RUN_COMMAND"
         private const val EXTRA_COMMAND_PATH = "com.termux.RUN_COMMAND_PATH"
         private const val EXTRA_COMMAND_ARGUMENTS = "com.termux.RUN_COMMAND_ARGUMENTS"
@@ -294,6 +300,9 @@ class TermuxProvider(
         private const val EXTRA_COMMAND_SHELL_NAME = "com.termux.RUN_COMMAND_SHELL_NAME"
         private const val EXTRA_COMMAND_SHELL_CREATE_MODE = "com.termux.RUN_COMMAND_SHELL_CREATE_MODE"
         private const val EXTRA_COMMAND_PENDING_INTENT = "com.termux.RUN_COMMAND_PENDING_INTENT"
+
+        // API 34/35 only. Deprecated alias in API 36, but still required for older platform behavior.
+        private const val PENDING_INTENT_BACKGROUND_ACTIVITY_START_ALLOWED = 1
 
         private const val PATH_MATCH_PENALTY = 10
 
