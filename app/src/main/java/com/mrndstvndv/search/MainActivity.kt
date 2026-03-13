@@ -205,7 +205,7 @@ class MainActivity : ComponentActivity() {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                         }
                     startActivity(relaunchIntent)
-                    overridePendingTransition(0, 0)
+                    suppressNextOpenTransition()
                 } catch (_: Exception) {
                 }
             } else {
@@ -217,6 +217,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         super.onPause()
+    }
+
+    private fun suppressNextOpenTransition() {
+        if (Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
+            return
+        }
+
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
     }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
