@@ -234,18 +234,7 @@ class TermuxProvider(
             }
 
             try {
-                // 4. Ensure Termux is awake. Launching its activity is the most reliable way 
-                // to gain the "foreground privilege" needed to start its service.
-                if (!command.runInBackground) {
-                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE)
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                        activity.startActivity(launchIntent)
-                        kotlinx.coroutines.delay(250) // Brief pause to let process start
-                    }
-                }
-
-                // 5. Deliver the command. Try startService first, fallback to broadcast.
+                // 4. Deliver the command. Try startService first, fallback to broadcast.
                 val serviceIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE)
                 try {
                     // On Android 12+, PendingIntent.send() can sometimes bypass background restrictions
@@ -262,6 +251,18 @@ class TermuxProvider(
                     val broadcastIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_RECEIVER)
                     broadcastIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND or Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
                     activity.sendBroadcast(broadcastIntent)
+                }
+
+                // 5. If we need to ensure Termux is awake (like for foreground session, though Termux service does this),
+                // we can launch the intent AFTER the service has received the execution command to avoid race conditions
+                // where Termux boots completely empty and spawns a failsafe session before the service intent arrives.
+                if (!command.runInBackground) {
+                    kotlinx.coroutines.delay(100) // Brief pause to let service process command into pending list
+                    val launchIntent = activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE)
+                    if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                        activity.startActivity(launchIntent)
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(activity, "Failed to send command: ${e.message}", Toast.LENGTH_LONG).show()
