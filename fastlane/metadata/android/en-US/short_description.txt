@@ -1,0 +1,1 @@
+Search apps, files, and utilities from a single keyboard command palette.

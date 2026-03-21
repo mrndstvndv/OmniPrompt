@@ -1,7 +1,7 @@
-A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay. Set it as your default assistant for instant access from anywhere.
+Unifies app launching, device search, and system utilities into a single, customizable command palette. Set it as your default assistant for instant access from anywhere.
 
 **Providers**
-- **Apps** — Fuzzy-matched launcher with AI shortcuts (gemini, chatgpt)
+- **Apps** — Fuzzy-matched launcher
 - **Calculator** — Instant math with clipboard copy
 - **Contacts** — Search with thumbnails and quick actions
 - **Files** — Local search with media thumbnails
@@ -16,9 +16,6 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Material 3 UI** — Adjustable blur, opacity, and motion
 - **Power-User Tools** — Deep Termux and Shizuku integration
 
-**Transparency & Privacy**
-- **No Tracking:** Zero analytics or tracking libraries.
-- **Fully Open Source:** 100% functionality implemented in source code.
-- **No Proprietary Blobs:** Does not include Google Play Services.
-- **AI-Assisted Development:** Codebase developed with AI assistance, manually reviewed.
-- **Reproducible Builds:** Designed for source-build transparency.
+**Notes**
+- No analytics or tracking.
+- No Google Play Services dependency.
