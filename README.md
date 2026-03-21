@@ -2,9 +2,19 @@
 
 A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay. Set it as your default assistant for instant access from anywhere.
 
+## Screenshots
+
+<p float="left">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/app.png" width="45%" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/calculator.png" width="45%" />
+</p>
+<p float="left">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="45%" />
+</p>
+
 ## Providers
 
-- **Apps** — Fuzzy-matched launcher with AI shortcuts (`gemini`, `chatgpt`)
+- **Apps** — Fuzzy-matched launcher
 - **Calculator** — Instant math with clipboard copy
 - **Contacts** — Search with thumbnails and quick actions
 - **Files** — Local search with media thumbnails
@@ -12,16 +22,6 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Termux** — Execute terminal commands from the search bar
 - **Text Utils** — Base64, URL encode/decode, redirect cleaning
 - **Web Search** — Multi-engine with quicklinks (`g`, `ddg`)
-
-## Screenshots
-
-<p float="left">
-  <img src="screenshots/app.png" width="45%" />
-  <img src="screenshots/calculator.png" width="45%" />
-</p>
-<p float="left">
-  <img src="screenshots/file.png" width="45%" />
-</p>
 
 ## Features
 

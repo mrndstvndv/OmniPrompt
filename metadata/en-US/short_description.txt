@@ -1,1 +1,0 @@
-A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay.
