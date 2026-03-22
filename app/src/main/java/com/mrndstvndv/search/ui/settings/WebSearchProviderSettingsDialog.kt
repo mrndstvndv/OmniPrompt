@@ -174,13 +174,13 @@ fun WebSearchProviderSettingsDialog(
                     Spacer(modifier = Modifier.height(4.dp))
                     if (!site.urlTemplate.contains(placeholder)) {
                         Text(
-                            text = "Template is missing $placeholder",
+                            text = stringResource(R.string.web_search_missing_placeholder_short, placeholder),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                     Text(
-                        text = "Preview: ${site.buildUrl("compose")}",
+                        text = stringResource(R.string.web_search_preview, site.buildUrl("compose")),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

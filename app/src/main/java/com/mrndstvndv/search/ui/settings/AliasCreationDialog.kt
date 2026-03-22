@@ -40,7 +40,7 @@ fun AliasCreationDialog(
         text = {
             Column {
                 Text(
-                    text = "Create a shortcut for ${candidate.description}",
+                    text = stringResource(R.string.alias_create_detail, candidate.description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

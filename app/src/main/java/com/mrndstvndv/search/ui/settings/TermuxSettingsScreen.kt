@@ -278,7 +278,7 @@ fun TermuxSettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "• \$1, \$2, etc. = arguments after query (space-separated)\n• \$* = all remaining text after command\n• Works inline: cmd \$1, or standalone: \$1\nExample: -f, ba+bv, \$1 → resolves to -f, ba+bv, url",
+                                text = stringResource(R.string.termux_dynamic_args_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

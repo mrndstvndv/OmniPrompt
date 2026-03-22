@@ -168,7 +168,7 @@ private fun PhoneNumberSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         // Phone number header
         Text(
-            text = "${phoneNumber.getTypeLabel()}: ${phoneNumber.number}",
+            text = stringResource(R.string.contact_type_number, phoneNumber.getTypeLabel(), phoneNumber.number),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)

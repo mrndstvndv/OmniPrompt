@@ -301,7 +301,7 @@
     <string name="web_search_edit_quicklink">Edit Quicklink</string>
     <string name="web_search_edit_search_engine">Edit Search Engine</string>
     <string name="web_search_include_placeholder">Include {query}</string>
-    <string name="web_search_missing_placeholder_short">Missing {query}</string>
+    <string name="web_search_missing_placeholder_short">Missing %s</string>
     <string name="web_search_add">Add</string>
 
     <!-- Error dialog -->
@@ -325,6 +325,13 @@
     <string name="toast_shizuku_failed">Could not request Shizuku permission</string>
     <string name="toast_number_copied">Number copied</string>
     <string name="toast_command_failed">Failed to send command: %s</string>
+
+    <!-- Runtime-formatted strings -->
+    <string name="intent_action_package">%s • %s</string>
+    <string name="contact_type_number">%s: %s</string>
+    <string name="web_search_preview">Preview: %s</string>
+    <string name="appearance_opacity_value">%d%%</string>
+    <string name="appearance_delay_value">%d ms</string>
 
     <!-- Content descriptions -->
     <string name="cd_settings">Settings</string>

@@ -502,7 +502,7 @@ private fun RestorePreviewDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "Backup from: ${preview.formattedTimestamp()}",
+                    text = stringResource(R.string.backup_from_timestamp, preview.formattedTimestamp()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

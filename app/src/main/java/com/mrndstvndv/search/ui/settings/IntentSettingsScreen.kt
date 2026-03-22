@@ -313,7 +313,11 @@ private fun IntentConfigRow(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${config.action.substringAfterLast(".")} • ${config.packageName.ifEmpty { "System" }}",
+                text = stringResource(
+                    R.string.intent_action_package,
+                    config.action.substringAfterLast("."),
+                    config.packageName.ifEmpty { stringResource(R.string.intent_system) },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

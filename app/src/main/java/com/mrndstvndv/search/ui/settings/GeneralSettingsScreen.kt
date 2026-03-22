@@ -399,7 +399,7 @@ fun AppearanceSettingsScreen(
                 SettingsSliderRow(
                     title = stringResource(R.string.appearance_background_opacity),
                     subtitle = stringResource(R.string.appearance_background_opacity_subtitle),
-                    valueText = "${(backgroundOpacity * 100).roundToInt()}%",
+                    valueText = stringResource(R.string.appearance_opacity_value, (backgroundOpacity * 100).roundToInt()),
                     value = backgroundOpacity,
                     onValueChange = { settingsRepository.setBackgroundOpacity(it) },
                     steps = 19,
@@ -408,7 +408,7 @@ fun AppearanceSettingsScreen(
                 SettingsSliderRow(
                     title = stringResource(R.string.appearance_background_blur),
                     subtitle = stringResource(R.string.appearance_background_blur_subtitle),
-                    valueText = "${(backgroundBlurStrength * 100).roundToInt()}%",
+                    valueText = stringResource(R.string.appearance_opacity_value, (backgroundBlurStrength * 100).roundToInt()),
                     value = backgroundBlurStrength,
                     onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
                     steps = 19,
@@ -496,7 +496,7 @@ fun BehaviorSettingsScreen(
                 SettingsSliderRow(
                     title = stringResource(R.string.behavior_activity_indicator_delay),
                     subtitle = stringResource(R.string.behavior_activity_indicator_delay_subtitle),
-                    valueText = "$activityIndicatorDelayMs ms",
+                    valueText = stringResource(R.string.appearance_delay_value, activityIndicatorDelayMs),
                     value = activityIndicatorDelayMs.toFloat(),
                     onValueChange = { settingsRepository.setActivityIndicatorDelayMs(it.roundToInt()) },
                     valueRange = 0f..1000f,
