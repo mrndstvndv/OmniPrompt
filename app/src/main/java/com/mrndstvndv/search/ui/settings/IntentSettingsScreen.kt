@@ -20,15 +20,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -65,6 +67,7 @@ import com.mrndstvndv.search.provider.intent.IntentOption
 import com.mrndstvndv.search.provider.intent.IntentSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
+import com.mrndstvndv.search.util.FuzzyMatcher
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -428,7 +431,15 @@ private fun AppSelectionStep(
     val filteredApps = remember(searchQuery, appsState) {
         val apps = appsState ?: emptyList()
         if (searchQuery.isBlank()) apps
-        else apps.filter { it.name.contains(searchQuery, ignoreCase = true) || it.packageName.contains(searchQuery, ignoreCase = true) }
+        else apps
+            .mapNotNull { app ->
+                val nameMatch = FuzzyMatcher.match(searchQuery, app.name)
+                val pkgMatch = FuzzyMatcher.match(searchQuery, app.packageName)
+                val bestScore = listOfNotNull(nameMatch?.score, pkgMatch?.score).maxOrNull()
+                if (bestScore != null) app to bestScore else null
+            }
+            .sortedByDescending { it.second }
+            .map { it.first }
     }
 
     ContentDialog(
@@ -484,8 +495,7 @@ private fun AppSelectionStep(
                 } else {
                     Column(modifier = Modifier.heightIn(max = 450.dp)) {
                         LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                            items(filteredApps.size) { index ->
-                                val app = filteredApps[index]
+                            items(filteredApps, key = { it.packageName }) { app ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -510,7 +520,7 @@ private fun AppSelectionStep(
                                         Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
-                                if (index < filteredApps.lastIndex) {
+                                if (filteredApps.indexOf(app) < filteredApps.lastIndex) {
                                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                                 }
                             }
@@ -538,7 +548,7 @@ private fun IntentSelectionStep(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                 }
                 Text(
                     text = app.name,
@@ -689,7 +699,7 @@ private fun IntentConfigDialogContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                     }
                 }
                 Text(
@@ -776,7 +786,7 @@ private fun IntentConfigDialogContent(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = actionExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                         )
                         ExposedDropdownMenu(
                             expanded = actionExpanded,
@@ -807,7 +817,7 @@ private fun IntentConfigDialogContent(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                     )
                     ExposedDropdownMenu(
                         expanded = typeExpanded,

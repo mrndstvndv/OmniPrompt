@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -35,8 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -631,20 +630,14 @@ private fun AddPinnedAppDialog(
             }
         },
         content = {
-            TextField(
+            OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text("Search apps...") },
+                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors =
-                    TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                    ),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             if (filteredApps.isEmpty()) {
                 Text(
@@ -654,9 +647,8 @@ private fun AddPinnedAppDialog(
                     modifier = Modifier.padding(vertical = 16.dp),
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 300.dp),
-                ) {
+                Column(modifier = Modifier.heightIn(max = 450.dp)) {
+                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(filteredApps, key = { it.packageName }) { app ->
                         val appIcon by produceState<Bitmap?>(null, app.packageName) {
                             value = appListRepository.getIcon(app.packageName)
@@ -674,17 +666,14 @@ private fun AddPinnedAppDialog(
                                 Image(
                                     bitmap = appIcon!!.asImageBitmap(),
                                     contentDescription = app.label,
-                                    modifier =
-                                        Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape),
+                                    modifier = Modifier.size(40.dp),
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
                             }
                             Column {
                                 Text(
                                     text = app.label,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyLarge,
                                 )
                                 Text(
                                     text = app.packageName,
@@ -693,6 +682,10 @@ private fun AddPinnedAppDialog(
                                 )
                             }
                         }
+                        if (filteredApps.indexOf(app) < filteredApps.lastIndex) {
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
                     }
                 }
             }
