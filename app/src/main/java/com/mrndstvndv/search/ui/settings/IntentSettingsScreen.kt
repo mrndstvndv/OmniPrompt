@@ -167,7 +167,7 @@ fun IntentSettingsScreen(
         ) {
             item {
                 SettingsHeader(
-                    title = stringResource(R.string.intent_header),
+                    title = stringResource(R.string.provider_intent_launcher),
                     subtitle = stringResource(R.string.intent_header_subtitle),
                     onBack = onBack
                 )
@@ -222,7 +222,7 @@ fun IntentSettingsScreen(
             // Info section
             item {
                 SettingsSection(
-                    title = stringResource(R.string.intent_about),
+                    title = stringResource(R.string.about),
                     subtitle = stringResource(R.string.intent_about_subtitle),
                 ) {
                     SettingsGroup {
@@ -343,6 +343,7 @@ private fun IntentConfigAddDialog(
     var mimeType by remember { mutableStateOf<String?>(null) }
     var payloadTemplate by remember { mutableStateOf<String?>(null) }
     var extras by remember { mutableStateOf(listOf<IntentExtra>()) }
+    val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
 
     when (currentStep) {
         AddDialogStep.AppSelection -> {
@@ -391,6 +392,7 @@ private fun IntentConfigAddDialog(
                 type = mimeType ?: "",
                 onTypeChange = { mimeType = it },
                 typeOptions = selectedIntent?.mimeTypes ?: emptyList(),
+                anyMimeTypeLabel = anyMimeTypeLabel,
                 payloadTemplate = payloadTemplate ?: "",
                 onPayloadTemplateChange = { payloadTemplate = it.takeIf { it.isNotBlank() } },
                 extras = extras,
@@ -405,7 +407,7 @@ private fun IntentConfigAddDialog(
                         title = title.trim(),
                         packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
                         action = selectedIntent?.action ?: manualAction,
-                        type = mimeType?.takeIf { it != "(any)" },
+                        type = mimeType?.takeIf { it != anyMimeTypeLabel },
                         payloadTemplate = payloadTemplate?.trim(),
                         extras = extras
                     ))
@@ -626,6 +628,7 @@ private fun IntentConfigEditDialog(
     var mimeType by remember { mutableStateOf(config.type ?: "") }
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
+    val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
 
     val canSave = title.isNotBlank()
 
@@ -635,7 +638,7 @@ private fun IntentConfigEditDialog(
             config.copy(
                 title = title.trim(),
                 action = action,
-                type = mimeType.takeIf { it.isNotBlank() && it != "(any)" },
+                type = mimeType.takeIf { it.isNotBlank() && it != anyMimeTypeLabel },
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
                 extras = extras
             )
@@ -650,7 +653,8 @@ private fun IntentConfigEditDialog(
         action = action,
         type = mimeType,
         onTypeChange = { mimeType = it },
-        typeOptions = (currentIntentOption?.mimeTypes ?: emptyList()) + listOf("(any)"),
+        typeOptions = currentIntentOption?.mimeTypes ?: emptyList(),
+        anyMimeTypeLabel = anyMimeTypeLabel,
         payloadTemplate = payloadTemplate,
         onPayloadTemplateChange = { payloadTemplate = it },
         extras = extras,
@@ -677,6 +681,7 @@ private fun IntentConfigDialogContent(
     type: String,
     onTypeChange: (String) -> Unit,
     typeOptions: List<String>,
+    anyMimeTypeLabel: String,
     payloadTemplate: String,
     onPayloadTemplateChange: (String) -> Unit,
     extras: List<IntentExtra>,
@@ -815,7 +820,7 @@ private fun IntentConfigDialogContent(
                     onExpandedChange = { typeExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = type.ifEmpty { "(any)" },
+                        value = type.ifEmpty { anyMimeTypeLabel },
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.intent_label_mime_type)) },
@@ -828,7 +833,7 @@ private fun IntentConfigDialogContent(
                         expanded = typeExpanded,
                         onDismissRequest = { typeExpanded = false }
                     ) {
-                        val options = (typeOptions + listOf("text/plain", "text/*", "*/*", "(any)")).distinct()
+                        val options = (typeOptions + listOf("text/plain", "text/*", "*/*", anyMimeTypeLabel)).distinct()
                         options.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },

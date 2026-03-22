@@ -28,7 +28,7 @@ class SettingsProvider(
 ) : Provider {
 
     override val id: String = "system-settings"
-    override val displayName: String = "System Settings"
+    override val displayName: String = activity.getString(R.string.provider_system_settings)
 
     private val _refreshSignal = MutableSharedFlow<Unit>()
     override val refreshSignal: SharedFlow<Unit> = _refreshSignal
@@ -40,17 +40,19 @@ class SettingsProvider(
         val onLaunch: (suspend () -> Unit)? = null
     )
 
+    private fun string(resId: Int): String = activity.getString(resId)
+
     private val settingsActions by lazy {
         listOf(
-            SettingsActionItem("Settings", Settings.ACTION_SETTINGS),
-            SettingsActionItem("Accessibility", Settings.ACTION_ACCESSIBILITY_SETTINGS),
-            SettingsActionItem("Access Point Names", Settings.ACTION_APN_SETTINGS),
-            SettingsActionItem("Developer options", Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
-            SettingsActionItem("Apps", Settings.ACTION_APPLICATION_SETTINGS),
-            SettingsActionItem("Battery Saver", Settings.ACTION_BATTERY_SAVER_SETTINGS),
-            SettingsActionItem("Biometric Enrollment", Settings.ACTION_BIOMETRIC_ENROLL),
-            SettingsActionItem("Bluetooth", Settings.ACTION_BLUETOOTH_SETTINGS),
-            SettingsActionItem("Charging Control", "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS", onLaunch = {
+            SettingsActionItem(string(R.string.system_action_settings), Settings.ACTION_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_accessibility), Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_access_point_names), Settings.ACTION_APN_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_developer_options), Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_apps), Settings.ACTION_APPLICATION_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_battery_saver), Settings.ACTION_BATTERY_SAVER_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_biometric_enrollment), Settings.ACTION_BIOMETRIC_ENROLL),
+            SettingsActionItem(string(R.string.system_action_bluetooth), Settings.ACTION_BLUETOOTH_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_charging_control), "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS", onLaunch = {
                 val intent = Intent("org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS")
                 if (intent.resolveActivity(activity.packageManager) != null) {
                     activity.startActivity(intent)
@@ -61,59 +63,59 @@ class SettingsProvider(
                     }
                 }
             }),
-            SettingsActionItem("Captioning", Settings.ACTION_CAPTIONING_SETTINGS),
-            SettingsActionItem("Cast", Settings.ACTION_CAST_SETTINGS),
-            SettingsActionItem("Data Roaming", Settings.ACTION_DATA_ROAMING_SETTINGS),
-            SettingsActionItem("Data Usage", Settings.ACTION_DATA_USAGE_SETTINGS),
-            SettingsActionItem("Date & time", Settings.ACTION_DATE_SETTINGS),
-            SettingsActionItem("About phone", Settings.ACTION_DEVICE_INFO_SETTINGS),
-            SettingsActionItem("Display", Settings.ACTION_DISPLAY_SETTINGS),
-            SettingsActionItem("Screen saver", Settings.ACTION_DREAM_SETTINGS),
-            SettingsActionItem("Physical keyboard", Settings.ACTION_HARD_KEYBOARD_SETTINGS),
-            SettingsActionItem("Default home app", Settings.ACTION_HOME_SETTINGS),
-            SettingsActionItem("Battery optimization", Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
-            SettingsActionItem("On-screen keyboard", Settings.ACTION_INPUT_METHOD_SETTINGS),
-            SettingsActionItem("Input Method Subtype", Settings.ACTION_INPUT_METHOD_SUBTYPE_SETTINGS),
-            SettingsActionItem("Storage", Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
-            SettingsActionItem("Language", Settings.ACTION_LOCALE_SETTINGS),
-            SettingsActionItem("Location", Settings.ACTION_LOCATION_SOURCE_SETTINGS),
-            SettingsActionItem("Default apps", Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
-            SettingsActionItem("Display over other apps", Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
-            SettingsActionItem("Install unknown apps", Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES),
-            SettingsActionItem("Modify system settings", Settings.ACTION_MANAGE_WRITE_SETTINGS),
-            SettingsActionItem("Memory card", Settings.ACTION_MEMORY_CARD_SETTINGS),
-            SettingsActionItem("Network operators", Settings.ACTION_NETWORK_OPERATOR_SETTINGS),
-            SettingsActionItem("Android Beam", Settings.ACTION_NFCSHARING_SETTINGS),
-            SettingsActionItem("Tap & pay", Settings.ACTION_NFC_PAYMENT_SETTINGS),
-            SettingsActionItem("NFC", Settings.ACTION_NFC_SETTINGS),
-            SettingsActionItem("Night Light", Settings.ACTION_NIGHT_DISPLAY_SETTINGS),
-            SettingsActionItem("Notification Assistant", Settings.ACTION_NOTIFICATION_ASSISTANT_SETTINGS),
-            SettingsActionItem("Notification access", Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
-            SettingsActionItem("Do Not Disturb access", Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
-            SettingsActionItem("Printing", Settings.ACTION_PRINT_SETTINGS),
-            SettingsActionItem("Privacy", Settings.ACTION_PRIVACY_SETTINGS),
-            SettingsActionItem("Quick Access Wallet", Settings.ACTION_QUICK_ACCESS_WALLET_SETTINGS),
-            SettingsActionItem("Quick Launch", Settings.ACTION_QUICK_LAUNCH_SETTINGS),
-            SettingsActionItem("Autofill Service", Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE),
-            SettingsActionItem("Search", Settings.ACTION_SEARCH_SETTINGS),
-            SettingsActionItem("Security", Settings.ACTION_SECURITY_SETTINGS),
-            SettingsActionItem("Sound & vibration", Settings.ACTION_SOUND_SETTINGS),
-            SettingsActionItem("Accounts", Settings.ACTION_SYNC_SETTINGS),
-            SettingsActionItem("Usage access", Settings.ACTION_USAGE_ACCESS_SETTINGS),
-            SettingsActionItem("Personal dictionary", Settings.ACTION_USER_DICTIONARY_SETTINGS),
-            SettingsActionItem("Voice input", Settings.ACTION_VOICE_INPUT_SETTINGS),
-            SettingsActionItem("VPN", Settings.ACTION_VPN_SETTINGS),
-            SettingsActionItem("VR helper services", Settings.ACTION_VR_LISTENER_SETTINGS),
-            SettingsActionItem("WebView implementation", Settings.ACTION_WEBVIEW_SETTINGS),
-            SettingsActionItem("Wi-Fi IP Settings", Settings.ACTION_WIFI_IP_SETTINGS),
-            SettingsActionItem("Wi-Fi", Settings.ACTION_WIFI_SETTINGS),
-            SettingsActionItem("Network & internet", Settings.ACTION_WIRELESS_SETTINGS),
-            SettingsActionItem("Do Not Disturb", Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_captioning), Settings.ACTION_CAPTIONING_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_cast), Settings.ACTION_CAST_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_data_roaming), Settings.ACTION_DATA_ROAMING_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_data_usage), Settings.ACTION_DATA_USAGE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_date_time), Settings.ACTION_DATE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_about_phone), Settings.ACTION_DEVICE_INFO_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_display), Settings.ACTION_DISPLAY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_screen_saver), Settings.ACTION_DREAM_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_physical_keyboard), Settings.ACTION_HARD_KEYBOARD_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_default_home_app), Settings.ACTION_HOME_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_battery_optimization), Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_on_screen_keyboard), Settings.ACTION_INPUT_METHOD_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_input_method_subtype), Settings.ACTION_INPUT_METHOD_SUBTYPE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_storage), Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_language), Settings.ACTION_LOCALE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_location), Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_default_apps), Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_display_over_other_apps), Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
+            SettingsActionItem(string(R.string.system_action_install_unknown_apps), Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES),
+            SettingsActionItem(string(R.string.system_action_modify_system_settings), Settings.ACTION_MANAGE_WRITE_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_memory_card), Settings.ACTION_MEMORY_CARD_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_network_operators), Settings.ACTION_NETWORK_OPERATOR_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_android_beam), Settings.ACTION_NFCSHARING_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_tap_pay), Settings.ACTION_NFC_PAYMENT_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_nfc), Settings.ACTION_NFC_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_night_light), Settings.ACTION_NIGHT_DISPLAY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_notification_assistant), Settings.ACTION_NOTIFICATION_ASSISTANT_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_notification_access), Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_do_not_disturb_access), Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_printing), Settings.ACTION_PRINT_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_privacy), Settings.ACTION_PRIVACY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_quick_access_wallet), Settings.ACTION_QUICK_ACCESS_WALLET_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_quick_launch), Settings.ACTION_QUICK_LAUNCH_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_autofill_service), Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE),
+            SettingsActionItem(string(R.string.system_action_search), Settings.ACTION_SEARCH_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_security), Settings.ACTION_SECURITY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_sound_vibration), Settings.ACTION_SOUND_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_accounts), Settings.ACTION_SYNC_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_usage_access), Settings.ACTION_USAGE_ACCESS_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_personal_dictionary), Settings.ACTION_USER_DICTIONARY_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_voice_input), Settings.ACTION_VOICE_INPUT_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_vpn), Settings.ACTION_VPN_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_vr_helper_services), Settings.ACTION_VR_LISTENER_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_webview_implementation), Settings.ACTION_WEBVIEW_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_wifi_ip_settings), Settings.ACTION_WIFI_IP_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_wifi), Settings.ACTION_WIFI_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_network_internet), Settings.ACTION_WIRELESS_SETTINGS),
+            SettingsActionItem(string(R.string.system_action_do_not_disturb), Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS),
 
             // Privileged Actions
             SettingsActionItem(
-                "Wireless Debugging", 
-                "android.settings.ADB_WIFI_SETTINGS", 
+                string(R.string.system_action_wireless_debugging),
+                "android.settings.ADB_WIFI_SETTINGS",
                 requiresElevatedPermission = true,
                 onLaunch = {
                     val launched = withContext(Dispatchers.IO) {
@@ -123,8 +125,8 @@ class SettingsProvider(
                 }
             ),
             SettingsActionItem(
-                "USB Debugging", 
-                "action.custom.USB_DEBUGGING", 
+                string(R.string.system_action_usb_debugging),
+                "action.custom.USB_DEBUGGING",
                 requiresElevatedPermission = true,
                 onLaunch = {
                     val launched = withContext(Dispatchers.IO) {

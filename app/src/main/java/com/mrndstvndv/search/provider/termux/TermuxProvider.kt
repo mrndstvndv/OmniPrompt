@@ -31,7 +31,7 @@ class TermuxProvider(
     private val settingsRepository: SettingsRepository<TermuxSettings>,
 ) : Provider {
     override val id: String = "termux"
-    override val displayName: String = "Termux Commands"
+    override val displayName: String = activity.getString(R.string.provider_termux)
 
     private val isTermuxInstalled: Boolean by lazy {
         activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
@@ -120,7 +120,7 @@ class TermuxProvider(
             val preview = buildCommandPreview(command.executablePath, resolvedArgs)
             ProviderResult(
                 id = "$id:${command.id}",
-                title = if (argsText.isBlank()) command.displayName else "${command.displayName} \"$argsText\"",
+                title = if (argsText.isBlank()) command.displayName else activity.getString(R.string.termux_result_title_with_args, command.displayName, argsText),
                 subtitle = preview,
                 vectorIcon = Icons.Outlined.Terminal,
                 providerId = id,
@@ -180,11 +180,8 @@ class TermuxProvider(
      * Builds a command preview string showing the executable and resolved arguments.
      */
     private fun buildCommandPreview(executablePath: String, resolvedArgs: List<String>): String {
-        return if (resolvedArgs.isEmpty()) {
-            executablePath
-        } else {
-            "$executablePath ${resolvedArgs.joinToString(" ")}"
-        }
+        if (resolvedArgs.isEmpty()) return executablePath
+        return activity.getString(R.string.termux_command_preview, executablePath, resolvedArgs.joinToString(" "))
     }
 
     private suspend fun executeTermuxCommand(

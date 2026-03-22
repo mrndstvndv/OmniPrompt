@@ -1062,7 +1062,7 @@ private fun WebSearchSiteEditDialog(
 
             if (!urlTemplate.contains(placeholder)) {
                 Text(
-                    text = stringResource(R.string.web_search_missing_placeholder_short, placeholder),
+                    text = stringResource(R.string.web_search_missing_placeholder, placeholder),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),
@@ -1138,7 +1138,7 @@ private fun WebSearchSiteAddDialog(
 
             if (urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder)) {
                 Text(
-                    text = stringResource(R.string.web_search_missing_placeholder_short, placeholder),
+                    text = stringResource(R.string.web_search_missing_placeholder, placeholder),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),

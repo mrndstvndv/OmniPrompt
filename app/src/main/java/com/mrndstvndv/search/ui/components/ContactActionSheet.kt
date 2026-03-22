@@ -111,7 +111,7 @@ fun ContactActionSheet(
                 
                 ActionRow(
                     icon = Icons.Outlined.Call,
-                    label = "Call",
+                    label = stringResource(R.string.contact_action_call),
                     onClick = {
                         dialNumber(context, phoneNumber.number)
                         onActionComplete()
@@ -120,7 +120,7 @@ fun ContactActionSheet(
 
                 ActionRow(
                     icon = Icons.AutoMirrored.Outlined.Message,
-                    label = "Message",
+                    label = stringResource(R.string.contact_action_message),
                     onClick = {
                         sendMessage(context, phoneNumber.number)
                         onActionComplete()
@@ -129,7 +129,7 @@ fun ContactActionSheet(
 
                 ActionRow(
                     icon = Icons.Outlined.ContentCopy,
-                    label = "Copy number",
+                    label = stringResource(R.string.contact_action_copy_number),
                     onClick = {
                         copyToClipboard(context, phoneNumber.number)
                         onActionComplete()
@@ -148,7 +148,7 @@ fun ContactActionSheet(
 
                 ActionRow(
                     icon = Icons.Outlined.Person,
-                    label = "View contact",
+                    label = stringResource(R.string.contact_action_view_contact),
                     onClick = {
                         viewContact(context, contact.contactId, contact.lookupKey)
                         onActionComplete()
@@ -168,7 +168,7 @@ private fun PhoneNumberSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         // Phone number header
         Text(
-            text = stringResource(R.string.contact_type_number, phoneNumber.getTypeLabel(), phoneNumber.number),
+            text = stringResource(R.string.contact_type_number, phoneNumber.getTypeLabel(context), phoneNumber.number),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
@@ -176,7 +176,7 @@ private fun PhoneNumberSection(
 
         ActionRow(
             icon = Icons.Outlined.Call,
-            label = "Call",
+            label = stringResource(R.string.contact_action_call),
             onClick = {
                 dialNumber(context, phoneNumber.number)
                 onActionComplete()
@@ -185,7 +185,7 @@ private fun PhoneNumberSection(
 
         ActionRow(
             icon = Icons.AutoMirrored.Outlined.Message,
-            label = "Message",
+            label = stringResource(R.string.contact_action_message),
             onClick = {
                 sendMessage(context, phoneNumber.number)
                 onActionComplete()
@@ -194,7 +194,7 @@ private fun PhoneNumberSection(
 
         ActionRow(
             icon = Icons.Outlined.ContentCopy,
-            label = "Copy number",
+            label = stringResource(R.string.contact_action_copy_number),
             onClick = {
                 copyToClipboard(context, phoneNumber.number)
                 onActionComplete()
@@ -248,7 +248,7 @@ private fun sendMessage(context: Context, number: String) {
 
 private fun copyToClipboard(context: Context, number: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("Phone number", number)
+    val clip = ClipData.newPlainText(context.getString(R.string.clipboard_phone_number), number)
     clipboard.setPrimaryClip(clip)
     Toast.makeText(context, context.getString(R.string.toast_number_copied), Toast.LENGTH_SHORT).show()
 }

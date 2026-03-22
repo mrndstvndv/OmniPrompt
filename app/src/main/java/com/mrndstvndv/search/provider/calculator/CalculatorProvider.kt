@@ -3,6 +3,7 @@ package com.mrndstvndv.search.provider.calculator
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.activity.ComponentActivity
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -15,7 +16,7 @@ class CalculatorProvider(
 ) : Provider {
 
     override val id: String = "calculator"
-    override val displayName: String = "Calculator"
+    override val displayName: String = activity.getString(R.string.provider_calculator)
 
     override fun canHandle(query: Query): Boolean {
         return CalculatorEngine.isExpression(query.trimmedText)
@@ -35,7 +36,7 @@ class CalculatorProvider(
         return listOf(
             ProviderResult(
                 id = "$id:$expression",
-                title = "= $result",
+                title = activity.getString(R.string.calculator_result_title, result),
                 subtitle = expression,
                 providerId = id,
                 onSelect = action
@@ -45,7 +46,7 @@ class CalculatorProvider(
 
     private fun copyToClipboard(value: String) {
         val clipboard = activity.getSystemService(ClipboardManager::class.java)
-        val clip = ClipData.newPlainText("calculator", value)
+        val clip = ClipData.newPlainText(activity.getString(R.string.provider_calculator), value)
         clipboard?.setPrimaryClip(clip)
     }
 }

@@ -314,7 +314,7 @@ class MainActivity : ComponentActivity() {
                         add(CalculatorProvider(this@MainActivity))
                         add(TextUtilitiesProvider(this@MainActivity, textUtilitiesSettingsRepo))
                         add(FileSearchProvider(this@MainActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(settingsRepository, contactsSettingsRepo, contactsRepository))
+                        add(ContactsProvider(this@MainActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
                         add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
                         add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
                         add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo))
@@ -707,7 +707,7 @@ class MainActivity : ComponentActivity() {
                                             value = textState.value,
                                             onValueChange = { textState.value = it },
                                             singleLine = true,
-                                            placeholder = { Text(stringResource(R.string.search)) },
+                                            placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                             trailingIcon = {
                                                 if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                     Icon(
@@ -812,7 +812,7 @@ class MainActivity : ComponentActivity() {
                                         value = textState.value,
                                         onValueChange = { textState.value = it },
                                         singleLine = true,
-                                        placeholder = { Text(stringResource(R.string.search)) },
+                                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                         trailingIcon = {
                                             if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                 Icon(

@@ -150,7 +150,7 @@ fun TermuxSettingsScreen(
         ) {
             item {
                 SettingsHeader(
-                    title = stringResource(R.string.termux_header),
+                    title = stringResource(R.string.provider_termux),
                     subtitle = stringResource(R.string.termux_header_subtitle),
                     onBack = onBack,
                 )
@@ -746,7 +746,7 @@ private fun TermuxCommandDialogContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-        text = if (previewArgs.isBlank()) executablePath else "$executablePath $previewArgs",
+        text = if (previewArgs.isBlank()) executablePath else stringResource(R.string.termux_command_preview, executablePath, previewArgs),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 2,

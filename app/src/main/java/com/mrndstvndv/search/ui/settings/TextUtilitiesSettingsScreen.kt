@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
@@ -49,7 +50,8 @@ fun TextUtilitiesSettingsScreen(
     onBack: () -> Unit,
 ) {
     val textUtilitiesSettings by repository.flow.collectAsState()
-    val utilitiesInfo = remember { TextUtilitiesProvider.getUtilitiesInfo() }
+    val context = LocalContext.current
+    val utilitiesInfo = remember(context) { TextUtilitiesProvider.getUtilitiesInfo(context) }
 
     Box(
         modifier =
@@ -66,7 +68,7 @@ fun TextUtilitiesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.text_utilities_header), subtitle = stringResource(R.string.text_utilities_header_subtitle), onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.provider_text_utilities), subtitle = stringResource(R.string.text_utilities_header_subtitle), onBack = onBack)
             }
 
             item {

@@ -91,7 +91,7 @@ fun AppSearchSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.app_search_header), subtitle = stringResource(R.string.app_search_header_subtitle), onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.provider_applications), subtitle = stringResource(R.string.app_search_header_subtitle), onBack = onBack)
             }
 
             item {
@@ -390,6 +390,7 @@ private fun AppListTypeChooser(
     enabled: Boolean,
     onTypeSelected: (AppListType) -> Unit,
 ) {
+    val context = LocalContext.current
     val disabledAlpha = 0.38f
 
     Column(
@@ -414,7 +415,7 @@ private fun AppListTypeChooser(
             options = options,
             selectedOption = selectedType,
             enabled = enabled,
-            label = { type -> type.userFacingLabel() },
+            label = { type -> context.getString(type.labelResId) },
             onOptionSelected = onTypeSelected,
             modifier =
                 Modifier

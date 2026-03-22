@@ -45,7 +45,7 @@ class FileSearchProvider(
     private val fileProviderAuthority: String = "${activity.packageName}.fileprovider"
 
     override val id: String = "file-search"
-    override val displayName: String = "Files & Folders"
+    override val displayName: String = activity.getString(R.string.provider_file_search)
 
     override fun canHandle(query: Query): Boolean {
         if (query.isBlank) return false
@@ -77,13 +77,12 @@ class FileSearchProvider(
         val uniqueMatches = matches.distinctBy { it.documentUri }
         for (match in uniqueMatches) {
             val iconDescriptor = resolveIcons(match, thumbnailsEnabled, settings.thumbnailCropMode)
-            // Calculate offset for subtitle indices due to prefix "${rootDisplayName} • "
-            val subtitlePrefix = "${match.rootDisplayName} • "
-            val adjustedSubtitleIndices = match.matchedSubtitleIndices.map { it + subtitlePrefix.length }
+            val subtitle = describeMatch(match)
+            val adjustedSubtitleIndices = match.matchedSubtitleIndices.map { it + subtitle.pathStartIndex }
             results += ProviderResult(
                 id = "$id:${match.documentUri}",
                 title = match.displayName,
-                subtitle = describeMatch(match),
+                subtitle = subtitle.text,
                 icon = null,
                 vectorIcon = iconDescriptor.vectorIcon,
                 iconLoader = iconDescriptor.iconLoader,
@@ -205,9 +204,14 @@ class FileSearchProvider(
         }
     }
 
-    private fun describeMatch(match: FileSearchMatch): String {
+    private fun describeMatch(match: FileSearchMatch): MatchSubtitle {
         val path = if (match.relativePath.isBlank()) match.displayName else match.relativePath
-        return "${match.rootDisplayName} • $path"
+        val template = activity.getString(R.string.file_search_result_path, match.rootDisplayName, MATCH_PATH_PLACEHOLDER)
+        val pathStartIndex = template.indexOf(MATCH_PATH_PLACEHOLDER).coerceAtLeast(0)
+        return MatchSubtitle(
+            text = template.replace(MATCH_PATH_PLACEHOLDER, path),
+            pathStartIndex = pathStartIndex,
+        )
     }
 
     private fun computeScore(match: FileSearchMatch, query: String): Float {
@@ -231,6 +235,7 @@ class FileSearchProvider(
 
     companion object {
         private const val DEFAULT_MIME = "*/*"
+        private const val MATCH_PATH_PLACEHOLDER = "__match_path__"
         const val EXTRA_ROOT_NAME = "fileSearch.rootName"
         const val EXTRA_RELATIVE_PATH = "fileSearch.relativePath"
         private const val APK_MIME = "application/vnd.android.package-archive"
@@ -243,5 +248,10 @@ class FileSearchProvider(
     private data class IconDescriptor(
         val vectorIcon: ImageVector?,
         val iconLoader: (suspend () -> Bitmap?)?
+    )
+
+    private data class MatchSubtitle(
+        val text: String,
+        val pathStartIndex: Int,
     )
 }

@@ -18,6 +18,7 @@ fun ErrorDialog(
     onDismiss: () -> Unit,
 ) {
     val clipboard = LocalClipboard.current
+    val clipboardLabel = stringResource(R.string.clipboard_error)
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -31,7 +32,7 @@ fun ErrorDialog(
         dismissButton = {
             TextButton(onClick = {
                 scope.launch {
-                    clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("error", error)))
+                    clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(clipboardLabel, error)))
                 }
             }) {
                 Text(stringResource(R.string.copy))

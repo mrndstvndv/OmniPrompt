@@ -6,6 +6,7 @@ import android.os.Environment
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
 import com.mrndstvndv.search.provider.settings.FileSearchScanState
@@ -79,7 +80,7 @@ class IncrementalFileSyncWorker(
                 roots.add(
                     SyncableRoot(
                         id = FileSearchSettings.DOWNLOADS_ROOT_ID,
-                        displayName = "Downloads",
+                        displayName = applicationContext.getString(R.string.file_search_downloads),
                         uri = Uri.fromFile(downloadsDir),
                         isFileUri = true
                     )

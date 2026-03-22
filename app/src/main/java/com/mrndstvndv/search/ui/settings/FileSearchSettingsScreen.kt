@@ -106,7 +106,7 @@ fun FileSearchSettingsScreen(
     fun enableDownloadsIndexing() {
         coroutineScope.launch(Dispatchers.Default) {
             repository.update { it.copy(includeDownloads = true) }
-            FileSearchRoot.downloadsRoot()?.let { root ->
+            FileSearchRoot.downloadsRoot(context)?.let { root ->
                 repository.update { settings ->
                     settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
                         set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
@@ -126,7 +126,7 @@ fun FileSearchSettingsScreen(
 
     fun rescanDownloads() {
         coroutineScope.launch(Dispatchers.Default) {
-            FileSearchRoot.downloadsRoot()?.let { root ->
+            FileSearchRoot.downloadsRoot(context)?.let { root ->
                 repository.update { settings ->
                     settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
                         set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
@@ -196,7 +196,7 @@ fun FileSearchSettingsScreen(
         ) {
             item {
                 SettingsHeader(
-                    title = stringResource(R.string.file_search_header),
+                    title = stringResource(R.string.provider_file_search),
                     subtitle = stringResource(R.string.file_search_header_subtitle),
                     onBack = onBack,
                 )
@@ -490,6 +490,8 @@ private fun FileSearchRootsCard(
     onRescanRoot: (FileSearchRoot) -> Unit,
     onRemoveRoot: (FileSearchRoot) -> Unit,
 ) {
+    val context = LocalContext.current
+
     Column(modifier = Modifier.fillMaxWidth()) {
         DownloadsIndexRow(
             enabled = downloadsEnabled,
@@ -530,7 +532,7 @@ private fun FileSearchRootsCard(
         } else {
             SettingsDivider()
             settings.roots.forEachIndexed { index, root ->
-                val displayName = formatRootDisplayName(root, duplicateNameIds.contains(root.id))
+                val displayName = formatRootDisplayName(context, root, duplicateNameIds.contains(root.id))
                 FileSearchRootRow(
                     root = root,
                     displayName = displayName,
@@ -558,12 +560,17 @@ private fun FileSearchRootsCard(
 }
 
 private fun formatRootDisplayName(
+    context: Context,
     root: FileSearchRoot,
     requireParentLabel: Boolean,
 ): String {
     if (!requireParentLabel) return root.displayName
     val parent = root.parentDisplayName?.takeIf { it.isNotBlank() } ?: root.uri.deriveParentDisplayName()
-    return if (parent.isNullOrBlank()) root.displayName else "${root.displayName} ($parent)"
+    return if (parent.isNullOrBlank()) {
+        root.displayName
+    } else {
+        context.getString(R.string.file_search_root_with_parent, root.displayName, parent)
+    }
 }
 
 @Composable
@@ -787,7 +794,7 @@ private fun resolveDownloadsStatusText(
         FileSearchRoot(
             id = FileSearchSettings.DOWNLOADS_ROOT_ID,
             uri = Uri.EMPTY,
-            displayName = context.getString(R.string.file_search_downloads_folder),
+            displayName = context.getString(R.string.file_search_downloads),
             isEnabled = true,
             addedAtMillis = 0L,
             parentDisplayName = null,

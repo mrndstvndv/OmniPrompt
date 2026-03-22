@@ -191,7 +191,7 @@ fun BackupRestoreSettingsScreen(
                         currentSettings.copy(roots = updatedRoots)
                     }
 
-                    Toast.makeText(context, context.getString(R.string.backup_permission_granted), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.permission_granted), Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(context, context.getString(R.string.backup_permission_failed), Toast.LENGTH_LONG).show()
                 }

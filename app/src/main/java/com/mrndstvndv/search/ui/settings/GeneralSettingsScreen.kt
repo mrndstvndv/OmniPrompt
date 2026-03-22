@@ -123,7 +123,7 @@ fun GeneralSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.settings_title), onBack = onClose)
+                SettingsHeader(title = stringResource(R.string.settings), onBack = onClose)
             }
 
             if (!isDefaultAssistant) {
@@ -449,7 +449,7 @@ fun AppearanceSettingsScreen(
                                 },
                                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
                             ) {
-                                Text(text = position.userFacingLabel())
+                                Text(text = stringResource(position.labelResId))
                             }
                         }
                     }

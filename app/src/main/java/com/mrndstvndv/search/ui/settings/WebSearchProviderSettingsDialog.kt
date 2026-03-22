@@ -176,7 +176,7 @@ fun WebSearchProviderSettingsDialog(
                     Spacer(modifier = Modifier.height(4.dp))
                     if (!site.urlTemplate.contains(placeholder)) {
                         Text(
-                            text = stringResource(R.string.web_search_missing_placeholder_short, placeholder),
+                            text = stringResource(R.string.web_search_missing_placeholder, placeholder),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )

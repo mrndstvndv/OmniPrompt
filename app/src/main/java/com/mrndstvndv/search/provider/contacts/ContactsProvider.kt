@@ -1,8 +1,10 @@
 package com.mrndstvndv.search.provider.contacts
 
+import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Person
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -17,13 +19,17 @@ import kotlinx.coroutines.withContext
  * Provider for searching device contacts.
  */
 class ContactsProvider(
+    private val context: Context,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<ContactsSettings>,
     private val contactsRepository: ContactsRepository
 ) : Provider {
 
     override val id: String = "contacts"
-    override val displayName: String = "Contacts"
+    override val displayName: String = context.getString(R.string.provider_contacts)
+
+    private fun buildSimNumberTitle(displayName: String): String =
+        context.getString(R.string.contacts_my_number, displayName)
 
     override fun canHandle(query: Query): Boolean {
         // Only handle if provider is enabled and has permission
@@ -46,7 +52,7 @@ class ContactsProvider(
             val simNumbers = contactsRepository.getSimNumbers()
             for (sim in simNumbers) {
                 // Use full title for matching so "my number" matches all SIMs
-                val fullTitle = "My Number (${sim.displayName})"
+                val fullTitle = buildSimNumberTitle(sim.displayName)
                 val match = if (normalized.isBlank()) {
                     ScoredContact(
                         contact = null,
@@ -134,7 +140,7 @@ class ContactsProvider(
     private fun buildContactResult(scored: ScoredContact): ProviderResult {
         val contact = scored.contact!!
         val primaryNumber = contact.phoneNumbers.firstOrNull()?.number
-        val subtitle = primaryNumber ?: "No phone number"
+        val subtitle = primaryNumber ?: context.getString(R.string.contacts_no_phone_number)
 
         return ProviderResult(
             id = "$id:${contact.id}",
@@ -162,7 +168,7 @@ class ContactsProvider(
 
         return ProviderResult(
             id = "$id:sim:${sim.subscriptionId}",
-            title = "My Number (${sim.displayName})",
+            title = buildSimNumberTitle(sim.displayName),
             subtitle = sim.number,
             icon = null,
             defaultVectorIcon = Icons.Outlined.Person,
@@ -176,7 +182,7 @@ class ContactsProvider(
                         label = sim.displayName
                     )
                 ),
-                EXTRA_DISPLAY_NAME to "My Number (${sim.displayName})",
+                EXTRA_DISPLAY_NAME to buildSimNumberTitle(sim.displayName),
                 EXTRA_IS_SIM_NUMBER to true
             ),
             onSelect = null, // Handled specially in MainActivity to show action sheet

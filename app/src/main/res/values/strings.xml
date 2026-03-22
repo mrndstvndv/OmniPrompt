@@ -3,7 +3,6 @@
     <string name="app_name">OmniPrompt</string>
 
     <!-- General -->
-    <string name="search">Search</string>
     <string name="search_placeholder">Search…</string>
     <string name="settings">Settings</string>
     <string name="cancel">Cancel</string>
@@ -50,7 +49,6 @@
     <string name="provider_desc_intent_launcher">Launch apps with triggers</string>
 
     <!-- General settings screen -->
-    <string name="settings_title">Settings</string>
     <string name="settings_providers">Providers</string>
     <string name="settings_providers_subtitle">Turn sources on or off and configure them.</string>
     <string name="settings_appearance">Appearance</string>
@@ -74,6 +72,9 @@
     <string name="appearance_background_blur_subtitle">Control how soft the wallpaper appears.</string>
     <string name="appearance_settings_icon">Settings Icon</string>
     <string name="appearance_settings_icon_subtitle">Position relative to the search bar.</string>
+    <string name="appearance_settings_icon_below">Below</string>
+    <string name="appearance_settings_icon_inside">Inside</string>
+    <string name="appearance_settings_icon_hidden">Hidden</string>
     <string name="appearance_search_bar_bottom">Search bar at bottom</string>
     <string name="appearance_search_bar_bottom_subtitle">Place search bar below results instead of above.</string>
 
@@ -84,7 +85,6 @@
     <string name="behavior_activity_indicator_delay_subtitle">Wait time before showing the loading spinner.</string>
 
     <!-- App search settings -->
-    <string name="app_search_header">Applications</string>
     <string name="app_search_header_subtitle">Configure app search.</string>
     <string name="app_search_include_package_name">Include package name</string>
     <string name="app_search_include_package_name_subtitle">Search apps by their package name (e.g. com.android.settings).</string>
@@ -98,6 +98,9 @@
     <string name="app_list_show_subtitle">Display an app list on the home screen.</string>
     <string name="app_list_type">App list type</string>
     <string name="app_list_type_subtitle">Choose which apps to display.</string>
+    <string name="app_list_type_recent">Recent Apps</string>
+    <string name="app_list_type_pinned">Pinned Apps</string>
+    <string name="app_list_type_both">Both</string>
     <string name="app_list_center">Center app list</string>
     <string name="app_list_center_subtitle">Only works when the settings icon is hidden or inside the search bar.</string>
     <string name="app_list_hide_when_results">Hide when results visible</string>
@@ -121,7 +124,6 @@
     <string name="move_down">Move down</string>
 
     <!-- File search settings -->
-    <string name="file_search_header">Files &amp; Folders</string>
     <string name="file_search_header_subtitle">Pick which directories are indexed.</string>
     <string name="file_search_load_thumbnails">Load thumbnails</string>
     <string name="file_search_load_thumbnails_subtitle">Show previews for images, videos, and audio files in search results.</string>
@@ -143,6 +145,7 @@
     <string name="file_search_no_folders">No folders have been indexed yet. Tap Add folder to pick a directory.</string>
     <string name="file_search_add_folder">Add folder</string>
     <string name="file_search_rescan">Rescan</string>
+    <string name="file_search_downloads">Downloads</string>
     <string name="file_search_downloads_folder">Downloads folder</string>
     <string name="file_search_allow_downloads">Allow Downloads access</string>
     <string name="file_search_downloads_permission">OmniPrompt needs Android\'s &quot;All files access&quot; permission to index the Downloads folder.</string>
@@ -168,7 +171,6 @@
     <string name="just_now">just now</string>
 
     <!-- Termux settings -->
-    <string name="termux_header">Termux Commands</string>
     <string name="termux_header_subtitle">Run commands in Termux.</string>
     <string name="termux_section_commands">Commands</string>
     <string name="termux_section_commands_subtitle">Define commands to run in Termux.</string>
@@ -223,13 +225,11 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="termux_supporting_shell_create_mode">e.g. no-shell-with-name to reuse session</string>
 
     <!-- Intent settings -->
-    <string name="intent_header">Intent Launcher</string>
     <string name="intent_header_subtitle">Launch apps by fuzzy searching titles.</string>
     <string name="intent_section_intents">Intents</string>
     <string name="intent_section_intents_subtitle">Define intents to launch apps.</string>
     <string name="intent_add">Add Intent</string>
     <string name="intent_no_configured">No intents configured. Add your first intent.</string>
-    <string name="intent_about">About</string>
     <string name="intent_about_subtitle">How intent matching works.</string>
     <string name="intent_usage">Usage:</string>
     <string name="intent_usage_detail">Type keywords to fuzzy match intent titles, followed by text or a URL to launch.</string>
@@ -272,7 +272,6 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_system">System</string>
 
     <!-- Text utilities settings -->
-    <string name="text_utilities_header">Text Utilities</string>
     <string name="text_utilities_header_subtitle">Configure text tools.</string>
     <string name="text_utilities_open_decoded_urls">Open decoded URLs</string>
     <string name="text_utilities_open_decoded_urls_subtitle">Launch web links instead of copying them when decoding.</string>
@@ -284,7 +283,6 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="text_utilities_encode">Encode</string>
 
     <!-- System settings -->
-    <string name="system_settings_header">System Settings</string>
     <string name="system_settings_grant_shizuku">Grant Shizuku Permission</string>
     <string name="system_developer_toggle">Developer options toggle</string>
     <string name="system_developer_toggle_subtitle">Enable toggling developer options from search results</string>
@@ -362,7 +360,6 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="backup_restore_completed">Restore Completed</string>
     <string name="backup_some_issues">Some items had issues:</string>
     <string name="backup_invalid_file">Invalid backup file</string>
-    <string name="backup_permission_granted">Permission granted</string>
     <string name="backup_permission_failed">Failed to save permission</string>
     <string name="backup_restore_summary">Restored %s</string>
     <string name="backup_restored_setting_groups">%d setting group(s)</string>
@@ -408,7 +405,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="web_search_label_display_name">Display name</string>
     <string name="web_search_label_url_template">URL template</string>
     <string name="web_search_example_url">Example: https://www.example.com/search?q={query}</string>
-    <string name="web_search_missing_placeholder">Template is missing {query}</string>
+    <string name="web_search_missing_placeholder">Template is missing %1$s</string>
     <string name="web_search_supporting_template">Include {query} in the template</string>
     <string name="web_search_every_template_needs">Every template needs {query}</string>
     <string name="web_search_name_template_required">Name and template are required</string>
@@ -422,7 +419,6 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="web_search_edit_quicklink">Edit Quicklink</string>
     <string name="web_search_edit_search_engine">Edit Search Engine</string>
     <string name="web_search_include_placeholder">Include {query}</string>
-    <string name="web_search_missing_placeholder_short">Missing %s</string>
     <string name="web_search_add">Add</string>
     <string name="web_search_quicklink_label_title">Title</string>
     <string name="web_search_quicklink_label_url">URL</string>
@@ -434,6 +430,126 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="web_search_tap_to_fetch">Tap to fetch</string>
     <string name="web_search_refresh">Refresh</string>
     <string name="web_search_fetch">Fetch</string>
+
+    <!-- Runtime + provider cleanup -->
+    <string name="app_search_ai_result_title">Ask: %1$s</string>
+    <string name="calculator_result_title">= %1$s</string>
+    <string name="file_search_result_path">%1$s • %2$s</string>
+    <string name="file_search_root_with_parent">%1$s (%2$s)</string>
+    <string name="termux_result_title_with_args">%1$s &quot;%2$s&quot;</string>
+    <string name="termux_command_preview">%1$s %2$s</string>
+    <string name="contacts_my_number">My Number (%1$s)</string>
+    <string name="contacts_no_phone_number">No phone number</string>
+    <string name="contacts_sim_slot_fallback">SIM %1$d</string>
+    <string name="contact_action_call">Call</string>
+    <string name="contact_action_message">Message</string>
+    <string name="contact_action_copy_number">Copy number</string>
+    <string name="contact_action_view_contact">View contact</string>
+    <string name="intent_share_content_generic">Share content (Generic)</string>
+    <string name="intent_any_mime_type">(any)</string>
+    <string name="intent_payload_required_hint">(type to add payload)</string>
+    <string name="intent_result_subtitle_with_payload">%1$s → %2$s</string>
+    <string name="web_search_result_title">Search &quot;%1$s&quot;</string>
+    <string name="web_search_default_site">%1$s (default)</string>
+    <string name="text_utilities_action_subtitle">%1$s %2$s text</string>
+    <string name="text_utilities_action_subtitle_with_suffix">%1$s %2$s text • %3$s</string>
+    <string name="text_utilities_tap_to_open">Tap to open</string>
+    <string name="text_utilities_tap_to_copy">Tap to copy</string>
+    <string name="text_utilities_empty_string">(empty string)</string>
+    <string name="text_utility_base64_name">Base64</string>
+    <string name="text_utility_base64_description">Encode or decode Base64 text</string>
+    <string name="text_utility_base64_example">base64 SGVsbG8gV29ybGQ= → Hello World</string>
+    <string name="text_utility_base64_error_nothing_to_decode">Nothing to decode</string>
+    <string name="text_utility_base64_error_invalid">Input is not valid Base64</string>
+    <string name="text_utility_trim_name">Trim</string>
+    <string name="text_utility_trim_description">Remove leading and trailing whitespace</string>
+    <string name="text_utility_trim_example">trim   hello world   → hello world</string>
+    <string name="text_utility_trim_error_nothing_to_trim">Nothing to trim</string>
+    <string name="text_utility_remove_whitespaces_name">Remove Whitespaces</string>
+    <string name="text_utility_remove_whitespaces_description">Remove all whitespace characters</string>
+    <string name="text_utility_remove_whitespaces_example">rmws hello world → helloworld</string>
+    <string name="text_utility_remove_whitespaces_error_empty">Nothing left after removing whitespaces</string>
+    <string name="text_utility_remove_newlines_name">Remove Newlines</string>
+    <string name="text_utility_remove_newlines_description">Replace line breaks with a single space</string>
+    <string name="text_utility_remove_newlines_example">rnl hello\nworld → hello world</string>
+    <string name="text_utility_remove_newlines_error_no_text">No text provided</string>
+    <string name="text_utility_remove_newlines_error_empty">Nothing left after removing newlines</string>
+    <string name="text_utility_messenger_url_name">Extract Messenger URL</string>
+    <string name="text_utility_messenger_url_description">Extract the original URL from Facebook Messenger redirect links</string>
+    <string name="text_utility_messenger_url_example">fblink &lt;messenger link&gt; → original URL</string>
+    <string name="text_utility_messenger_url_error_no_url">No URL provided</string>
+    <string name="text_utility_messenger_url_error_invalid_url">Invalid URL format</string>
+    <string name="text_utility_messenger_url_error_not_redirect">Not a Facebook Messenger redirect URL</string>
+    <string name="text_utility_messenger_url_error_missing_redirect">No redirect URL found in link</string>
+    <string name="text_utility_url_name">URL Encode/Decode</string>
+    <string name="text_utility_url_description">Encode or decode URL percent-encoded text</string>
+    <string name="text_utility_url_example">url encode hello world → hello%20world</string>
+    <string name="text_utility_url_error_nothing_to_encode">Nothing to encode</string>
+    <string name="text_utility_url_error_nothing_to_decode">Nothing to decode</string>
+    <string name="text_utility_url_error_invalid">Invalid URL-encoded text</string>
+    <string name="clipboard_phone_number">Phone number</string>
+    <string name="clipboard_error">Error</string>
+
+    <!-- System settings action titles -->
+    <string name="system_action_settings">Settings</string>
+    <string name="system_action_accessibility">Accessibility</string>
+    <string name="system_action_access_point_names">Access Point Names</string>
+    <string name="system_action_developer_options">Developer options</string>
+    <string name="system_action_apps">Apps</string>
+    <string name="system_action_battery_saver">Battery Saver</string>
+    <string name="system_action_biometric_enrollment">Biometric Enrollment</string>
+    <string name="system_action_bluetooth">Bluetooth</string>
+    <string name="system_action_charging_control">Charging Control</string>
+    <string name="system_action_captioning">Captioning</string>
+    <string name="system_action_cast">Cast</string>
+    <string name="system_action_data_roaming">Data Roaming</string>
+    <string name="system_action_data_usage">Data Usage</string>
+    <string name="system_action_date_time">Date &amp; time</string>
+    <string name="system_action_about_phone">About phone</string>
+    <string name="system_action_display">Display</string>
+    <string name="system_action_screen_saver">Screen saver</string>
+    <string name="system_action_physical_keyboard">Physical keyboard</string>
+    <string name="system_action_default_home_app">Default home app</string>
+    <string name="system_action_battery_optimization">Battery optimization</string>
+    <string name="system_action_on_screen_keyboard">On-screen keyboard</string>
+    <string name="system_action_input_method_subtype">Input Method Subtype</string>
+    <string name="system_action_storage">Storage</string>
+    <string name="system_action_language">Language</string>
+    <string name="system_action_location">Location</string>
+    <string name="system_action_default_apps">Default apps</string>
+    <string name="system_action_display_over_other_apps">Display over other apps</string>
+    <string name="system_action_install_unknown_apps">Install unknown apps</string>
+    <string name="system_action_modify_system_settings">Modify system settings</string>
+    <string name="system_action_memory_card">Memory card</string>
+    <string name="system_action_network_operators">Network operators</string>
+    <string name="system_action_android_beam">Android Beam</string>
+    <string name="system_action_tap_pay">Tap &amp; pay</string>
+    <string name="system_action_nfc">NFC</string>
+    <string name="system_action_night_light">Night Light</string>
+    <string name="system_action_notification_assistant">Notification Assistant</string>
+    <string name="system_action_notification_access">Notification access</string>
+    <string name="system_action_do_not_disturb_access">Do Not Disturb access</string>
+    <string name="system_action_printing">Printing</string>
+    <string name="system_action_privacy">Privacy</string>
+    <string name="system_action_quick_access_wallet">Quick Access Wallet</string>
+    <string name="system_action_quick_launch">Quick Launch</string>
+    <string name="system_action_autofill_service">Autofill Service</string>
+    <string name="system_action_search">Search</string>
+    <string name="system_action_security">Security</string>
+    <string name="system_action_sound_vibration">Sound &amp; vibration</string>
+    <string name="system_action_accounts">Accounts</string>
+    <string name="system_action_usage_access">Usage access</string>
+    <string name="system_action_personal_dictionary">Personal dictionary</string>
+    <string name="system_action_voice_input">Voice input</string>
+    <string name="system_action_vpn">VPN</string>
+    <string name="system_action_vr_helper_services">VR helper services</string>
+    <string name="system_action_webview_implementation">WebView implementation</string>
+    <string name="system_action_wifi_ip_settings">Wi-Fi IP Settings</string>
+    <string name="system_action_wifi">Wi-Fi</string>
+    <string name="system_action_network_internet">Network &amp; internet</string>
+    <string name="system_action_do_not_disturb">Do Not Disturb</string>
+    <string name="system_action_wireless_debugging">Wireless Debugging</string>
+    <string name="system_action_usb_debugging">USB Debugging</string>
 
     <!-- Error dialog -->
     <string name="error_fetching_favicon">Error Fetching Favicon</string>

@@ -84,7 +84,7 @@ fun SystemSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = stringResource(R.string.system_settings_header), onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.provider_system_settings), onBack = onBack)
         }
 
         item {
