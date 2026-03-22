@@ -137,8 +137,8 @@ class SettingsActivity : ComponentActivity() {
                     refreshDefaultAssistantState()
                 }
                 AnimatedContent(
-                    targetState = currentScreen,
-                    label = "settings_nav",
+                        targetState = currentScreen,
+                        label = "settings_nav",
                     transitionSpec = {
                         val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
                         slideInHorizontally(
