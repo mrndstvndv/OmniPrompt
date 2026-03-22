@@ -812,7 +812,7 @@ class MainActivity : ComponentActivity() {
                                         value = textState.value,
                                         onValueChange = { textState.value = it },
                                         singleLine = true,
-                                        placeholder = { Text("Search") },
+                                        placeholder = { Text(stringResource(R.string.search)) },
                                         trailingIcon = {
                                             if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                 Icon(
@@ -1112,7 +1112,7 @@ class MainActivity : ComponentActivity() {
                 ProviderResult(
                     id = "alias:web:${entry.alias}:${query.hashCode()}",
                     title = if (query.isBlank()) resolvedSite.displayName else query,
-                    subtitle = "Alias \"${entry.alias}\" → ${resolvedSite.displayName}",
+                    subtitle = getString(R.string.alias_web_subtitle, entry.alias, resolvedSite.displayName),
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,
@@ -1137,7 +1137,7 @@ class MainActivity : ComponentActivity() {
                 ProviderResult(
                     id = "alias:app:${entry.alias}",
                     title = target.label,
-                    subtitle = "Alias \"${entry.alias}\"",
+                    subtitle = getString(R.string.alias_app_subtitle, entry.alias),
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,

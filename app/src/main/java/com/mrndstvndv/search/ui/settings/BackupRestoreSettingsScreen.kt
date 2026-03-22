@@ -131,7 +131,7 @@ fun BackupRestoreSettingsScreen(
                             Toast
                                 .makeText(
                                     context,
-                                    "Backup saved (${String.format("%.1f", sizeKb)} KB)",
+                                    context.getString(R.string.backup_saved_size, sizeKb),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                         }
@@ -233,15 +233,14 @@ fun BackupRestoreSettingsScreen(
                             is BackupRestoreManager.RestoreResult.Success -> {
                                 restoreSuccessMessage =
                                     buildString {
-                                        append("Restored ")
                                         val parts = mutableListOf<String>()
                                         if (result.settingsRestored > 0) {
-                                            parts.add("${result.settingsRestored} setting group(s)")
+                                            parts.add(context.getString(R.string.backup_restored_setting_groups, result.settingsRestored))
                                         }
                                         if (result.aliasesRestored > 0) {
-                                            parts.add("${result.aliasesRestored} alias(es)")
+                                            parts.add(context.getString(R.string.backup_restored_aliases, result.aliasesRestored))
                                         }
-                                        append(parts.joinToString(", "))
+                                        append(context.getString(R.string.backup_restore_summary, parts.joinToString(", ")))
                                     }
                                 if (result.warnings.isNotEmpty()) {
                                     restoreWarnings = result.warnings
@@ -289,12 +288,12 @@ fun BackupRestoreSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = "Backup & Restore", onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.settings_backup_restore), onBack = onBack)
         }
 
         // Backup Section
         item {
-            SectionTitle(title = "Backup")
+            SectionTitle(title = stringResource(R.string.backup_section_backup))
         }
 
         item {
@@ -336,7 +335,7 @@ fun BackupRestoreSettingsScreen(
 
         // Restore Section
         item {
-            SectionTitle(title = "Restore")
+            SectionTitle(title = stringResource(R.string.backup_section_restore))
         }
 
         item {
@@ -379,7 +378,7 @@ fun BackupRestoreSettingsScreen(
         // File Search Permissions Section (only show if there are roots)
         if (fileSearchSettings.roots.isNotEmpty()) {
             item {
-                SectionTitle(title = "File Search Permissions")
+                SectionTitle(title = stringResource(R.string.backup_section_file_permissions))
             }
 
             item {
@@ -476,7 +475,7 @@ private fun FileSearchRootRow(
         }
         Icon(
             imageVector = if (hasPermission) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
-            contentDescription = if (hasPermission) "Has permission" else "Needs permission",
+            contentDescription = if (hasPermission) stringResource(R.string.cd_has_permission) else stringResource(R.string.cd_needs_permission),
             tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(24.dp),
         )
@@ -520,25 +519,25 @@ private fun RestorePreviewDialog(
                     modifier = Modifier.padding(start = 8.dp),
                 ) {
                     if (preview.webSearchSitesCount > 0) {
-                        BulletPoint("${preview.webSearchSitesCount} web search engine(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_search_engines, preview.webSearchSitesCount))
                     }
                     if (preview.quicklinksCount > 0) {
-                        BulletPoint("${preview.quicklinksCount} quicklink(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_quicklinks, preview.quicklinksCount))
                     }
                     if (preview.aliasesCount > 0) {
-                        BulletPoint("${preview.aliasesCount} alias(es)")
+                        BulletPoint(stringResource(R.string.backup_preview_aliases, preview.aliasesCount))
                     }
                     if (preview.fileSearchRootsCount > 0) {
-                        BulletPoint("${preview.fileSearchRootsCount} file search folder(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_file_folders, preview.fileSearchRootsCount))
                     }
                     if (preview.enabledProvidersCount > 0) {
-                        BulletPoint("${preview.enabledProvidersCount} provider toggle(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_provider_toggles, preview.enabledProvidersCount))
                     }
                     if (preview.hasAppearanceSettings) {
-                        BulletPoint("Appearance settings")
+                        BulletPoint(stringResource(R.string.backup_preview_appearance_settings))
                     }
                     if (preview.hasBehaviorSettings) {
-                        BulletPoint("Behavior settings")
+                        BulletPoint(stringResource(R.string.backup_preview_behavior_settings))
                     }
                 }
 

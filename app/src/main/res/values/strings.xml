@@ -14,7 +14,17 @@
     <string name="back">Back</string>
     <string name="grant">Grant</string>
     <string name="copy">Copy</string>
+    <string name="about">About</string>
+    <string name="off">Off</string>
     <string name="default_label">Default</string>
+    <string name="permission_granted">Permission granted</string>
+    <string name="folder_label">Folder</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="search_apps_placeholder">Search apps…</string>
+    <string name="value_decimal">%1$.1f</string>
+    <string name="value_milliseconds">%d ms</string>
+    <string name="value_minutes_short">%dm</string>
+    <string name="value_hours_short">%dh</string>
 
     <!-- Provider display names -->
     <string name="provider_applications">Applications</string>
@@ -79,7 +89,7 @@
     <string name="app_search_include_package_name">Include package name</string>
     <string name="app_search_include_package_name_subtitle">Search apps by their package name (e.g. com.android.settings).</string>
     <string name="app_search_ai_queries">AI Assistant queries</string>
-    <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using \"ask gemini &lt;query&gt;\".</string>
+    <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using &quot;ask gemini &lt;query&gt;&quot;.</string>
 
     <!-- App list settings -->
     <string name="app_list_section_title">App List</string>
@@ -106,47 +116,93 @@
     <string name="app_list_add_pinned_app">Add Pinned App</string>
     <string name="app_list_all_pinned">All apps are already pinned</string>
     <string name="app_list_no_apps_found">No apps found</string>
+    <string name="app_list_app_unavailable">App is no longer available</string>
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
 
     <!-- File search settings -->
     <string name="file_search_header">Files &amp; Folders</string>
-    <string name="file_search_header_subtitle">Configure file search.</string>
+    <string name="file_search_header_subtitle">Pick which directories are indexed.</string>
+    <string name="file_search_load_thumbnails">Load thumbnails</string>
+    <string name="file_search_load_thumbnails_subtitle">Show previews for images, videos, and audio files in search results.</string>
     <string name="file_search_thumbnail_crop">Thumbnail crop</string>
+    <string name="file_search_thumbnail_crop_enabled_subtitle">Choose how previews fill the square icon.</string>
+    <string name="file_search_thumbnail_crop_disabled_subtitle">Turn on thumbnails to change how previews are cropped.</string>
+    <string name="file_search_crop_fit">Fit</string>
+    <string name="file_search_crop_center">Center crop</string>
     <string name="file_search_sort_order">Sort order</string>
     <string name="file_search_sort_order_subtitle">Choose how file results are ordered.</string>
+    <string name="file_search_sort_date_modified">Date modified</string>
+    <string name="file_search_sort_name">Name</string>
     <string name="file_search_ascending_order">Ascending order</string>
     <string name="file_search_ascending_subtitle">Off lists newest or Z–A first.</string>
     <string name="file_search_background_sync">Background sync</string>
     <string name="file_search_background_sync_subtitle">Automatically check for file changes.</string>
+    <string name="file_search_sync_on_app_open">Sync on app open</string>
+    <string name="file_search_sync_on_app_open_subtitle">Check for file changes when Search opens.</string>
     <string name="file_search_no_folders">No folders have been indexed yet. Tap Add folder to pick a directory.</string>
     <string name="file_search_add_folder">Add folder</string>
     <string name="file_search_rescan">Rescan</string>
     <string name="file_search_downloads_folder">Downloads folder</string>
     <string name="file_search_allow_downloads">Allow Downloads access</string>
-    <string name="file_search_downloads_permission">OmniPrompt needs Android\'s \"All files access\" permission to index the Downloads folder.</string>
+    <string name="file_search_downloads_permission">OmniPrompt needs Android\'s &quot;All files access&quot; permission to index the Downloads folder.</string>
     <string name="file_search_open_settings">Open settings</string>
     <string name="file_search_cant_index">Can\'t index %s</string>
     <string name="file_search_fix_issue">Fix the issue, then tap Rescan below.</string>
+    <string name="file_search_status_disabled">Disabled</string>
+    <string name="file_search_status_enable_matches">Enable to surface matches</string>
+    <string name="file_search_status_pending_scan">Pending scan</string>
+    <string name="file_search_status_rescan_after_permission">Tap Rescan after granting storage access</string>
+    <string name="file_search_status_items_scanned">%d items scanned so far</string>
+    <string name="file_search_status_may_take_minute">This may take a minute</string>
+    <string name="file_search_status_indexing">Indexing…</string>
+    <string name="file_search_status_index_failed">Index failed</string>
+    <string name="file_search_status_check_permissions">Check folder permissions</string>
+    <string name="file_search_status_updated">Updated %s</string>
+    <string name="file_search_status_indexed_items">Indexed %d items</string>
+    <string name="file_search_status_idle">Idle</string>
+    <string name="file_search_status_all_files_access">Allow &quot;All files access&quot; to index Downloads.</string>
+    <string name="file_search_status_enable_downloads">Turn on to include Downloads in search results.</string>
+    <string name="file_search_error_retry">Re-grant storage permission or try again.</string>
+    <string name="file_search_already_indexed">&quot;%s&quot; is already indexed</string>
+    <string name="just_now">just now</string>
 
     <!-- Termux settings -->
     <string name="termux_header">Termux Commands</string>
+    <string name="termux_header_subtitle">Run commands in Termux.</string>
+    <string name="termux_section_commands">Commands</string>
+    <string name="termux_section_commands_subtitle">Define commands to run in Termux.</string>
+    <string name="termux_no_commands">No commands yet. Add your first Termux command.</string>
+    <string name="termux_no_commands_not_installed">Install Termux to add and run commands.</string>
     <string name="termux_add_command">Add Command</string>
     <string name="termux_edit_command">Edit Command</string>
     <string name="termux_commands_info">Commands are executed via Termux\'s RUN_COMMAND intent.</string>
     <string name="termux_requirements">Requirements:</string>
-    <string name="termux_req_installed">• Termux installed from F-Droid</string>
-    <string name="termux_req_permission">• RUN_COMMAND permission granted</string>
+    <string name="termux_requirements_detail">1. Grant RUN_COMMAND permission to this app
+2. Enable \'allow-external-apps\' in ~/.termux/termux.properties
+3. For foreground commands on Android 10+, grant Termux \'Draw Over Apps\' permission</string>
     <string name="termux_path_shortcuts">Path shortcuts:</string>
-    <string name="termux_path_shortcuts_detail">• ~/ expands to Termux home directory\n• $PREFIX/ expands to Termux usr directory</string>
+    <string name="termux_path_shortcuts_detail">• ~/ expands to Termux home directory
+• $PREFIX/ expands to Termux usr directory</string>
     <string name="termux_dynamic_args">Dynamic arguments:</string>
-    <string name="termux_dynamic_args_detail">• $1, $2, etc. = arguments after query (space-separated)\n• $* = all remaining text after command\n• Works inline: cmd $1, or standalone: $1\nExample: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
+    <string name="termux_dynamic_args_detail">• $1, $2, etc. = arguments after query (space-separated)
+• $* = all remaining text after command
+• Works inline: cmd $1, or standalone: $1
+Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
+    <string name="termux_about_subtitle">How Termux commands work.</string>
     <string name="termux_not_installed">Termux Not Installed</string>
     <string name="termux_not_installed_detail">Install Termux from F-Droid to use this feature.</string>
     <string name="termux_run_background">Run in Background</string>
     <string name="termux_run_background_subtitle">Execute without opening Termux UI</string>
     <string name="termux_session_action">Session Action</string>
     <string name="termux_preview">Preview:</string>
+    <string name="termux_permission_enabled">RUN_COMMAND permission is enabled</string>
+    <string name="termux_permission_tap_to_grant">Tap to grant RUN_COMMAND permission in Settings</string>
+    <string name="termux_session_new_open">New session, open Termux</string>
+    <string name="termux_session_current_open">Current session, open Termux</string>
+    <string name="termux_session_new_no_open">New session, don\'t open</string>
+    <string name="termux_session_current_no_open">Current session, don\'t open</string>
+    <string name="termux_permission_denied_toast">Permission denied: Grant \'Run commands in Termux environment\' in App Info &gt; Permissions &gt; Additional permissions.</string>
 
     <!-- Termux command form -->
     <string name="termux_label_display_name">Display Name</string>
@@ -168,26 +224,35 @@
 
     <!-- Intent settings -->
     <string name="intent_header">Intent Launcher</string>
+    <string name="intent_header_subtitle">Launch apps by fuzzy searching titles.</string>
     <string name="intent_section_intents">Intents</string>
+    <string name="intent_section_intents_subtitle">Define intents to launch apps.</string>
     <string name="intent_add">Add Intent</string>
     <string name="intent_no_configured">No intents configured. Add your first intent.</string>
     <string name="intent_about">About</string>
+    <string name="intent_about_subtitle">How intent matching works.</string>
     <string name="intent_usage">Usage:</string>
     <string name="intent_usage_detail">Type keywords to fuzzy match intent titles, followed by text or a URL to launch.</string>
     <string name="intent_examples">Examples:</string>
-    <string name="intent_example_ytdl">• ytdl https://youtube.com/watch?v=… → Opens in YTDLnis\n</string>
-    <string name="intent_example_ig">• ig photo.jpg → Shares to Instagram</string>
+    <string name="intent_examples_detail">• ytdl https://youtube.com/watch?v=... → Opens in YTDLnis
+• open https://google.com → Opens in browser
+• share Check this out! → Opens share sheet</string>
     <string name="intent_custom_extras">Custom extras:</string>
     <string name="intent_custom_extras_detail">Use $query in extra value to include the payload text.</string>
     <string name="intent_share_content">Share content</string>
     <string name="intent_open_url">Open URL / View content</string>
     <string name="intent_send_to_address">Send to address</string>
     <string name="intent_select_app">Select App</string>
-    <string name="intent_search_apps">Search apps…</string>
+    <string name="intent_select_app_subtitle">Apps that support share/view/sendto</string>
+    <string name="intent_searching_apps">Searching for apps…</string>
+    <string name="intent_no_compatible_apps">No compatible apps found.</string>
     <string name="intent_configure_manually">Configure manually</string>
+    <string name="intent_manual_entry">Manual Entry</string>
     <string name="intent_manual_intent">Manual Intent</string>
     <string name="intent_configure">Configure Intent</string>
     <string name="intent_edit">Edit Intent</string>
+    <string name="intent_select_supported_intent">Select an intent this app supports:</string>
+    <string name="intent_no_compatible_intents">No compatible intents found for this app.</string>
     <string name="intent_label_title">Title *</string>
     <string name="intent_placeholder_title">Instagram</string>
     <string name="intent_supporting_title">Display name for fuzzy matching</string>
@@ -208,12 +273,36 @@
 
     <!-- Text utilities settings -->
     <string name="text_utilities_header">Text Utilities</string>
+    <string name="text_utilities_header_subtitle">Configure text tools.</string>
+    <string name="text_utilities_open_decoded_urls">Open decoded URLs</string>
+    <string name="text_utilities_open_decoded_urls_subtitle">Launch web links instead of copying them when decoding.</string>
+    <string name="text_utilities_available_utilities">Available Utilities</string>
+    <string name="text_utilities_available_utilities_subtitle">Enable or disable utilities and their trigger keywords.</string>
+    <string name="text_utilities_keywords">Keywords</string>
+    <string name="text_utilities_default_mode">Default mode</string>
     <string name="text_utilities_decode">Decode</string>
     <string name="text_utilities_encode">Encode</string>
 
     <!-- System settings -->
     <string name="system_settings_header">System Settings</string>
     <string name="system_settings_grant_shizuku">Grant Shizuku Permission</string>
+    <string name="system_developer_toggle">Developer options toggle</string>
+    <string name="system_developer_toggle_subtitle">Enable toggling developer options from search results</string>
+    <string name="system_status_adb_granted">ADB Permission Granted</string>
+    <string name="system_status_root_detected">Root Access Detected</string>
+    <string name="system_status_shizuku_connected">Shizuku Connected</string>
+    <string name="system_status_ready_toggle">Ready to toggle developer options</string>
+    <string name="system_adb_command_value">adb shell pm grant %s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="system_developer_options_disable">Disable Developer Options</string>
+    <string name="system_developer_options_enable">Enable Developer Options</string>
+    <string name="system_developer_options_grant_shizuku">Tap to grant Shizuku permission</string>
+    <string name="system_developer_options_no_permission">No permission - run: adb shell pm grant %s android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="system_developer_options_turn_off">Turn off developer mode</string>
+    <string name="system_developer_options_turn_on">Turn on developer mode</string>
+    <string name="system_developer_options_enabled">Developer options enabled</string>
+    <string name="system_developer_options_disabled">Developer options disabled</string>
+    <string name="system_developer_options_toggle_failed">Failed to toggle developer options</string>
+    <string name="system_developer_options_grant_adb">Grant permission via ADB: adb shell pm grant %s android.permission.WRITE_SECURE_SETTINGS</string>
 
     <!-- System settings - Shizuku -->
     <string name="system_permission_status">Permission Status</string>
@@ -225,15 +314,21 @@
     <string name="system_install_shizuku">Or install Shizuku from Play Store for a permanent solution without a computer.</string>
 
     <!-- Contacts settings -->
+    <string name="contacts_search_phone_numbers">Search phone numbers</string>
+    <string name="contacts_search_phone_numbers_subtitle">Include phone numbers when searching contacts</string>
+    <string name="contacts_permission_granted_subtitle">Contacts can be searched</string>
+    <string name="contacts_permission_required_subtitle">Allow access to search your contacts</string>
     <string name="contacts_show_sim">Show my SIM numbers</string>
     <string name="contacts_show_sim_subtitle">Display your own phone numbers in search</string>
     <string name="contacts_sim_note">Note: SIM card numbers may not be available depending on your carrier.</string>
 
     <!-- Provider ranking -->
     <string name="ranking_result_ranking">Result Ranking</string>
+    <string name="ranking_result_ranking_subtitle">Control how results are ordered.</string>
     <string name="ranking_use_frequency">Use frequency-based ranking</string>
     <string name="ranking_frequency_desc_on">Most used items appear first</string>
     <string name="ranking_frequency_desc_off">Provider order</string>
+    <string name="ranking_use_query_specific">Use query-specific ranking</string>
     <string name="ranking_query_based">Ranking depends on the specific search term</string>
     <string name="ranking_global">Ranking is global across all queries</string>
     <string name="ranking_competitive_decay">Competitive decay</string>
@@ -243,12 +338,18 @@
     <string name="ranking_usage_scoped">Usage is now scoped to specific search queries.</string>
     <string name="ranking_no_usage_data">No usage data yet</string>
     <string name="ranking_reset_data">Reset data</string>
+    <string name="ranking_general_no_query">General (no query)</string>
+    <string name="ranking_query_label">Query: &quot;%s&quot;</string>
 
     <!-- Backup & restore -->
+    <string name="backup_section_backup">Backup</string>
+    <string name="backup_section_restore">Restore</string>
+    <string name="backup_section_file_permissions">File Search Permissions</string>
     <string name="backup_export">Export Settings</string>
     <string name="backup_export_subtitle">Save all settings to a file</string>
     <string name="backup_exporting">Exporting…</string>
     <string name="backup_export_button">Export</string>
+    <string name="backup_saved_size">Backup saved (%1$.1f KB)</string>
     <string name="backup_import">Import Settings</string>
     <string name="backup_import_subtitle">Load settings from a backup file</string>
     <string name="backup_importing">Importing…</string>
@@ -263,6 +364,16 @@
     <string name="backup_invalid_file">Invalid backup file</string>
     <string name="backup_permission_granted">Permission granted</string>
     <string name="backup_permission_failed">Failed to save permission</string>
+    <string name="backup_restore_summary">Restored %s</string>
+    <string name="backup_restored_setting_groups">%d setting group(s)</string>
+    <string name="backup_restored_aliases">%d alias(es)</string>
+    <string name="backup_preview_search_engines">%d web search engine(s)</string>
+    <string name="backup_preview_quicklinks">%d quicklink(s)</string>
+    <string name="backup_preview_aliases">%d alias(es)</string>
+    <string name="backup_preview_file_folders">%d file search folder(s)</string>
+    <string name="backup_preview_provider_toggles">%d provider toggle(s)</string>
+    <string name="backup_preview_appearance_settings">Appearance settings</string>
+    <string name="backup_preview_behavior_settings">Behavior settings</string>
 
     <!-- Assistant setup -->
     <string name="assistant_set_default">Set %s as the default assistant</string>
@@ -281,8 +392,15 @@
     <string name="alias_already_exists">Alias already exists</string>
     <string name="alias_cannot_be_empty">Alias cannot be empty</string>
     <string name="alias_content_description">Alias</string>
+    <string name="alias_web_subtitle">Alias &quot;%1$s&quot; → %2$s</string>
+    <string name="alias_app_subtitle">Alias &quot;%s&quot;</string>
 
     <!-- Web search settings -->
+    <string name="web_search_header_subtitle">Configure search providers.</string>
+    <string name="web_search_section_quicklinks">Quicklinks</string>
+    <string name="web_search_section_quicklinks_subtitle">Direct links to your favorite sites.</string>
+    <string name="web_search_section_engines">Search Engines</string>
+    <string name="web_search_section_engines_subtitle">Manage your search providers. Use {query} as the query placeholder.</string>
     <string name="web_search_sites">Web Search Sites</string>
     <string name="web_search_pick_engine">Pick your preferred search engine and add custom websites. Use {query} as the query placeholder.</string>
     <string name="web_search_add_custom">Add a custom site</string>
@@ -293,6 +411,9 @@
     <string name="web_search_missing_placeholder">Template is missing {query}</string>
     <string name="web_search_supporting_template">Include {query} in the template</string>
     <string name="web_search_every_template_needs">Every template needs {query}</string>
+    <string name="web_search_name_template_required">Name and template are required</string>
+    <string name="web_search_duplicate_site_name">A site with that name already exists</string>
+    <string name="web_search_template_must_include">Template must include %s</string>
 
     <!-- Web search quicklinks -->
     <string name="web_search_no_quicklinks">No quicklinks yet. Add your favorite sites for quick access.</string>
@@ -303,6 +424,16 @@
     <string name="web_search_include_placeholder">Include {query}</string>
     <string name="web_search_missing_placeholder_short">Missing %s</string>
     <string name="web_search_add">Add</string>
+    <string name="web_search_quicklink_label_title">Title</string>
+    <string name="web_search_quicklink_label_url">URL</string>
+    <string name="web_search_quicklink_url_placeholder">example.com</string>
+    <string name="web_search_quicklink_invalid_url">Please enter a valid URL</string>
+    <string name="web_search_favicon_loaded">Favicon loaded</string>
+    <string name="web_search_no_favicon">No favicon</string>
+    <string name="web_search_tap_to_refresh">Tap to refresh</string>
+    <string name="web_search_tap_to_fetch">Tap to fetch</string>
+    <string name="web_search_refresh">Refresh</string>
+    <string name="web_search_fetch">Fetch</string>
 
     <!-- Error dialog -->
     <string name="error_fetching_favicon">Error Fetching Favicon</string>
@@ -310,7 +441,7 @@
     <!-- Permission dialogs -->
     <string name="permission_required">Permission Required</string>
     <string name="termux_permission_message">To run Termux commands, you need to grant the RUN_COMMAND permission.</string>
-    <string name="termux_permission_instructions">Go to App Info > Permissions > Additional permissions and enable \'Run commands in Termux environment\'.</string>
+    <string name="termux_permission_instructions">Go to App Info &gt; Permissions &gt; Additional permissions and enable \'Run commands in Termux environment\'.</string>
     <string name="open_settings">Open Settings</string>
     <string name="permission_contacts_required">Permission required to search contacts</string>
 
@@ -327,12 +458,16 @@
     <string name="toast_command_failed">Failed to send command: %s</string>
 
     <!-- Runtime-formatted strings -->
-    <string name="intent_action_package">%s • %s</string>
-    <string name="contact_type_number">%s: %s</string>
+    <string name="intent_action_package">%1$s • %2$s</string>
+    <string name="contact_type_number">%1$s: %2$s</string>
     <string name="web_search_preview">Preview: %s</string>
     <string name="appearance_opacity_value">%d%%</string>
-    <string name="appearance_delay_value">%d ms</string>
 
     <!-- Content descriptions -->
     <string name="cd_settings">Settings</string>
+    <string name="cd_enable_recent_apps">Enable Recent Apps</string>
+    <string name="cd_settings_open_android_settings">Settings (long press for Android settings)</string>
+    <string name="cd_remove_extra">Remove extra</string>
+    <string name="cd_has_permission">Has permission</string>
+    <string name="cd_needs_permission">Needs permission</string>
 </resources>

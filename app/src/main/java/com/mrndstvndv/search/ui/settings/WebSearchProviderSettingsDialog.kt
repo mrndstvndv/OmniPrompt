@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
@@ -42,6 +43,7 @@ fun WebSearchProviderSettingsDialog(
     var newSiteTemplate by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val placeholder = WebSearchSettings.QUERY_PLACEHOLDER
+    val context = LocalContext.current
 
     LaunchedEffect(initialSettings) {
         sites = initialSettings.sites
@@ -70,11 +72,11 @@ fun WebSearchProviderSettingsDialog(
         val name = newSiteName.trim()
         val template = newSiteTemplate.trim()
         if (name.isBlank() || template.isBlank()) {
-            errorMessage = "Name and template are required"
+            errorMessage = context.getString(R.string.web_search_name_template_required)
             return
         }
         if (!template.contains(placeholder)) {
-            errorMessage = "Template must include $placeholder"
+            errorMessage = context.getString(R.string.web_search_template_must_include, placeholder)
             return
         }
         val candidateId = name.lowercase()
@@ -82,7 +84,7 @@ fun WebSearchProviderSettingsDialog(
             .trim('-')
             .ifBlank { name.lowercase() }
         if (sites.any { it.id == candidateId }) {
-            errorMessage = "A site with that name already exists"
+            errorMessage = context.getString(R.string.web_search_duplicate_site_name)
             return
         }
         val newSite = WebSearchSite(id = candidateId, displayName = name, urlTemplate = template)
@@ -167,7 +169,7 @@ fun WebSearchProviderSettingsDialog(
                         },
                         label = { Text(stringResource(R.string.web_search_label_url_template)) },
                         supportingText = {
-                            Text(text = "Example: https://www.example.com/search?q={query}")
+                            Text(text = stringResource(R.string.web_search_example_url))
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -192,7 +194,7 @@ fun WebSearchProviderSettingsDialog(
             TextField(
                 value = newSiteName,
                 onValueChange = { newSiteName = it },
-                label = { Text("Display name") },
+                label = { Text(stringResource(R.string.web_search_label_display_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -200,7 +202,7 @@ fun WebSearchProviderSettingsDialog(
             TextField(
                 value = newSiteTemplate,
                 onValueChange = { newSiteTemplate = it },
-                label = { Text("URL template") },
+                label = { Text(stringResource(R.string.web_search_label_url_template)) },
                 supportingText = { Text(text = stringResource(R.string.web_search_supporting_template)) },
                 modifier = Modifier.fillMaxWidth()
             )

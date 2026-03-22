@@ -69,7 +69,7 @@ fun ProviderRankingSection(
     ) {
         SettingsSection(
             title = stringResource(R.string.ranking_result_ranking),
-            subtitle = "Control how results are ordered.",
+            subtitle = stringResource(R.string.ranking_result_ranking_subtitle),
         ) {
             SettingsGroup {
                 // Frequency-based ranking toggle
@@ -103,8 +103,8 @@ fun ProviderRankingSection(
                 if (useFrequencyRanking) {
                     SettingsDivider()
                     SettingsSwitch(
-                        title = "Use query-specific ranking",
-                        subtitle = if (queryBasedRankingEnabled) "Ranking depends on the specific search term" else "Ranking is global across all queries",
+                        title = stringResource(R.string.ranking_use_query_specific),
+                        subtitle = if (queryBasedRankingEnabled) stringResource(R.string.ranking_query_based) else stringResource(R.string.ranking_global),
                         checked = queryBasedRankingEnabled,
                         onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
                     )
@@ -116,7 +116,7 @@ fun ProviderRankingSection(
                         onValueChange = { rankingRepository.setDecayAmount(it) },
                         valueRange = 0f..5f,
                         steps = 9,
-                        valueText = String.format("%.1f", decayAmount),
+                        valueText = stringResource(R.string.value_decimal, decayAmount),
                     )
                 }
             }
@@ -159,7 +159,7 @@ private fun FrequencyRankingDialog(
         text = {
             Column {
                 Text(
-                    text = "Usage is now scoped to specific search queries.",
+                    text = stringResource(R.string.ranking_usage_scoped),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -181,7 +181,7 @@ private fun FrequencyRankingDialog(
                         sortedQueries.forEach { query ->
                             item(key = query) {
                                 Text(
-                                    text = if (query.isEmpty()) "General (no query)" else "Query: \"$query\"",
+                                    text = if (query.isEmpty()) stringResource(R.string.ranking_general_no_query) else stringResource(R.string.ranking_query_label, query),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
@@ -249,7 +249,7 @@ private fun FrequencyItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = String.format("%.1f", score),
+                text = stringResource(R.string.value_decimal, score),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary,
             )

@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.core.content.ContextCompat
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -195,9 +196,9 @@ class TermuxProvider(
             // 1. Check permission first to provide clear feedback
             if (!hasRunCommandPermission(activity)) {
                 Toast.makeText(
-                    activity, 
-                    "Permission denied: Grant 'Run commands in Termux environment' in App Info > Permissions > Additional permissions.", 
-                    Toast.LENGTH_LONG
+                    activity,
+                    activity.getString(R.string.termux_permission_denied_toast),
+                    Toast.LENGTH_LONG,
                 ).show()
                 activity.finish()
                 return@withContext
@@ -272,7 +273,8 @@ class TermuxProvider(
                     }
                 }
             } catch (e: Exception) {
-                Toast.makeText(activity, "Failed to send command: ${e.message}", Toast.LENGTH_LONG).show()
+                val message = e.message ?: activity.getString(R.string.unknown_error)
+                Toast.makeText(activity, activity.getString(R.string.toast_command_failed, message), Toast.LENGTH_LONG).show()
             }
 
             // 6. CRITICAL: Stay in foreground long enough for delivery to complete.

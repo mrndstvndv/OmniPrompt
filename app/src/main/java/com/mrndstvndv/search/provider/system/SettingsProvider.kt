@@ -192,7 +192,7 @@ class SettingsProvider(
                 ProviderResult(
                     id = "$id:${item.action}",
                     title = item.title,
-                    subtitle = "System Settings",
+                    subtitle = activity.getString(R.string.provider_system_settings),
                     defaultVectorIcon = Icons.Outlined.Settings,
                     providerId = id,
                     onSelect = {
@@ -229,15 +229,20 @@ class SettingsProvider(
     }
 
     private fun buildDeveloperToggleResult(isCurrentlyEnabled: Boolean, isReady: Boolean, query: String): ProviderResult? {
-        val title = if (isCurrentlyEnabled) "Disable Developer Options" else "Enable Developer Options"
+        val title =
+            if (isCurrentlyEnabled) {
+                activity.getString(R.string.system_developer_options_disable)
+            } else {
+                activity.getString(R.string.system_developer_options_enable)
+            }
         val permissionStatus = developerSettingsManager.permissionStatus.value
         val subtitle = when {
-            !isReady && permissionStatus.isShizukuAvailable && !permissionStatus.hasShizukuPermission -> 
-                "Tap to grant Shizuku permission"
-            !isReady -> 
-                "No permission - run: adb shell pm grant ${activity.packageName} android.permission.WRITE_SECURE_SETTINGS"
-            isCurrentlyEnabled -> "Turn off developer mode"
-            else -> "Turn on developer mode"
+            !isReady && permissionStatus.isShizukuAvailable && !permissionStatus.hasShizukuPermission ->
+                activity.getString(R.string.system_developer_options_grant_shizuku)
+            !isReady ->
+                activity.getString(R.string.system_developer_options_no_permission, activity.packageName)
+            isCurrentlyEnabled -> activity.getString(R.string.system_developer_options_turn_off)
+            else -> activity.getString(R.string.system_developer_options_turn_on)
         }
         
         // Get match indices for highlighting
@@ -259,9 +264,13 @@ class SettingsProvider(
                             val success = developerSettingsManager.setDeveloperSettingsEnabled(newState)
                             withContext(Dispatchers.Main) {
                                 val message = if (success) {
-                                    if (newState) "Developer options enabled" else "Developer options disabled"
+                                    if (newState) {
+                                        activity.getString(R.string.system_developer_options_enabled)
+                                    } else {
+                                        activity.getString(R.string.system_developer_options_disabled)
+                                    }
                                 } else {
-                                    "Failed to toggle developer options"
+                                    activity.getString(R.string.system_developer_options_toggle_failed)
                                 }
                                 Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
                             }
@@ -283,8 +292,8 @@ class SettingsProvider(
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 activity,
-                                "Grant permission via ADB: adb shell pm grant ${activity.packageName} android.permission.WRITE_SECURE_SETTINGS",
-                                Toast.LENGTH_LONG
+                                activity.getString(R.string.system_developer_options_grant_adb, activity.packageName),
+                                Toast.LENGTH_LONG,
                             ).show()
                         }
                     }

@@ -95,7 +95,7 @@ fun RecentAppsList(
             ) {
                 Icon(
                     imageVector = Icons.Default.History,
-                    contentDescription = "Enable Recent Apps",
+                    contentDescription = stringResource(R.string.cd_enable_recent_apps),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier =
                         Modifier
@@ -349,7 +349,7 @@ fun AppListContainer(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Settings,
-                        contentDescription = "Settings (long press for Android settings)",
+                        contentDescription = stringResource(R.string.cd_settings_open_android_settings),
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
@@ -515,7 +515,7 @@ private fun safeLaunchApp(
         (context as? ComponentActivity)?.finish()
     } catch (_: android.content.ActivityNotFoundException) {
         android.widget.Toast
-            .makeText(context, "App is no longer available", android.widget.Toast.LENGTH_SHORT)
+            .makeText(context, context.getString(R.string.app_list_app_unavailable), android.widget.Toast.LENGTH_SHORT)
             .show()
     } catch (e: Exception) {
         android.util.Log.w("AppList", "Failed to launch app", e)

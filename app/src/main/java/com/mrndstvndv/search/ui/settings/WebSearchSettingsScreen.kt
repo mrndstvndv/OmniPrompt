@@ -135,11 +135,11 @@ fun WebSearchSettingsScreen(
         val trimmedName = name.trim()
         val trimmedTemplate = template.trim()
         if (trimmedName.isBlank() || trimmedTemplate.isBlank()) {
-            onError("Name and template are required")
+            onError(context.getString(R.string.web_search_name_template_required))
             return false
         }
         if (!trimmedTemplate.contains(placeholder)) {
-            onError("Template must include $placeholder")
+            onError(context.getString(R.string.web_search_template_must_include, placeholder))
             return false
         }
         val candidateId =
@@ -149,7 +149,7 @@ fun WebSearchSettingsScreen(
                 .trim('-')
                 .ifBlank { trimmedName.lowercase() }
         if (sites.any { it.id == candidateId }) {
-            onError("A site with that name already exists")
+            onError(context.getString(R.string.web_search_duplicate_site_name))
             return false
         }
         val newSite = WebSearchSite(id = candidateId, displayName = trimmedName, urlTemplate = trimmedTemplate)
@@ -253,14 +253,18 @@ fun WebSearchSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = "Web Search", subtitle = "Configure search providers.", onBack = onBack)
+                SettingsHeader(
+                    title = stringResource(R.string.provider_web_search),
+                    subtitle = stringResource(R.string.web_search_header_subtitle),
+                    onBack = onBack,
+                )
             }
 
             // Quicklinks section
             item {
                 SettingsSection(
-                    title = "Quicklinks",
-                    subtitle = "Direct links to your favorite sites.",
+                    title = stringResource(R.string.web_search_section_quicklinks),
+                    subtitle = stringResource(R.string.web_search_section_quicklinks_subtitle),
                 ) {
                     SettingsGroup {
                         if (quicklinks.isEmpty()) {
@@ -304,8 +308,8 @@ fun WebSearchSettingsScreen(
             // Search Engines section
             item {
                 SettingsSection(
-                    title = "Search Engines",
-                    subtitle = "Manage your search providers. Use $placeholder as the query placeholder.",
+                    title = stringResource(R.string.web_search_section_engines),
+                    subtitle = stringResource(R.string.web_search_section_engines_subtitle),
                 ) {
                     SettingsGroup {
                         sites.forEachIndexed { index, site ->
@@ -474,7 +478,7 @@ private fun QuicklinkAddDialog(
                     FaviconLoader.fetchFavicon(normalizedUrl, context)
                 }
 
-            if (isFetchingFavicon) { // Check if not cancelled
+            if (isFetchingFavicon) {
                 result
                     .onSuccess { bitmap ->
                         val saved =
@@ -485,7 +489,7 @@ private fun QuicklinkAddDialog(
                             fetchedFavicon = bitmap
                         }
                     }.onFailure { error ->
-                        fetchErrorDialog = error.message ?: "Unknown error"
+                        fetchErrorDialog = error.message ?: context.getString(R.string.unknown_error)
                     }
                 isFetchingFavicon = false
             }
@@ -541,7 +545,7 @@ private fun QuicklinkAddDialog(
             TextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text(stringResource(R.string.intent_label_title)) },
+                label = { Text(stringResource(R.string.web_search_quicklink_label_title)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -562,13 +566,13 @@ private fun QuicklinkAddDialog(
                         quicklinkId = UUID.randomUUID().toString()
                     }
                 },
-                label = { Text("URL") },
-                placeholder = { Text("example.com") },
+                label = { Text(stringResource(R.string.web_search_quicklink_label_url)) },
+                placeholder = { Text(stringResource(R.string.web_search_quicklink_url_placeholder)) },
                 singleLine = true,
                 isError = url.isNotBlank() && !isValidUrl,
                 supportingText =
                     if (url.isNotBlank() && !isValidUrl) {
-                        { Text("Please enter a valid URL") }
+                        { Text(stringResource(R.string.web_search_quicklink_invalid_url)) }
                     } else {
                         null
                     },
@@ -613,12 +617,12 @@ private fun QuicklinkAddDialog(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (fetchedFavicon != null) "Favicon loaded" else "No favicon",
+                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_favicon_loaded) else stringResource(R.string.web_search_no_favicon),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = if (fetchedFavicon != null) "Tap to refresh" else "Tap to fetch",
+                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_tap_to_refresh) else stringResource(R.string.web_search_tap_to_fetch),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -633,7 +637,7 @@ private fun QuicklinkAddDialog(
                         IconButton(onClick = { cancelFaviconFetch() }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Cancel",
+                                contentDescription = stringResource(R.string.cancel),
                             )
                         }
                     }
@@ -642,7 +646,7 @@ private fun QuicklinkAddDialog(
                         onClick = { fetchFavicon() },
                         enabled = canFetchFavicon,
                     ) {
-                        Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
+                        Text(if (fetchedFavicon != null) stringResource(R.string.web_search_refresh) else stringResource(R.string.web_search_fetch))
                     }
                 }
             }
@@ -675,7 +679,6 @@ private fun QuicklinkEditDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Load existing favicon on first composition
     LaunchedEffect(quicklink.id, quicklink.hasFavicon) {
         if (quicklink.hasFavicon) {
             fetchedFavicon =
@@ -711,7 +714,6 @@ private fun QuicklinkEditDialog(
         isFetchingFavicon = true
 
         scope.launch {
-            // Delete old favicon first
             withContext(Dispatchers.IO) {
                 FaviconLoader.deleteFavicon(context, quicklink.id)
             }
@@ -721,7 +723,7 @@ private fun QuicklinkEditDialog(
                     FaviconLoader.fetchFavicon(normalizedUrl, context)
                 }
 
-            if (isFetchingFavicon) { // check if not cancelled
+            if (isFetchingFavicon) {
                 result
                     .onSuccess { bitmap ->
                         val saved =
@@ -738,7 +740,7 @@ private fun QuicklinkEditDialog(
                     }.onFailure { error ->
                         fetchedFavicon = null
                         currentHasFavicon = false
-                        fetchErrorDialog = error.message ?: "Unknown error"
+                        fetchErrorDialog = error.message ?: context.getString(R.string.unknown_error)
                     }
                 isFetchingFavicon = false
             }
@@ -792,14 +794,14 @@ private fun QuicklinkEditDialog(
 
                 Row {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { save() },
                         enabled = canSave,
                     ) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -808,7 +810,7 @@ private fun QuicklinkEditDialog(
             TextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("Title") },
+                label = { Text(stringResource(R.string.web_search_quicklink_label_title)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -829,12 +831,12 @@ private fun QuicklinkEditDialog(
                         currentHasFavicon = false
                     }
                 },
-                label = { Text("URL") },
+                label = { Text(stringResource(R.string.web_search_quicklink_label_url)) },
                 singleLine = true,
                 isError = url.isNotBlank() && !isValidUrl,
                 supportingText =
                     if (url.isNotBlank() && !isValidUrl) {
-                        { Text("Please enter a valid URL") }
+                        { Text(stringResource(R.string.web_search_quicklink_invalid_url)) }
                     } else {
                         null
                     },
@@ -879,12 +881,12 @@ private fun QuicklinkEditDialog(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (fetchedFavicon != null) "Favicon loaded" else "No favicon",
+                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_favicon_loaded) else stringResource(R.string.web_search_no_favicon),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = if (fetchedFavicon != null) "Tap to refresh" else "Tap to fetch",
+                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_tap_to_refresh) else stringResource(R.string.web_search_tap_to_fetch),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -899,7 +901,7 @@ private fun QuicklinkEditDialog(
                         IconButton(onClick = { cancelFaviconFetch() }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Cancel",
+                                contentDescription = stringResource(R.string.cancel),
                             )
                         }
                     }
@@ -908,7 +910,7 @@ private fun QuicklinkEditDialog(
                         onClick = { fetchFavicon() },
                         enabled = canFetchFavicon,
                     ) {
-                        Text(if (fetchedFavicon != null) "Refresh" else "Fetch")
+                        Text(if (fetchedFavicon != null) stringResource(R.string.web_search_refresh) else stringResource(R.string.web_search_fetch))
                     }
                 }
             }
@@ -1005,7 +1007,7 @@ private fun WebSearchSiteEditDialog(
                         onClick = onRemove,
                     ) {
                         Text(
-                            text = "Remove",
+                            text = stringResource(R.string.remove),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -1033,7 +1035,7 @@ private fun WebSearchSiteEditDialog(
             TextField(
                 value = displayName,
                 onValueChange = { displayName = it },
-                label = { Text("Display name") },
+                label = { Text(stringResource(R.string.web_search_label_display_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -1047,7 +1049,7 @@ private fun WebSearchSiteEditDialog(
             TextField(
                 value = urlTemplate,
                 onValueChange = { urlTemplate = it },
-                label = { Text("URL template") },
+                label = { Text(stringResource(R.string.web_search_label_url_template)) },
                 supportingText = { Text(text = stringResource(R.string.web_search_include_placeholder)) },
                 isError = !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
@@ -1060,7 +1062,7 @@ private fun WebSearchSiteEditDialog(
 
             if (!urlTemplate.contains(placeholder)) {
                 Text(
-                    text = stringResource(R.string.web_search_missing_placeholder_short),
+                    text = stringResource(R.string.web_search_missing_placeholder_short, placeholder),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),
@@ -1085,13 +1087,13 @@ private fun WebSearchSiteAddDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Add Search Engine",
+                text = stringResource(R.string.web_search_add_search_engine),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
         buttons = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -1109,7 +1111,7 @@ private fun WebSearchSiteAddDialog(
             TextField(
                 value = displayName,
                 onValueChange = { displayName = it },
-                label = { Text("Display name") },
+                label = { Text(stringResource(R.string.web_search_label_display_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -1123,7 +1125,7 @@ private fun WebSearchSiteAddDialog(
             TextField(
                 value = urlTemplate,
                 onValueChange = { urlTemplate = it },
-                label = { Text("URL template") },
+                label = { Text(stringResource(R.string.web_search_label_url_template)) },
                 supportingText = { Text(text = stringResource(R.string.web_search_include_placeholder)) },
                 isError = urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
@@ -1136,7 +1138,7 @@ private fun WebSearchSiteAddDialog(
 
             if (urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder)) {
                 Text(
-                    text = stringResource(R.string.web_search_missing_placeholder_short),
+                    text = stringResource(R.string.web_search_missing_placeholder_short, placeholder),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),

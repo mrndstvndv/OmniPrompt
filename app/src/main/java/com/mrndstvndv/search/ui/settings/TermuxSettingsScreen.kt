@@ -149,7 +149,11 @@ fun TermuxSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = "Termux Commands", subtitle = "Run commands in Termux.", onBack = onBack)
+                SettingsHeader(
+                    title = stringResource(R.string.termux_header),
+                    subtitle = stringResource(R.string.termux_header_subtitle),
+                    onBack = onBack,
+                )
             }
 
             // Warning if Termux not installed
@@ -181,17 +185,17 @@ fun TermuxSettingsScreen(
             // Commands section
             item {
                 SettingsSection(
-                    title = "Commands",
-                    subtitle = "Define commands to run in Termux.",
+                    title = stringResource(R.string.termux_section_commands),
+                    subtitle = stringResource(R.string.termux_section_commands_subtitle),
                 ) {
                     SettingsGroup {
                         if (commands.isEmpty()) {
                             Text(
                                 text =
                                     if (isTermuxInstalled) {
-                                        "No commands yet. Add your first Termux command."
+                                        stringResource(R.string.termux_no_commands)
                                     } else {
-                                        "Install Termux to add and run commands."
+                                        stringResource(R.string.termux_no_commands_not_installed)
                                     },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -233,8 +237,8 @@ fun TermuxSettingsScreen(
             // Info section
             item {
                 SettingsSection(
-                    title = "About",
-                    subtitle = "How Termux commands work.",
+                    title = stringResource(R.string.about),
+                    subtitle = stringResource(R.string.termux_about_subtitle),
                 ) {
                     SettingsGroup {
                         Column(modifier = Modifier.padding(20.dp)) {
@@ -251,10 +255,7 @@ fun TermuxSettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text =
-                                    "1. Grant RUN_COMMAND permission to this app\n" +
-                                        "2. Enable 'allow-external-apps' in ~/.termux/termux.properties\n" +
-                                        "3. For foreground commands on Android 10+, grant Termux 'Draw Over Apps' permission",
+                                text = stringResource(R.string.termux_requirements_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -332,7 +333,7 @@ private fun TermuxPermissionStatusCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (hasPermission) "Permission Granted" else "Permission Required",
+                    text = if (hasPermission) stringResource(R.string.permission_granted) else stringResource(R.string.permission_required),
                     style = MaterialTheme.typography.titleSmall,
                     color =
                         if (hasPermission) {
@@ -344,9 +345,9 @@ private fun TermuxPermissionStatusCard(
                 Text(
                     text =
                         if (hasPermission) {
-                            "RUN_COMMAND permission is enabled"
+                            stringResource(R.string.termux_permission_enabled)
                         } else {
-                            "Tap to grant RUN_COMMAND permission in Settings"
+                            stringResource(R.string.termux_permission_tap_to_grant)
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color =
@@ -360,7 +361,7 @@ private fun TermuxPermissionStatusCard(
             if (!hasPermission) {
                 TextButton(onClick = onOpenSettings) {
                     Text(
-                        "Grant",
+                        stringResource(R.string.grant),
                         color = MaterialTheme.colorScheme.onErrorContainer,
                     )
                 }
@@ -616,14 +617,14 @@ private fun TermuxCommandEditDialog(
 
                 Row {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { save() },
                         enabled = canSave,
                     ) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -839,25 +840,25 @@ private fun TermuxCommandDialogContent(
     Column(modifier = Modifier.selectableGroup()) {
         SessionActionOption(
             selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_AND_OPEN,
-            label = "New session, open Termux",
+            label = stringResource(R.string.termux_session_new_open),
             enabled = !runInBackground,
             onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_AND_OPEN) },
         )
         SessionActionOption(
             selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN,
-            label = "Current session, open Termux",
+            label = stringResource(R.string.termux_session_current_open),
             enabled = !runInBackground,
             onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_AND_OPEN) },
         )
         SessionActionOption(
             selected = sessionAction == TermuxCommand.SESSION_ACTION_NEW_NO_OPEN,
-            label = "New session, don't open",
+            label = stringResource(R.string.termux_session_new_no_open),
             enabled = !runInBackground,
             onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_NEW_NO_OPEN) },
         )
         SessionActionOption(
             selected = sessionAction == TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN,
-            label = "Current session, don't open",
+            label = stringResource(R.string.termux_session_current_no_open),
             enabled = !runInBackground,
             onClick = { onSessionActionChange(TermuxCommand.SESSION_ACTION_CURRENT_NO_OPEN) },
         )

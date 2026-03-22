@@ -98,7 +98,7 @@ fun ContactsSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = "Contacts", onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.provider_contacts), onBack = onBack)
         }
 
         // Permission status card
@@ -179,15 +179,15 @@ private fun PermissionStatusCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (hasContactsPermission) "Permission granted" else "Permission required",
+                        text = if (hasContactsPermission) stringResource(R.string.permission_granted) else stringResource(R.string.permission_required),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
                         text =
                             if (hasContactsPermission) {
-                                "Contacts can be searched"
+                                stringResource(R.string.contacts_permission_granted_subtitle)
                             } else {
-                                "Allow access to search your contacts"
+                                stringResource(R.string.contacts_permission_required_subtitle)
                             },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -220,8 +220,8 @@ private fun ContactsSettingsCard(
         Column {
             // Include phone numbers in search
             SettingsSwitch(
-                title = "Search phone numbers",
-                subtitle = "Include phone numbers when searching contacts",
+                title = stringResource(R.string.contacts_search_phone_numbers),
+                subtitle = stringResource(R.string.contacts_search_phone_numbers_subtitle),
                 checked = includePhoneNumbers,
                 onCheckedChange = onIncludePhoneNumbersChange,
             )
@@ -258,7 +258,7 @@ private fun ContactsSettingsCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Note: SIM card numbers may not be available depending on your carrier.",
+                    text = stringResource(R.string.contacts_sim_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )

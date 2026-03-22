@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
@@ -83,14 +84,14 @@ fun SystemSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = "System Settings", onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.system_settings_header), onBack = onBack)
         }
 
         item {
             SettingsGroup {
                 SettingsSwitch(
-                    title = "Developer options toggle",
-                    subtitle = "Enable toggling developer options from search results",
+                    title = stringResource(R.string.system_developer_toggle),
+                    subtitle = stringResource(R.string.system_developer_toggle_subtitle),
                     checked = systemSettings.developerToggleEnabled,
                     onCheckedChange = { enabled ->
                         repository.update { it.copy(developerToggleEnabled = enabled) }
@@ -141,22 +142,22 @@ private fun PermissionStatusCard(
             when {
                 permissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.ADB -> {
                     ReadyStatusRow(
-                        title = "ADB Permission Granted",
-                        subtitle = "Ready to toggle developer options",
+                        title = stringResource(R.string.system_status_adb_granted),
+                        subtitle = stringResource(R.string.system_status_ready_toggle),
                     )
                 }
 
                 permissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.ROOT -> {
                     ReadyStatusRow(
-                        title = "Root Access Detected",
-                        subtitle = "Ready to toggle developer options",
+                        title = stringResource(R.string.system_status_root_detected),
+                        subtitle = stringResource(R.string.system_status_ready_toggle),
                     )
                 }
 
                 permissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.SHIZUKU -> {
                     ReadyStatusRow(
-                        title = "Shizuku Connected",
-                        subtitle = "Ready to toggle developer options",
+                        title = stringResource(R.string.system_status_shizuku_connected),
+                        subtitle = stringResource(R.string.system_status_ready_toggle),
                     )
                 }
 
@@ -253,6 +254,8 @@ private fun ShizukuPermissionCard(onRequestPermission: () -> Unit) {
 
 @Composable
 private fun AdbInstructionsCard() {
+    val context = LocalContext.current
+
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -298,7 +301,7 @@ private fun AdbInstructionsCard() {
         ) {
             SelectionContainer {
                 Text(
-                    text = "adb shell pm grant com.mrndstvndv.search android.permission.WRITE_SECURE_SETTINGS",
+                    text = stringResource(R.string.system_adb_command_value, context.packageName),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

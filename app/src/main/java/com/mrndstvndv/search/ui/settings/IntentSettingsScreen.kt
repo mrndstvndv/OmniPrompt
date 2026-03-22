@@ -168,7 +168,7 @@ fun IntentSettingsScreen(
             item {
                 SettingsHeader(
                     title = stringResource(R.string.intent_header),
-                    subtitle = "Launch apps by fuzzy searching titles.",
+                    subtitle = stringResource(R.string.intent_header_subtitle),
                     onBack = onBack
                 )
             }
@@ -177,7 +177,7 @@ fun IntentSettingsScreen(
             item {
                 SettingsSection(
                     title = stringResource(R.string.intent_section_intents),
-                    subtitle = "Define intents to launch apps.",
+                    subtitle = stringResource(R.string.intent_section_intents_subtitle),
                 ) {
                     SettingsGroup {
                         if (configs.isEmpty()) {
@@ -223,7 +223,7 @@ fun IntentSettingsScreen(
             item {
                 SettingsSection(
                     title = stringResource(R.string.intent_about),
-                    subtitle = "How intent matching works.",
+                    subtitle = stringResource(R.string.intent_about_subtitle),
                 ) {
                     SettingsGroup {
                         Column(modifier = Modifier.padding(20.dp)) {
@@ -246,9 +246,7 @@ fun IntentSettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "• ytdl https://youtube.com/watch?v=... → Opens in YTDLnis\n" +
-                                        "• open https://google.com → Opens in browser\n" +
-                                        "• share Check this out! → Opens share sheet",
+                                text = stringResource(R.string.intent_examples_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -355,7 +353,7 @@ private fun IntentConfigAddDialog(
                     if (app.packageName.isEmpty()) {
                         // Manual entry - skip to config
                         currentStep = AddDialogStep.Configuration
-                        selectedIntent = IntentOption("android.intent.action.SEND", "Share content")
+                        selectedIntent = IntentOption("android.intent.action.SEND", context.getString(R.string.intent_share_content))
                         title = ""
                     } else {
                         currentStep = AddDialogStep.IntentSelection
@@ -423,6 +421,7 @@ private fun AppSelectionStep(
     onAppSelected: (AppInfo) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     
     val appsState by produceState<List<AppInfo>?>(initialValue = null) {
@@ -454,11 +453,11 @@ private fun AppSelectionStep(
         title = {
             Column {
                 Text(
-                    text = "Select App",
+                    text = stringResource(R.string.intent_select_app),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Apps that support share/view/sendto",
+                    text = stringResource(R.string.intent_select_app_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -476,7 +475,7 @@ private fun AppSelectionStep(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text(stringResource(R.string.intent_search_apps)) },
+                    placeholder = { Text(stringResource(R.string.search_apps_placeholder)) },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -484,15 +483,15 @@ private fun AppSelectionStep(
                 
                 if (appsState == null) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text("Searching for apps...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.intent_searching_apps), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else if (filteredApps.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("No compatible apps found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.intent_no_compatible_apps), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.height(16.dp))
                             TextButton(onClick = { 
-                                onAppSelected(AppInfo("", "Manual Entry", null))
+                                onAppSelected(AppInfo("", context.getString(R.string.intent_manual_entry), null))
                             }) {
                                 Text(stringResource(R.string.intent_configure_manually))
                             }
@@ -554,7 +553,7 @@ private fun IntentSelectionStep(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
                 Text(
                     text = app.name,
@@ -565,13 +564,13 @@ private fun IntentSelectionStep(
         buttons = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         },
         content = {
             Text(
-                text = "Select an intent this app supports:",
+                text = stringResource(R.string.intent_select_supported_intent),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -596,7 +595,7 @@ private fun IntentSelectionStep(
                 }
                 
                 if (intents.isEmpty()) {
-                    Text("No compatible intents found for this app.", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.intent_no_compatible_intents), color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -705,7 +704,7 @@ private fun IntentConfigDialogContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
                 Text(
@@ -733,7 +732,7 @@ private fun IntentConfigDialogContent(
 
                 Row {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -890,7 +889,7 @@ private fun IntentConfigDialogContent(
                             IconButton(onClick = {
                                 onExtrasChange(extras.toMutableList().apply { removeAt(index) })
                             }) {
-                                Icon(Icons.Outlined.Delete, contentDescription = "Remove Extra", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.cd_remove_extra), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }

@@ -635,7 +635,7 @@ private fun AddPinnedAppDialog(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text(stringResource(R.string.intent_search_apps)) },
+                placeholder = { Text(stringResource(R.string.search_apps_placeholder)) },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),

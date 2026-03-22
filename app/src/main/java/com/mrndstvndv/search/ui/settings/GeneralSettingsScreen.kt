@@ -256,7 +256,7 @@ fun ProvidersSettingsScreen(
     }
 
     SettingsScaffold(
-        title = "Providers",
+        title = stringResource(R.string.settings_providers),
         onBack = onBack,
     ) {
         if (!isDefaultAssistant) {
@@ -384,7 +384,7 @@ fun AppearanceSettingsScreen(
     val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
 
     SettingsScaffold(
-        title = "Appearance",
+        title = stringResource(R.string.settings_appearance),
         onBack = onBack,
     ) {
         item {
@@ -481,7 +481,7 @@ fun BehaviorSettingsScreen(
     val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
 
     SettingsScaffold(
-        title = "Behavior",
+        title = stringResource(R.string.settings_behavior),
         onBack = onBack,
     ) {
         item {
@@ -496,7 +496,7 @@ fun BehaviorSettingsScreen(
                 SettingsSliderRow(
                     title = stringResource(R.string.behavior_activity_indicator_delay),
                     subtitle = stringResource(R.string.behavior_activity_indicator_delay_subtitle),
-                    valueText = stringResource(R.string.appearance_delay_value, activityIndicatorDelayMs),
+                    valueText = stringResource(R.string.value_milliseconds, activityIndicatorDelayMs),
                     value = activityIndicatorDelayMs.toFloat(),
                     onValueChange = { settingsRepository.setActivityIndicatorDelayMs(it.roundToInt()) },
                     valueRange = 0f..1000f,
@@ -515,7 +515,7 @@ fun AliasesSettingsScreen(
     val aliasEntries by aliasRepository.aliases.collectAsState()
 
     SettingsScaffold(
-        title = "Aliases",
+        title = stringResource(R.string.settings_aliases),
         onBack = onBack,
     ) {
         item {
@@ -555,7 +555,7 @@ fun ResultRankingSettingsScreen(
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()
 
     SettingsScaffold(
-        title = "Result ranking",
+        title = stringResource(R.string.settings_result_ranking),
         onBack = onBack,
     ) {
         item {

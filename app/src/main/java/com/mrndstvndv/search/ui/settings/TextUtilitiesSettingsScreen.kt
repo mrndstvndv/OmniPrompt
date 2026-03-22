@@ -66,14 +66,14 @@ fun TextUtilitiesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.text_utilities_header), subtitle = "Configure text tools.", onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.text_utilities_header), subtitle = stringResource(R.string.text_utilities_header_subtitle), onBack = onBack)
             }
 
             item {
                 SettingsGroup {
                     SettingsSwitch(
-                        title = "Open decoded URLs",
-                        subtitle = "Launch web links instead of copying them when decoding.",
+                        title = stringResource(R.string.text_utilities_open_decoded_urls),
+                        subtitle = stringResource(R.string.text_utilities_open_decoded_urls_subtitle),
                         checked = textUtilitiesSettings.openDecodedUrls,
                         onCheckedChange = { enabled -> repository.update { settings -> settings.copy(openDecodedUrls = enabled) } },
                     )
@@ -89,11 +89,11 @@ fun TextUtilitiesSettingsScreen(
                                 .padding(horizontal = 20.dp, vertical = 18.dp),
                     ) {
                         Text(
-                            text = "Available Utilities",
+                            text = stringResource(R.string.text_utilities_available_utilities),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = "Enable or disable utilities and their trigger keywords.",
+                            text = stringResource(R.string.text_utilities_available_utilities_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -199,7 +199,7 @@ private fun UtilityRow(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Keywords",
+                text = stringResource(R.string.text_utilities_keywords),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -228,7 +228,7 @@ private fun UtilityRow(
             // Mode selector for utilities that support both modes
             if (info.supportsBothModes) {
                 Text(
-                    text = "Default mode",
+                    text = stringResource(R.string.text_utilities_default_mode),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
