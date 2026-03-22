@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Search" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.OmniPrompt" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowIsTranslucent">true</item>
@@ -10,9 +10,9 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
-    <style name="Theme.Search.Splash" parent="Theme.SplashScreen">
+    <style name="Theme.OmniPrompt.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@android:color/black</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="postSplashScreenTheme">@style/Theme.Search</item>
+        <item name="postSplashScreenTheme">@style/Theme.OmniPrompt</item>
     </style>
 </resources>

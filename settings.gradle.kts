@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Search"
+rootProject.name = "OmniPrompt"
 include(":app")
  

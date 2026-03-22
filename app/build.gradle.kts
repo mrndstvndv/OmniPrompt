@@ -56,7 +56,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            resValue("string", "app_name", "Search Debug")
+            resValue("string", "app_name", "OmniPrompt Debug")
         }
         release {
             isMinifyEnabled = true

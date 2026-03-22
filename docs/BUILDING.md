@@ -1,6 +1,6 @@
 # Building
 
-Instructions for building Search locally and setting up automated builds.
+Instructions for building OmniPrompt locally and setting up automated builds.
 
 ## Building Locally
 

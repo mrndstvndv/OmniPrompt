@@ -1,4 +1,4 @@
-# Search
+# OmniPrompt
 
 A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay. Set it as your default assistant for instant access from anywhere.
 
