@@ -50,7 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxCommand
 import com.mrndstvndv.search.provider.termux.TermuxProvider
@@ -221,7 +223,7 @@ fun TermuxSettingsScreen(
                                         .fillMaxWidth()
                                         .padding(horizontal = 8.dp, vertical = 4.dp),
                             ) {
-                                Text(text = "Add Command")
+                                Text(text = stringResource(R.string.termux_add_command))
                             }
                         }
                     }
@@ -237,13 +239,13 @@ fun TermuxSettingsScreen(
                     SettingsGroup {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(
-                                text = "Commands are executed via Termux's RUN_COMMAND intent.",
+                                text = stringResource(R.string.termux_commands_info),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Requirements:",
+                                text = stringResource(R.string.termux_requirements),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
@@ -258,19 +260,19 @@ fun TermuxSettingsScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Path shortcuts:",
+                                text = stringResource(R.string.termux_path_shortcuts),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "• ~/ expands to Termux home directory\n• \$PREFIX/ expands to Termux usr directory",
+                                text = stringResource(R.string.termux_path_shortcuts_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Dynamic arguments:",
+                                text = stringResource(R.string.termux_dynamic_args),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
@@ -387,12 +389,12 @@ private fun TermuxNotInstalledCard() {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Termux Not Installed",
+                    text = stringResource(R.string.termux_not_installed),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )
                 Text(
-                    text = "Install Termux from F-Droid to use this feature.",
+                    text = stringResource(R.string.termux_not_installed_detail),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )
@@ -507,7 +509,7 @@ private fun TermuxCommandAddDialog(
         modifier = Modifier.fillMaxWidth(0.92f),
         title = {
             Text(
-                text = "Add Command",
+                text = stringResource(R.string.termux_add_command),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
@@ -521,14 +523,14 @@ private fun TermuxCommandAddDialog(
 
                 Row {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { save() },
                         enabled = canSave,
                     ) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -595,7 +597,7 @@ private fun TermuxCommandEditDialog(
         modifier = Modifier.fillMaxWidth(0.92f),
         title = {
             Text(
-                text = "Edit Command",
+                text = stringResource(R.string.termux_edit_command),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
@@ -607,7 +609,7 @@ private fun TermuxCommandEditDialog(
             ) {
                 TextButton(onClick = onRemove) {
                     Text(
-                        text = "Remove",
+                        text = stringResource(R.string.remove),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -672,8 +674,8 @@ private fun TermuxCommandDialogContent(
     TextField(
         value = displayName,
         onValueChange = onDisplayNameChange,
-        label = { Text("Display Name") },
-        placeholder = { Text("My Script") },
+        label = { Text(stringResource(R.string.termux_label_display_name)) },
+        placeholder = { Text(stringResource(R.string.termux_placeholder_display_name)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -688,9 +690,9 @@ private fun TermuxCommandDialogContent(
     TextField(
         value = executablePath,
         onValueChange = onExecutablePathChange,
-        label = { Text("Executable Path") },
-        placeholder = { Text("~/myscript.sh") },
-        supportingText = { Text("Use ~/ for home, \$PREFIX/ for usr") },
+        label = { Text(stringResource(R.string.termux_label_executable_path)) },
+        placeholder = { Text(stringResource(R.string.termux_placeholder_executable_path)) },
+        supportingText = { Text(stringResource(R.string.termux_supporting_executable_path)) },
         singleLine = true,
         isError = executablePath.isBlank(),
         modifier = Modifier.fillMaxWidth(),
@@ -706,9 +708,9 @@ private fun TermuxCommandDialogContent(
     TextField(
         value = arguments,
         onValueChange = onArgumentsChange,
-        label = { Text("Arguments (optional)") },
-        placeholder = { Text("-f, ba+bv, \$1") },
-        supportingText = { Text("Comma-separated. Use \$1, \$2 for args, \$* for all text") },
+        label = { Text(stringResource(R.string.termux_label_arguments)) },
+        placeholder = { Text(stringResource(R.string.termux_placeholder_arguments)) },
+        supportingText = { Text(stringResource(R.string.termux_supporting_arguments)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -738,7 +740,7 @@ private fun TermuxCommandDialogContent(
                 }
         }
     Text(
-        text = "Preview:",
+        text = stringResource(R.string.termux_preview),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -756,8 +758,8 @@ private fun TermuxCommandDialogContent(
     TextField(
         value = workingDir,
         onValueChange = onWorkingDirChange,
-        label = { Text("Working Directory (optional)") },
-        placeholder = { Text("~/projects") },
+        label = { Text(stringResource(R.string.termux_label_working_directory)) },
+        placeholder = { Text(stringResource(R.string.termux_placeholder_working_directory)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -772,9 +774,9 @@ private fun TermuxCommandDialogContent(
     TextField(
         value = shellName,
         onValueChange = onShellNameChange,
-        label = { Text("Shell Name (optional)") },
-        placeholder = { Text("my-session") },
-        supportingText = { Text("Used to identify the session") },
+        label = { Text(stringResource(R.string.termux_label_shell_name)) },
+        placeholder = { Text(stringResource(R.string.termux_placeholder_shell_name)) },
+        supportingText = { Text(stringResource(R.string.termux_supporting_shell_name)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -789,9 +791,9 @@ private fun TermuxCommandDialogContent(
     TextField(
         value = shellCreateMode,
         onValueChange = onShellCreateModeChange,
-        label = { Text("Shell Create Mode (optional)") },
-        placeholder = { Text("no-shell-with-name") },
-        supportingText = { Text("e.g. no-shell-with-name to reuse session") },
+        label = { Text(stringResource(R.string.termux_label_shell_create_mode)) },
+        placeholder = { Text(stringResource(R.string.termux_placeholder_shell_create_mode)) },
+        supportingText = { Text(stringResource(R.string.termux_supporting_shell_create_mode)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -810,11 +812,11 @@ private fun TermuxCommandDialogContent(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Run in Background",
+                text = stringResource(R.string.termux_run_background),
                 style = MaterialTheme.typography.bodyLarge,
             )
             Text(
-                text = "Execute without opening Termux UI",
+                text = stringResource(R.string.termux_run_background_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -828,7 +830,7 @@ private fun TermuxCommandDialogContent(
 
     // Session Action
     Text(
-        text = "Session Action",
+        text = stringResource(R.string.termux_session_action),
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.secondary,
     )

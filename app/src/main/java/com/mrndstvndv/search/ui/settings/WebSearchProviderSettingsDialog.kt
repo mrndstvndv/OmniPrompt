@@ -23,7 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.sp
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSite
@@ -97,13 +99,13 @@ fun WebSearchProviderSettingsDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Web Search Sites",
+                text = stringResource(R.string.web_search_sites),
                 style = MaterialTheme.typography.titleLarge
             )
         },
         buttons = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -117,12 +119,12 @@ fun WebSearchProviderSettingsDialog(
                 },
                 enabled = isSaveEnabled
             ) {
-                Text(text = "Save")
+                Text(text = stringResource(R.string.save))
             }
         },
         content = {
             Text(
-                text = "Pick your preferred search engine and add custom websites. Use $placeholder as the query placeholder.",
+                text = stringResource(R.string.web_search_pick_engine),
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -139,11 +141,11 @@ fun WebSearchProviderSettingsDialog(
                                 selected = defaultSiteId == site.id,
                                 onClick = { defaultSiteId = site.id }
                             )
-                            Text(text = "Default", fontSize = 12.sp)
+                            Text(text = stringResource(R.string.default_label), fontSize = 12.sp)
                         }
                         if (sites.size > 1) {
                             TextButton(onClick = { removeSite(index) }) {
-                                Text(text = "Remove")
+                                Text(text = stringResource(R.string.remove))
                             }
                         }
                     }
@@ -153,7 +155,7 @@ fun WebSearchProviderSettingsDialog(
                         onValueChange = { newValue ->
                             updateSite(index) { it.copy(displayName = newValue) }
                         },
-                        label = { Text("Display name") },
+                        label = { Text(stringResource(R.string.web_search_label_display_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -163,7 +165,7 @@ fun WebSearchProviderSettingsDialog(
                         onValueChange = { newValue ->
                             updateSite(index) { it.copy(urlTemplate = newValue) }
                         },
-                        label = { Text("URL template") },
+                        label = { Text(stringResource(R.string.web_search_label_url_template)) },
                         supportingText = {
                             Text(text = "Example: https://www.example.com/search?q={query}")
                         },
@@ -185,7 +187,7 @@ fun WebSearchProviderSettingsDialog(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = "Add a custom site", style = MaterialTheme.typography.titleSmall)
+            Text(text = stringResource(R.string.web_search_add_custom), style = MaterialTheme.typography.titleSmall)
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = newSiteName,
@@ -199,19 +201,19 @@ fun WebSearchProviderSettingsDialog(
                 value = newSiteTemplate,
                 onValueChange = { newSiteTemplate = it },
                 label = { Text("URL template") },
-                supportingText = { Text(text = "Include $placeholder in the template") },
+                supportingText = { Text(text = stringResource(R.string.web_search_supporting_template)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Button(onClick = ::addCustomSite) {
-                    Text(text = "Add site")
+                    Text(text = stringResource(R.string.web_search_add_site))
                 }
             }
 
             if (!allTemplatesValid) {
                 Text(
-                    text = "Every template needs $placeholder",
+                    text = stringResource(R.string.web_search_every_template_needs),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall
                 )

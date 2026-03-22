@@ -56,7 +56,9 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSite
@@ -263,7 +265,7 @@ fun WebSearchSettingsScreen(
                     SettingsGroup {
                         if (quicklinks.isEmpty()) {
                             Text(
-                                text = "No quicklinks yet. Add your favorite sites for quick access.",
+                                text = stringResource(R.string.web_search_no_quicklinks),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(20.dp),
@@ -293,7 +295,7 @@ fun WebSearchSettingsScreen(
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                         ) {
-                            Text(text = "Add Quicklink")
+                            Text(text = stringResource(R.string.web_search_add_quicklink))
                         }
                     }
                 }
@@ -331,7 +333,7 @@ fun WebSearchSettingsScreen(
                             onClick = { isAddDialogOpen = true },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                         ) {
-                            Text(text = "Add Search Engine")
+                            Text(text = stringResource(R.string.web_search_add_search_engine))
                         }
                     }
                 }
@@ -340,7 +342,7 @@ fun WebSearchSettingsScreen(
             if (!allTemplatesValid) {
                 item {
                     Text(
-                        text = "Every template needs $placeholder",
+                        text = stringResource(R.string.web_search_every_template_needs),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 20.dp),
@@ -519,27 +521,27 @@ private fun QuicklinkAddDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Add Quicklink",
+                text = stringResource(R.string.web_search_add_quicklink),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
         buttons = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = { save() },
                 enabled = canSave,
             ) {
-                Text("Save")
+                Text(stringResource(R.string.save))
             }
         },
         content = {
             TextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("Title") },
+                label = { Text(stringResource(R.string.intent_label_title)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -771,7 +773,7 @@ private fun QuicklinkEditDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Edit Quicklink",
+                text = stringResource(R.string.web_search_edit_quicklink),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
@@ -783,7 +785,7 @@ private fun QuicklinkEditDialog(
             ) {
                 TextButton(onClick = onRemove) {
                     Text(
-                        text = "Remove",
+                        text = stringResource(R.string.remove),
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -988,7 +990,7 @@ private fun WebSearchSiteEditDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Edit Search Engine",
+                text = stringResource(R.string.web_search_edit_search_engine),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
@@ -1013,7 +1015,7 @@ private fun WebSearchSiteEditDialog(
 
                 Row {
                     TextButton(onClick = onDismiss) {
-                        Text(text = "Cancel")
+                        Text(text = stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -1022,7 +1024,7 @@ private fun WebSearchSiteEditDialog(
                         },
                         enabled = isValid,
                     ) {
-                        Text(text = "Save")
+                        Text(text = stringResource(R.string.save))
                     }
                 }
             }
@@ -1046,7 +1048,7 @@ private fun WebSearchSiteEditDialog(
                 value = urlTemplate,
                 onValueChange = { urlTemplate = it },
                 label = { Text("URL template") },
-                supportingText = { Text(text = "Include $placeholder") },
+                supportingText = { Text(text = stringResource(R.string.web_search_include_placeholder)) },
                 isError = !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -1058,7 +1060,7 @@ private fun WebSearchSiteEditDialog(
 
             if (!urlTemplate.contains(placeholder)) {
                 Text(
-                    text = "Missing $placeholder",
+                    text = stringResource(R.string.web_search_missing_placeholder_short),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),
@@ -1100,7 +1102,7 @@ private fun WebSearchSiteAddDialog(
                 },
                 enabled = isValid,
             ) {
-                Text(text = "Add")
+                Text(text = stringResource(R.string.web_search_add))
             }
         },
         content = {
@@ -1122,7 +1124,7 @@ private fun WebSearchSiteAddDialog(
                 value = urlTemplate,
                 onValueChange = { urlTemplate = it },
                 label = { Text("URL template") },
-                supportingText = { Text(text = "Include $placeholder") },
+                supportingText = { Text(text = stringResource(R.string.web_search_include_placeholder)) },
                 isError = urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -1134,7 +1136,7 @@ private fun WebSearchSiteAddDialog(
 
             if (urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder)) {
                 Text(
-                    text = "Missing $placeholder",
+                    text = stringResource(R.string.web_search_missing_placeholder_short),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(top = 4.dp),

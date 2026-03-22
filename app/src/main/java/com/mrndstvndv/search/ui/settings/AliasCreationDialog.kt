@@ -13,7 +13,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasCreationCandidate
 import androidx.compose.foundation.layout.padding
 
@@ -30,7 +32,7 @@ fun AliasCreationDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Create alias",
+                text = stringResource(R.string.alias_create),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -52,7 +54,7 @@ fun AliasCreationDialog(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "Target",
+                            text = stringResource(R.string.alias_target),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -69,7 +71,7 @@ fun AliasCreationDialog(
                 OutlinedTextField(
                     value = alias,
                     onValueChange = onAliasChange,
-                    label = { Text(text = "Alias name") },
+                    label = { Text(text = stringResource(R.string.alias_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
@@ -78,7 +80,7 @@ fun AliasCreationDialog(
                         if (errorMessage != null) {
                             Text(text = errorMessage)
                         } else {
-                            Text(text = "Type this in search to launch")
+                            Text(text = stringResource(R.string.alias_type_hint))
                         }
                     }
                 )
@@ -86,12 +88,12 @@ fun AliasCreationDialog(
         },
         confirmButton = {
             Button(onClick = onSave) {
-                Text(text = "Save")
+                Text(text = stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.cancel))
             }
         },
         containerColor = MaterialTheme.colorScheme.surfaceContainer,

@@ -15,6 +15,7 @@ import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
+import com.mrndstvndv.search.R
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
@@ -222,7 +223,7 @@ class SettingsProvider(
     private fun openDevOptionsFallback() {
         val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
         if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
-            Toast.makeText(activity, "Opening Developer Options", Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, activity.getString(R.string.toast_developer_options), Toast.LENGTH_SHORT).show()
             activity.startActivity(fallbackIntent)
         }
     }
@@ -274,7 +275,7 @@ class SettingsProvider(
                         withContext(Dispatchers.Main) {
                             val requested = developerSettingsManager.requestShizukuPermission()
                             if (!requested) {
-                                Toast.makeText(activity, "Could not request Shizuku permission", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(activity, activity.getString(R.string.toast_shizuku_failed), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }

@@ -30,7 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
@@ -64,7 +66,7 @@ fun TextUtilitiesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = "Text Utilities", subtitle = "Configure text tools.", onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.text_utilities_header), subtitle = "Configure text tools.", onBack = onBack)
             }
 
             item {
@@ -240,7 +242,7 @@ private fun UtilityRow(
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         enabled = enabled,
                     ) {
-                        Text("Decode")
+                        Text(stringResource(R.string.text_utilities_decode))
                     }
                     SegmentedButton(
                         selected = defaultMode == TextUtilityDefaultMode.ENCODE,
@@ -248,7 +250,7 @@ private fun UtilityRow(
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         enabled = enabled,
                     ) {
-                        Text("Encode")
+                        Text(stringResource(R.string.text_utilities_encode))
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

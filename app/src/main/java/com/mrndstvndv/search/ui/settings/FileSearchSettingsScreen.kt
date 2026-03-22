@@ -54,6 +54,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.Lifecycle
@@ -301,7 +303,7 @@ private fun ThumbnailCropModeRow(
                 .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
-            text = "Thumbnail crop",
+            text = stringResource(R.string.file_search_thumbnail_crop),
             style = MaterialTheme.typography.bodyLarge,
             color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -350,11 +352,11 @@ private fun FileSearchSortRow(
                 .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
-            text = "Sort order",
+            text = stringResource(R.string.file_search_sort_order),
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
-            text = "Choose how file results are ordered.",
+            text = stringResource(R.string.file_search_sort_order_subtitle),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -389,11 +391,11 @@ private fun FileSearchSortRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Ascending order",
+                    text = stringResource(R.string.file_search_ascending_order),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    text = "Off lists newest or Z–A first.",
+                    text = stringResource(R.string.file_search_ascending_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -439,11 +441,11 @@ private fun SyncIntervalRow(
                 .padding(horizontal = 20.dp, vertical = 18.dp),
     ) {
         Text(
-            text = "Background sync",
+            text = stringResource(R.string.file_search_background_sync),
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
-            text = "Automatically check for file changes.",
+            text = stringResource(R.string.file_search_background_sync_subtitle),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -517,7 +519,7 @@ private fun FileSearchRootsCard(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 12.dp),
-                text = "No folders have been indexed yet. Tap Add folder to pick a directory.",
+                text = stringResource(R.string.file_search_no_folders),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -546,7 +548,7 @@ private fun FileSearchRootsCard(
                     .padding(horizontal = 20.dp, vertical = 18.dp),
             onClick = onAddRoot,
         ) {
-            Text(text = "Add folder")
+            Text(text = stringResource(R.string.file_search_add_folder))
         }
     }
 }
@@ -629,10 +631,10 @@ private fun FileSearchRootRow(
                 onClick = onRescan,
                 enabled = root.isEnabled,
             ) {
-                Text(text = "Rescan")
+                Text(text = stringResource(R.string.file_search_rescan))
             }
             TextButton(onClick = onRemove) {
-                Text(text = "Remove")
+                Text(text = stringResource(R.string.remove))
             }
         }
     }
@@ -659,7 +661,7 @@ private fun DownloadsIndexRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Downloads folder",
+                    text = stringResource(R.string.file_search_downloads_folder),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 val (status, detail) = resolveDownloadsStatusText(enabled, permissionGranted, metadata)
@@ -790,20 +792,20 @@ private fun DownloadsPermissionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Allow Downloads access") },
+        title = { Text(text = stringResource(R.string.file_search_allow_downloads)) },
         text = {
             Text(
-                text = "Search needs Android's \"All files access\" permission to index the Downloads folder.",
+                text = stringResource(R.string.file_search_downloads_permission),
             )
         },
         confirmButton = {
             TextButton(onClick = onOpenSettings) {
-                Text(text = "Open settings")
+                Text(text = stringResource(R.string.file_search_open_settings))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.cancel))
             }
         },
     )
@@ -840,7 +842,7 @@ private fun FileSearchErrorBanner(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Can't index $rootName",
+                text = stringResource(R.string.file_search_cant_index, rootName),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
@@ -850,7 +852,7 @@ private fun FileSearchErrorBanner(
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
             Text(
-                text = "Fix the issue, then tap Rescan below.",
+                text = stringResource(R.string.file_search_fix_issue),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )

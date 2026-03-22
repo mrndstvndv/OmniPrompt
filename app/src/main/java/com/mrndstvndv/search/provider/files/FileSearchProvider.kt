@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderZip
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LibraryMusic
+import com.mrndstvndv.search.R
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.Dispatchers
@@ -187,7 +188,7 @@ class FileSearchProvider(
         withContext(Dispatchers.Main) {
             val shareableUri = resolveSharableUri(originalUri)
             if (shareableUri == null) {
-                Toast.makeText(activity, "Can't open this item", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, activity.getString(R.string.toast_cant_open), Toast.LENGTH_SHORT).show()
                 return@withContext
             }
             val intent = Intent(Intent.ACTION_VIEW)
@@ -197,9 +198,9 @@ class FileSearchProvider(
                 activity.startActivity(intent)
                 activity.finish()
             } catch (error: ActivityNotFoundException) {
-                Toast.makeText(activity, "No app can open this item", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, activity.getString(R.string.toast_no_app_open), Toast.LENGTH_SHORT).show()
             } catch (error: SecurityException) {
-                Toast.makeText(activity, "Permission denied for this file", Toast.LENGTH_SHORT).show()
+                Toast.makeText(activity, activity.getString(R.string.toast_permission_denied), Toast.LENGTH_SHORT).show()
             }
         }
     }

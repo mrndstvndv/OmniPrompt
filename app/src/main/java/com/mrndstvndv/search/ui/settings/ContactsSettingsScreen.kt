@@ -41,7 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.settings.ContactsSettings
@@ -194,7 +196,7 @@ private fun PermissionStatusCard(
             }
             if (!hasContactsPermission) {
                 TextButton(onClick = onRequestPermission) {
-                    Text("Grant")
+                    Text(stringResource(R.string.grant))
                 }
             }
         }
@@ -240,11 +242,11 @@ private fun ContactsSettingsCard(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Show my SIM numbers",
+                            text = stringResource(R.string.contacts_show_sim),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = "Display your own phone numbers in search",
+                            text = stringResource(R.string.contacts_show_sim_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

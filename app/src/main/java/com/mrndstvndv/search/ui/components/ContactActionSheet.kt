@@ -33,7 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.contacts.PhoneNumber
 
 /**
@@ -248,7 +250,7 @@ private fun copyToClipboard(context: Context, number: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val clip = ClipData.newPlainText("Phone number", number)
     clipboard.setPrimaryClip(clip)
-    Toast.makeText(context, "Number copied", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, context.getString(R.string.toast_number_copied), Toast.LENGTH_SHORT).show()
 }
 
 private fun viewContact(context: Context, contactId: String, lookupKey: String) {

@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -706,7 +707,7 @@ class MainActivity : ComponentActivity() {
                                             value = textState.value,
                                             onValueChange = { textState.value = it },
                                             singleLine = true,
-                                            placeholder = { Text("Search") },
+                                            placeholder = { Text(stringResource(R.string.search)) },
                                             trailingIcon = {
                                                 if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                     Icon(
@@ -1005,11 +1006,11 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 AliasRepository.SaveResult.DUPLICATE -> {
-                                    aliasDialogError = "Alias already exists"
+                                    aliasDialogError = this@MainActivity.getString(R.string.alias_already_exists)
                                 }
 
                                 AliasRepository.SaveResult.INVALID_ALIAS -> {
-                                    aliasDialogError = "Alias cannot be empty"
+                                    aliasDialogError = this@MainActivity.getString(R.string.alias_cannot_be_empty)
                                 }
                             }
                         },

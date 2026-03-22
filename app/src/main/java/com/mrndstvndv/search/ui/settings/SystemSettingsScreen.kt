@@ -35,7 +35,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
@@ -132,7 +134,7 @@ private fun PermissionStatusCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Permission Status",
+                text = stringResource(R.string.system_permission_status),
                 style = MaterialTheme.typography.titleMedium,
             )
 
@@ -230,11 +232,11 @@ private fun ShizukuPermissionCard(onRequestPermission: () -> Unit) {
             }
             Column {
                 Text(
-                    text = "Shizuku Available",
+                    text = stringResource(R.string.system_shizuku_available),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = "Permission required to use this feature",
+                    text = stringResource(R.string.system_permission_required_feature),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -244,7 +246,7 @@ private fun ShizukuPermissionCard(onRequestPermission: () -> Unit) {
             onClick = onRequestPermission,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Grant Shizuku Permission")
+            Text(stringResource(R.string.system_settings_grant_shizuku))
         }
     }
 }
@@ -272,11 +274,11 @@ private fun AdbInstructionsCard() {
             }
             Column {
                 Text(
-                    text = "Permission Required",
+                    text = stringResource(R.string.system_permission_required),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = "Grant via ADB or install Shizuku",
+                    text = stringResource(R.string.system_grant_adb_shizuku),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -284,7 +286,7 @@ private fun AdbInstructionsCard() {
         }
 
         Text(
-            text = "Run this command via ADB:",
+            text = stringResource(R.string.system_adb_command),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -305,7 +307,7 @@ private fun AdbInstructionsCard() {
         }
 
         Text(
-            text = "Or install Shizuku from Play Store for a permanent solution without a computer.",
+            text = stringResource(R.string.system_install_shizuku),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -8,7 +8,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 
 @Composable
 fun TermuxPermissionDialog(
@@ -19,27 +21,27 @@ fun TermuxPermissionDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Permission Required",
+                text = stringResource(R.string.permission_required),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
         buttons = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
             Button(onClick = onOpenSettings) {
-                Text("Open Settings")
+                Text(stringResource(R.string.open_settings))
             }
         },
         content = {
             Text(
-                text = "To run Termux commands, you need to grant the RUN_COMMAND permission.",
+                text = stringResource(R.string.termux_permission_message),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Go to App Info > Permissions > Additional permissions and enable 'Run commands in Termux environment'.",
+                text = stringResource(R.string.termux_permission_instructions),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

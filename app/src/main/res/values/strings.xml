@@ -1,3 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OmniPrompt</string>
+
+    <!-- General -->
+    <string name="search">Search</string>
+    <string name="search_placeholder">Search…</string>
+    <string name="settings">Settings</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="remove">Remove</string>
+    <string name="done">Done</string>
+    <string name="ok">OK</string>
+    <string name="back">Back</string>
+    <string name="grant">Grant</string>
+    <string name="copy">Copy</string>
+    <string name="default_label">Default</string>
+
+    <!-- Provider display names -->
+    <string name="provider_applications">Applications</string>
+    <string name="provider_calculator">Calculator</string>
+    <string name="provider_text_utilities">Text Utilities</string>
+    <string name="provider_file_search">Files &amp; Folders</string>
+    <string name="provider_web_search">Web Search</string>
+    <string name="provider_system_settings">System Settings</string>
+    <string name="provider_contacts">Contacts</string>
+    <string name="provider_termux">Termux Commands</string>
+    <string name="provider_intent_launcher">Intent Launcher</string>
+
+    <!-- Provider descriptions (ProvidersSettingsScreen) -->
+    <string name="provider_desc_applications">Search installed apps</string>
+    <string name="provider_desc_contacts">Search your contacts</string>
+    <string name="provider_desc_web_search">Configure engines and defaults</string>
+    <string name="provider_desc_file_search">Local device indexing</string>
+    <string name="provider_desc_calculator">Solve math expressions</string>
+    <string name="provider_desc_system_settings">Search for system settings</string>
+    <string name="provider_desc_text_utilities">Base64, URL tools</string>
+    <string name="provider_desc_termux_installed">Run commands in Termux</string>
+    <string name="provider_desc_termux_not_installed">Install Termux to enable</string>
+    <string name="provider_desc_intent_launcher">Launch apps with triggers</string>
+
+    <!-- General settings screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_providers">Providers</string>
+    <string name="settings_providers_subtitle">Turn sources on or off and configure them.</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_subtitle">Control how search looks on screen.</string>
+    <string name="settings_behavior">Behavior</string>
+    <string name="settings_behavior_subtitle">Adjust responsiveness and motion.</string>
+    <string name="settings_aliases">Aliases</string>
+    <string name="settings_aliases_subtitle">Shortcuts you\'ve added from results.</string>
+    <string name="settings_aliases_empty">No aliases yet. Long press a result in search to save one.</string>
+    <string name="settings_result_ranking">Result ranking</string>
+    <string name="settings_result_ranking_subtitle">Control the order of results and providers.</string>
+    <string name="settings_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_backup_restore_subtitle">Export or import your settings</string>
+
+    <!-- Appearance settings -->
+    <string name="appearance_translucent_results">Translucent results</string>
+    <string name="appearance_translucent_results_subtitle">Make list items slightly see-through.</string>
+    <string name="appearance_background_opacity">Background opacity</string>
+    <string name="appearance_background_opacity_subtitle">Dim the wallpaper behind search.</string>
+    <string name="appearance_background_blur">Background blur strength</string>
+    <string name="appearance_background_blur_subtitle">Control how soft the wallpaper appears.</string>
+    <string name="appearance_settings_icon">Settings Icon</string>
+    <string name="appearance_settings_icon_subtitle">Position relative to the search bar.</string>
+    <string name="appearance_search_bar_bottom">Search bar at bottom</string>
+    <string name="appearance_search_bar_bottom_subtitle">Place search bar below results instead of above.</string>
+
+    <!-- Behavior settings -->
+    <string name="behavior_enable_animations">Enable animations</string>
+    <string name="behavior_enable_animations_subtitle">Turn off to remove most in-app transitions.</string>
+    <string name="behavior_activity_indicator_delay">Activity indicator delay</string>
+    <string name="behavior_activity_indicator_delay_subtitle">Wait time before showing the loading spinner.</string>
+
+    <!-- App search settings -->
+    <string name="app_search_header">Applications</string>
+    <string name="app_search_header_subtitle">Configure app search.</string>
+    <string name="app_search_include_package_name">Include package name</string>
+    <string name="app_search_include_package_name_subtitle">Search apps by their package name (e.g. com.android.settings).</string>
+    <string name="app_search_ai_queries">AI Assistant queries</string>
+    <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using \"ask gemini &lt;query&gt;\".</string>
+
+    <!-- App list settings -->
+    <string name="app_list_section_title">App List</string>
+    <string name="app_list_section_subtitle">Configure the app list on the home screen.</string>
+    <string name="app_list_show">Show app list</string>
+    <string name="app_list_show_subtitle">Display an app list on the home screen.</string>
+    <string name="app_list_type">App list type</string>
+    <string name="app_list_type_subtitle">Choose which apps to display.</string>
+    <string name="app_list_center">Center app list</string>
+    <string name="app_list_center_subtitle">Only works when the settings icon is hidden or inside the search bar.</string>
+    <string name="app_list_hide_when_results">Hide when results visible</string>
+    <string name="app_list_hide_when_results_subtitle">Hide the app list when search results are displayed.</string>
+    <string name="app_list_reverse_order">Reverse order</string>
+    <string name="app_list_reverse_recent_subtitle">Place the most recently used app on the right side.</string>
+    <string name="app_list_reverse_pinned_subtitle">Display the first pinned app on the right side.</string>
+    <string name="app_list_reverse_recent_order">Reverse recent order</string>
+    <string name="app_list_reverse_pinned_order">Reverse pinned order</string>
+    <string name="app_list_pinned_on_left">Pinned apps on left</string>
+    <string name="app_list_pinned_on_left_subtitle">Show pinned apps on the left and recent apps on the right.</string>
+    <string name="app_list_filter_pinned_from_recents">Hide pinned from recents</string>
+    <string name="app_list_filter_pinned_from_recents_subtitle">Exclude pinned apps from the recent list in both mode.</string>
+    <string name="app_list_no_pinned_apps">No pinned apps</string>
+    <string name="app_list_add_app">Add App</string>
+    <string name="app_list_add_pinned_app">Add Pinned App</string>
+    <string name="app_list_all_pinned">All apps are already pinned</string>
+    <string name="app_list_no_apps_found">No apps found</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+
+    <!-- File search settings -->
+    <string name="file_search_header">Files &amp; Folders</string>
+    <string name="file_search_header_subtitle">Configure file search.</string>
+    <string name="file_search_thumbnail_crop">Thumbnail crop</string>
+    <string name="file_search_sort_order">Sort order</string>
+    <string name="file_search_sort_order_subtitle">Choose how file results are ordered.</string>
+    <string name="file_search_ascending_order">Ascending order</string>
+    <string name="file_search_ascending_subtitle">Off lists newest or Z–A first.</string>
+    <string name="file_search_background_sync">Background sync</string>
+    <string name="file_search_background_sync_subtitle">Automatically check for file changes.</string>
+    <string name="file_search_no_folders">No folders have been indexed yet. Tap Add folder to pick a directory.</string>
+    <string name="file_search_add_folder">Add folder</string>
+    <string name="file_search_rescan">Rescan</string>
+    <string name="file_search_downloads_folder">Downloads folder</string>
+    <string name="file_search_allow_downloads">Allow Downloads access</string>
+    <string name="file_search_downloads_permission">OmniPrompt needs Android\'s \"All files access\" permission to index the Downloads folder.</string>
+    <string name="file_search_open_settings">Open settings</string>
+    <string name="file_search_cant_index">Can\'t index %s</string>
+    <string name="file_search_fix_issue">Fix the issue, then tap Rescan below.</string>
+
+    <!-- Termux settings -->
+    <string name="termux_header">Termux Commands</string>
+    <string name="termux_add_command">Add Command</string>
+    <string name="termux_edit_command">Edit Command</string>
+    <string name="termux_commands_info">Commands are executed via Termux\'s RUN_COMMAND intent.</string>
+    <string name="termux_requirements">Requirements:</string>
+    <string name="termux_req_installed">• Termux installed from F-Droid</string>
+    <string name="termux_req_permission">• RUN_COMMAND permission granted</string>
+    <string name="termux_path_shortcuts">Path shortcuts:</string>
+    <string name="termux_path_shortcuts_detail">• ~/ expands to Termux home directory\n• $PREFIX/ expands to Termux usr directory</string>
+    <string name="termux_dynamic_args">Dynamic arguments:</string>
+    <string name="termux_dynamic_args_detail">• $1, $2, etc. = arguments after query (space-separated)\n• $* = all remaining text after command\n• Works inline: cmd $1, or standalone: $1\nExample: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
+    <string name="termux_not_installed">Termux Not Installed</string>
+    <string name="termux_not_installed_detail">Install Termux from F-Droid to use this feature.</string>
+    <string name="termux_run_background">Run in Background</string>
+    <string name="termux_run_background_subtitle">Execute without opening Termux UI</string>
+    <string name="termux_session_action">Session Action</string>
+    <string name="termux_preview">Preview:</string>
+
+    <!-- Termux command form -->
+    <string name="termux_label_display_name">Display Name</string>
+    <string name="termux_placeholder_display_name">My Script</string>
+    <string name="termux_label_executable_path">Executable Path</string>
+    <string name="termux_placeholder_executable_path">~/myscript.sh</string>
+    <string name="termux_supporting_executable_path">Use ~/ for home, $PREFIX/ for usr</string>
+    <string name="termux_label_arguments">Arguments (optional)</string>
+    <string name="termux_placeholder_arguments">-f, ba+bv, $1</string>
+    <string name="termux_supporting_arguments">Comma-separated. Use $1, $2 for args, $* for all text</string>
+    <string name="termux_label_working_directory">Working Directory (optional)</string>
+    <string name="termux_placeholder_working_directory">~/projects</string>
+    <string name="termux_label_shell_name">Shell Name (optional)</string>
+    <string name="termux_placeholder_shell_name">my-session</string>
+    <string name="termux_supporting_shell_name">Used to identify the session</string>
+    <string name="termux_label_shell_create_mode">Shell Create Mode (optional)</string>
+    <string name="termux_placeholder_shell_create_mode">no-shell-with-name</string>
+    <string name="termux_supporting_shell_create_mode">e.g. no-shell-with-name to reuse session</string>
+
+    <!-- Intent settings -->
+    <string name="intent_header">Intent Launcher</string>
+    <string name="intent_section_intents">Intents</string>
+    <string name="intent_add">Add Intent</string>
+    <string name="intent_no_configured">No intents configured. Add your first intent.</string>
+    <string name="intent_about">About</string>
+    <string name="intent_usage">Usage:</string>
+    <string name="intent_usage_detail">Type keywords to fuzzy match intent titles, followed by text or a URL to launch.</string>
+    <string name="intent_examples">Examples:</string>
+    <string name="intent_example_ytdl">• ytdl https://youtube.com/watch?v=… → Opens in YTDLnis\n</string>
+    <string name="intent_example_ig">• ig photo.jpg → Shares to Instagram</string>
+    <string name="intent_custom_extras">Custom extras:</string>
+    <string name="intent_custom_extras_detail">Use $query in extra value to include the payload text.</string>
+    <string name="intent_share_content">Share content</string>
+    <string name="intent_open_url">Open URL / View content</string>
+    <string name="intent_send_to_address">Send to address</string>
+    <string name="intent_select_app">Select App</string>
+    <string name="intent_search_apps">Search apps…</string>
+    <string name="intent_configure_manually">Configure manually</string>
+    <string name="intent_manual_intent">Manual Intent</string>
+    <string name="intent_configure">Configure Intent</string>
+    <string name="intent_edit">Edit Intent</string>
+    <string name="intent_label_title">Title *</string>
+    <string name="intent_placeholder_title">Instagram</string>
+    <string name="intent_supporting_title">Display name for fuzzy matching</string>
+    <string name="intent_label_package">Package Name (optional)</string>
+    <string name="intent_placeholder_package">com.example.app</string>
+    <string name="intent_supporting_package">Leave empty for system share/view</string>
+    <string name="intent_label_action_auto">Action (auto-selected)</string>
+    <string name="intent_label_action">Action</string>
+    <string name="intent_label_mime_type">MIME Type</string>
+    <string name="intent_label_payload_template">Payload Template (optional)</string>
+    <string name="intent_placeholder_payload">yabai $query</string>
+    <string name="intent_supporting_payload">💡 $query = user input after title</string>
+    <string name="intent_custom_extras_label">Custom Extras</string>
+    <string name="intent_label_extra_key">Extra Key</string>
+    <string name="intent_label_extra_value">Extra Value</string>
+    <string name="intent_add_extra">Add Extra</string>
+    <string name="intent_system">System</string>
+
+    <!-- Text utilities settings -->
+    <string name="text_utilities_header">Text Utilities</string>
+    <string name="text_utilities_decode">Decode</string>
+    <string name="text_utilities_encode">Encode</string>
+
+    <!-- System settings -->
+    <string name="system_settings_header">System Settings</string>
+    <string name="system_settings_grant_shizuku">Grant Shizuku Permission</string>
+
+    <!-- System settings - Shizuku -->
+    <string name="system_permission_status">Permission Status</string>
+    <string name="system_shizuku_available">Shizuku Available</string>
+    <string name="system_permission_required_feature">Permission required to use this feature</string>
+    <string name="system_permission_required">Permission Required</string>
+    <string name="system_grant_adb_shizuku">Grant via ADB or install Shizuku</string>
+    <string name="system_adb_command">Run this command via ADB:</string>
+    <string name="system_install_shizuku">Or install Shizuku from Play Store for a permanent solution without a computer.</string>
+
+    <!-- Contacts settings -->
+    <string name="contacts_show_sim">Show my SIM numbers</string>
+    <string name="contacts_show_sim_subtitle">Display your own phone numbers in search</string>
+    <string name="contacts_sim_note">Note: SIM card numbers may not be available depending on your carrier.</string>
+
+    <!-- Provider ranking -->
+    <string name="ranking_result_ranking">Result Ranking</string>
+    <string name="ranking_use_frequency">Use frequency-based ranking</string>
+    <string name="ranking_frequency_desc_on">Most used items appear first</string>
+    <string name="ranking_frequency_desc_off">Provider order</string>
+    <string name="ranking_query_based">Ranking depends on the specific search term</string>
+    <string name="ranking_global">Ranking is global across all queries</string>
+    <string name="ranking_competitive_decay">Competitive decay</string>
+    <string name="ranking_competitive_decay_subtitle">Score reduction for the top result when another is selected</string>
+    <string name="ranking_provider_order">Provider order</string>
+    <string name="ranking_frequency_data">Frequency data</string>
+    <string name="ranking_usage_scoped">Usage is now scoped to specific search queries.</string>
+    <string name="ranking_no_usage_data">No usage data yet</string>
+    <string name="ranking_reset_data">Reset data</string>
+
+    <!-- Backup & restore -->
+    <string name="backup_export">Export Settings</string>
+    <string name="backup_export_subtitle">Save all settings to a file</string>
+    <string name="backup_exporting">Exporting…</string>
+    <string name="backup_export_button">Export</string>
+    <string name="backup_import">Import Settings</string>
+    <string name="backup_import_subtitle">Load settings from a backup file</string>
+    <string name="backup_importing">Importing…</string>
+    <string name="backup_import_button">Import</string>
+    <string name="backup_restore_confirm">Restore from Backup?</string>
+    <string name="backup_from_timestamp">Backup from: %s</string>
+    <string name="backup_will_restore">This will restore:</string>
+    <string name="backup_folder_permission_note">File search folders may require permission requests after restore.</string>
+    <string name="backup_restore">Restore</string>
+    <string name="backup_restore_completed">Restore Completed</string>
+    <string name="backup_some_issues">Some items had issues:</string>
+    <string name="backup_invalid_file">Invalid backup file</string>
+    <string name="backup_permission_granted">Permission granted</string>
+    <string name="backup_permission_failed">Failed to save permission</string>
+
+    <!-- Assistant setup -->
+    <string name="assistant_set_default">Set %s as the default assistant</string>
+    <string name="assistant_set_default_detail">%s opens instantly from the system assistant gesture.</string>
+    <string name="assistant_set_as_default">Set as default</string>
+    <string name="assistant_set_compact">Set %s as default assistant</string>
+    <string name="assistant_set_compact_detail">Enable the system gesture for quicker launch.</string>
+    <string name="assistant_set_up">Set up</string>
+
+    <!-- Aliases -->
+    <string name="alias_create">Create alias</string>
+    <string name="alias_create_detail">Create a shortcut for %s</string>
+    <string name="alias_target">Target</string>
+    <string name="alias_name_label">Alias name</string>
+    <string name="alias_type_hint">Type this in search to launch</string>
+    <string name="alias_already_exists">Alias already exists</string>
+    <string name="alias_cannot_be_empty">Alias cannot be empty</string>
+    <string name="alias_content_description">Alias</string>
+
+    <!-- Web search settings -->
+    <string name="web_search_sites">Web Search Sites</string>
+    <string name="web_search_pick_engine">Pick your preferred search engine and add custom websites. Use {query} as the query placeholder.</string>
+    <string name="web_search_add_custom">Add a custom site</string>
+    <string name="web_search_add_site">Add site</string>
+    <string name="web_search_label_display_name">Display name</string>
+    <string name="web_search_label_url_template">URL template</string>
+    <string name="web_search_example_url">Example: https://www.example.com/search?q={query}</string>
+    <string name="web_search_missing_placeholder">Template is missing {query}</string>
+    <string name="web_search_supporting_template">Include {query} in the template</string>
+    <string name="web_search_every_template_needs">Every template needs {query}</string>
+
+    <!-- Web search quicklinks -->
+    <string name="web_search_no_quicklinks">No quicklinks yet. Add your favorite sites for quick access.</string>
+    <string name="web_search_add_quicklink">Add Quicklink</string>
+    <string name="web_search_add_search_engine">Add Search Engine</string>
+    <string name="web_search_edit_quicklink">Edit Quicklink</string>
+    <string name="web_search_edit_search_engine">Edit Search Engine</string>
+    <string name="web_search_include_placeholder">Include {query}</string>
+    <string name="web_search_missing_placeholder_short">Missing {query}</string>
+    <string name="web_search_add">Add</string>
+
+    <!-- Error dialog -->
+    <string name="error_fetching_favicon">Error Fetching Favicon</string>
+
+    <!-- Permission dialogs -->
+    <string name="permission_required">Permission Required</string>
+    <string name="termux_permission_message">To run Termux commands, you need to grant the RUN_COMMAND permission.</string>
+    <string name="termux_permission_instructions">Go to App Info > Permissions > Additional permissions and enable \'Run commands in Termux environment\'.</string>
+    <string name="open_settings">Open Settings</string>
+    <string name="permission_contacts_required">Permission required to search contacts</string>
+
+    <!-- Loading -->
+    <string name="loading_providers">Loading providers…</string>
+
+    <!-- Toasts -->
+    <string name="toast_no_app_open">No app can open this item</string>
+    <string name="toast_permission_denied">Permission denied for this file</string>
+    <string name="toast_cant_open">Can\'t open this item</string>
+    <string name="toast_developer_options">Opening Developer Options</string>
+    <string name="toast_shizuku_failed">Could not request Shizuku permission</string>
+    <string name="toast_number_copied">Number copied</string>
+    <string name="toast_command_failed">Failed to send command: %s</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_settings">Settings</string>
 </resources>
