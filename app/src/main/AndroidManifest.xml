@@ -50,11 +50,11 @@
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
-            android:theme="@style/Theme.Search">
+            android:theme="@style/Theme.OmniPrompt">
         <activity
             android:name=".SettingsActivity"
             android:exported="true"
-            android:theme="@style/Theme.Search.Splash">
+            android:theme="@style/Theme.OmniPrompt.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -67,7 +67,7 @@
                 android:launchMode="singleTop"
                 android:exported="true"
                 android:windowSoftInputMode="stateAlwaysVisible|adjustResize"
-                android:theme="@style/Theme.Search">
+                android:theme="@style/Theme.OmniPrompt">
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
                 <action android:name="android.intent.action.SEARCH_LONG_PRESS" />
