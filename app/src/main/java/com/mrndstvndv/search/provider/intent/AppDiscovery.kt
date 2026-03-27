@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import kotlinx.coroutines.flow.first
 
@@ -82,9 +83,9 @@ class AppDiscovery(
 
     fun getIntentsForApp(packageName: String): List<IntentOption> {
         val actions = mapOf(
-            Intent.ACTION_SEND to "Share content",
-            Intent.ACTION_VIEW to "Open URL / View content",
-            Intent.ACTION_SENDTO to "Send to address"
+            Intent.ACTION_SEND to context.getString(R.string.intent_share_content),
+            Intent.ACTION_VIEW to context.getString(R.string.intent_open_url),
+            Intent.ACTION_SENDTO to context.getString(R.string.intent_send_to_address),
         )
 
         val options = mutableListOf<IntentOption>()
@@ -125,7 +126,7 @@ class AppDiscovery(
         }
 
         if (options.isEmpty()) {
-            options.add(IntentOption(Intent.ACTION_SEND, "Share content (Generic)"))
+            options.add(IntentOption(Intent.ACTION_SEND, context.getString(R.string.intent_share_content_generic)))
         }
 
         return options

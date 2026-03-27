@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.apps.models.AppInfo
@@ -22,7 +23,7 @@ class AppListProvider(
     private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "app-list"
-    override val displayName: String = "Applications"
+    override val displayName: String = activity.getString(R.string.provider_applications)
 
     private val packageManager = activity.packageManager
 
@@ -132,7 +133,7 @@ class AppListProvider(
 
             if (isAiQueryResult && askMatch!!.query.isNotEmpty()) {
                 // "ask gemini <query>" - send query to AI
-                title = "Ask: ${askMatch.query}"
+                title = activity.getString(R.string.app_search_ai_result_title, askMatch.query)
                 subtitle = askMatch.assistant.displayName
                 action = {
                     withContext(Dispatchers.Main) {

@@ -52,6 +52,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.settings.AppListType
@@ -89,14 +91,14 @@ fun AppSearchSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = "Applications", subtitle = "Configure app search.", onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.provider_applications), subtitle = stringResource(R.string.app_search_header_subtitle), onBack = onBack)
             }
 
             item {
                 SettingsGroup {
                     SettingsSwitch(
-                        title = "Include package name",
-                        subtitle = "Search apps by their package name (e.g. com.android.settings).",
+                        title = stringResource(R.string.app_search_include_package_name),
+                        subtitle = stringResource(R.string.app_search_include_package_name_subtitle),
                         checked = appSearchSettings.includePackageName,
                         onCheckedChange = { newValue ->
                             repository.update { it.copy(includePackageName = newValue) }
@@ -104,8 +106,8 @@ fun AppSearchSettingsScreen(
                     )
                     SettingsDivider()
                     SettingsSwitch(
-                        title = "AI Assistant queries",
-                        subtitle = "Send queries directly to AI apps like Gemini using \"ask gemini <query>\".",
+                        title = stringResource(R.string.app_search_ai_queries),
+                        subtitle = stringResource(R.string.app_search_ai_queries_subtitle),
                         checked = appSearchSettings.aiAssistantQueriesEnabled,
                         onCheckedChange = { newValue ->
                             repository.update { it.copy(aiAssistantQueriesEnabled = newValue) }
@@ -119,14 +121,14 @@ fun AppSearchSettingsScreen(
                 val disabledAlpha = 0.38f
 
                 SettingsSection(
-                    title = "App List",
-                    subtitle = "Configure the app list on the home screen.",
+                    title = stringResource(R.string.app_list_section_title),
+                    subtitle = stringResource(R.string.app_list_section_subtitle),
                 ) {
                     SettingsGroup {
                         // Master toggle
                         SettingsSwitch(
-                            title = "Show app list",
-                            subtitle = "Display an app list on the home screen.",
+                            title = stringResource(R.string.app_list_show),
+                            subtitle = stringResource(R.string.app_list_show_subtitle),
                             checked = appListEnabled,
                             onCheckedChange = { newValue ->
                                 repository.update { it.copy(appListEnabled = newValue) }
@@ -151,8 +153,8 @@ fun AppSearchSettingsScreen(
                             modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                         ) {
                             SettingsSwitch(
-                                title = "Center app list",
-                                subtitle = "Only works when the settings icon is hidden or inside the search bar.",
+                                title = stringResource(R.string.app_list_center),
+                                subtitle = stringResource(R.string.app_list_center_subtitle),
                                 checked = appSearchSettings.centerAppList,
                                 enabled = appListEnabled,
                                 onCheckedChange = { newValue ->
@@ -168,8 +170,8 @@ fun AppSearchSettingsScreen(
                             modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                         ) {
                             SettingsSwitch(
-                                title = "Hide when results visible",
-                                subtitle = "Hide the app list when search results are displayed.",
+                                title = stringResource(R.string.app_list_hide_when_results),
+                                subtitle = stringResource(R.string.app_list_hide_when_results_subtitle),
                                 checked = appSearchSettings.hideAppListWhenResultsVisible,
                                 enabled = appListEnabled,
                                 onCheckedChange = { newValue ->
@@ -187,8 +189,8 @@ fun AppSearchSettingsScreen(
                                     modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                                 ) {
                                     SettingsSwitch(
-                                        title = "Reverse order",
-                                        subtitle = "Place the most recently used app on the right side.",
+                                        title = stringResource(R.string.app_list_reverse_order),
+                                        subtitle = stringResource(R.string.app_list_reverse_recent_subtitle),
                                         checked = appSearchSettings.reverseRecentAppsOrder,
                                         enabled = appListEnabled,
                                         onCheckedChange = { newValue ->
@@ -203,8 +205,8 @@ fun AppSearchSettingsScreen(
                                     modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                                 ) {
                                     SettingsSwitch(
-                                        title = "Reverse order",
-                                        subtitle = "Display the first pinned app on the right side.",
+                                        title = stringResource(R.string.app_list_reverse_order),
+                                        subtitle = stringResource(R.string.app_list_reverse_pinned_subtitle),
                                         checked = appSearchSettings.reversePinnedAppsOrder,
                                         enabled = appListEnabled,
                                         onCheckedChange = { newValue ->
@@ -261,8 +263,8 @@ fun AppSearchSettingsScreen(
                                     modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                                 ) {
                                     SettingsSwitch(
-                                        title = "Reverse recent order",
-                                        subtitle = "Place the most recently used app on the right side.",
+                                        title = stringResource(R.string.app_list_reverse_recent_order),
+                                        subtitle = stringResource(R.string.app_list_reverse_recent_subtitle),
                                         checked = appSearchSettings.reverseRecentAppsOrder,
                                         enabled = appListEnabled,
                                         onCheckedChange = { newValue ->
@@ -277,8 +279,8 @@ fun AppSearchSettingsScreen(
                                     modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                                 ) {
                                     SettingsSwitch(
-                                        title = "Reverse pinned order",
-                                        subtitle = "Display the first pinned app on the right side.",
+                                        title = stringResource(R.string.app_list_reverse_pinned_order),
+                                        subtitle = stringResource(R.string.app_list_reverse_pinned_subtitle),
                                         checked = appSearchSettings.reversePinnedAppsOrder,
                                         enabled = appListEnabled,
                                         onCheckedChange = { newValue ->
@@ -293,8 +295,8 @@ fun AppSearchSettingsScreen(
                                     modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                                 ) {
                                     SettingsSwitch(
-                                        title = "Pinned apps on left",
-                                        subtitle = "Show pinned apps on the left and recent apps on the right.",
+                                        title = stringResource(R.string.app_list_pinned_on_left),
+                                        subtitle = stringResource(R.string.app_list_pinned_on_left_subtitle),
                                         checked = appSearchSettings.bothLayoutPinnedOnLeft,
                                         enabled = appListEnabled,
                                         onCheckedChange = { newValue ->
@@ -309,8 +311,8 @@ fun AppSearchSettingsScreen(
                                     modifier = Modifier.alpha(if (appListEnabled) 1f else disabledAlpha),
                                 ) {
                                     SettingsSwitch(
-                                        title = "Hide pinned from recents",
-                                        subtitle = "Exclude pinned apps from the recent list in both mode.",
+                                        title = stringResource(R.string.app_list_filter_pinned_from_recents),
+                                        subtitle = stringResource(R.string.app_list_filter_pinned_from_recents_subtitle),
                                         checked = appSearchSettings.filterPinnedFromRecentsInBoth,
                                         enabled = appListEnabled,
                                         onCheckedChange = { newValue ->
@@ -388,6 +390,7 @@ private fun AppListTypeChooser(
     enabled: Boolean,
     onTypeSelected: (AppListType) -> Unit,
 ) {
+    val context = LocalContext.current
     val disabledAlpha = 0.38f
 
     Column(
@@ -398,11 +401,11 @@ private fun AppListTypeChooser(
                 .alpha(if (enabled) 1f else disabledAlpha),
     ) {
         Text(
-            text = "App list type",
+            text = stringResource(R.string.app_list_type),
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
-            text = "Choose which apps to display.",
+            text = stringResource(R.string.app_list_type_subtitle),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -412,7 +415,7 @@ private fun AppListTypeChooser(
             options = options,
             selectedOption = selectedType,
             enabled = enabled,
-            label = { type -> type.userFacingLabel() },
+            label = { type -> context.getString(type.labelResId) },
             onOptionSelected = onTypeSelected,
             modifier =
                 Modifier
@@ -450,7 +453,7 @@ private fun PinnedAppsSection(
     ) {
         if (pinnedApps.isEmpty()) {
             Text(
-                text = "No pinned apps",
+                text = stringResource(R.string.app_list_no_pinned_apps),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -495,7 +498,7 @@ private fun PinnedAppsSection(
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
-            Text(text = "Add App")
+            Text(text = stringResource(R.string.app_list_add_app))
         }
     }
 }
@@ -549,7 +552,7 @@ private fun PinnedAppItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowUpward,
-                    contentDescription = "Move up",
+                    contentDescription = stringResource(R.string.move_up),
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -561,7 +564,7 @@ private fun PinnedAppItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowDownward,
-                    contentDescription = "Move down",
+                    contentDescription = stringResource(R.string.move_down),
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -573,7 +576,7 @@ private fun PinnedAppItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = "Remove",
+                    contentDescription = stringResource(R.string.remove),
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -620,20 +623,20 @@ private fun AddPinnedAppDialog(
         onDismiss = onDismiss,
         title = {
             Text(
-                text = "Add Pinned App",
+                text = stringResource(R.string.app_list_add_pinned_app),
                 style = MaterialTheme.typography.titleLarge,
             )
         },
         buttons = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
+                Text(text = stringResource(R.string.cancel))
             }
         },
         content = {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search apps...") },
+                placeholder = { Text(stringResource(R.string.search_apps_placeholder)) },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -641,7 +644,7 @@ private fun AddPinnedAppDialog(
 
             if (filteredApps.isEmpty()) {
                 Text(
-                    text = if (searchQuery.isBlank()) "All apps are already pinned" else "No apps found",
+                    text = if (searchQuery.isBlank()) stringResource(R.string.app_list_all_pinned) else stringResource(R.string.app_list_no_apps_found),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp),

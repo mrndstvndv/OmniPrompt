@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -22,7 +23,7 @@ class IntentProvider(
     private val settingsRepository: SettingsRepository<IntentSettings>,
 ) : Provider {
     override val id: String = "intent"
-    override val displayName: String = "Intent Launcher"
+    override val displayName: String = activity.getString(R.string.provider_intent_launcher)
 
     override fun canHandle(query: Query): Boolean {
         val isEnabled = globalSettingsRepository.enabledProviders.value[id] ?: true
@@ -63,27 +64,32 @@ class IntentProvider(
         // Use remaining text after the first word as raw payload
         val rawPayload = if (spaceIndex > 0) cleaned.substring(spaceIndex + 1).trim() else ""
         
-        return scored.map { (config, score, matchedIndices) ->
+        val systemLabel = activity.getString(R.string.intent_system)
+        val payloadHint = activity.getString(R.string.intent_payload_required_hint)
+
+        return scored.map { (config, _, matchedIndices) ->
             // For the best match use actual payload, for others show hint if payload is needed
             val displayPayload = if (config == scored.first().first) {
                 if (rawPayload.isNotEmpty()) {
                     rawPayload
                 } else if (config.requiresPayload) {
-                    "(type to add payload)"
+                    payloadHint
                 } else {
                     ""
                 }
             } else {
-                if (config.requiresPayload) "(type to add payload)" else ""
+                if (config.requiresPayload) payloadHint else ""
             }
-            
+
+            val targetLabel = config.packageName.ifEmpty { systemLabel }
+
             ProviderResult(
                 id = "$id:${config.id}",
                 title = config.title,
                 subtitle = if (displayPayload.isNotEmpty()) {
-                    "$displayPayload → ${config.packageName.ifEmpty { "System" }}"
+                    activity.getString(R.string.intent_result_subtitle_with_payload, displayPayload, targetLabel)
                 } else {
-                    config.packageName.ifEmpty { "System" }
+                    targetLabel
                 },
                 vectorIcon = Icons.Outlined.Share,
                 providerId = id,

@@ -53,7 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.ui.theme.motionAwareTween
 
@@ -333,7 +335,7 @@ fun ItemsList(
                         if (item.id.startsWith("alias:")) {
                             Icon(
                                 imageVector = Icons.Filled.Bookmark,
-                                contentDescription = "Alias",
+                                contentDescription = stringResource(R.string.alias_content_description),
                                 modifier = Modifier
                                     .size(16.dp)
                                     .offset(x = 4.dp, y = (-8).dp),

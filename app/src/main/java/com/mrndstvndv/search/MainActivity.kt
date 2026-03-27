@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -313,7 +314,7 @@ class MainActivity : ComponentActivity() {
                         add(CalculatorProvider(this@MainActivity))
                         add(TextUtilitiesProvider(this@MainActivity, textUtilitiesSettingsRepo))
                         add(FileSearchProvider(this@MainActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(settingsRepository, contactsSettingsRepo, contactsRepository))
+                        add(ContactsProvider(this@MainActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
                         add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
                         add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
                         add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo))
@@ -706,7 +707,7 @@ class MainActivity : ComponentActivity() {
                                             value = textState.value,
                                             onValueChange = { textState.value = it },
                                             singleLine = true,
-                                            placeholder = { Text("Search") },
+                                            placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                             trailingIcon = {
                                                 if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                     Icon(
@@ -811,7 +812,7 @@ class MainActivity : ComponentActivity() {
                                         value = textState.value,
                                         onValueChange = { textState.value = it },
                                         singleLine = true,
-                                        placeholder = { Text("Search") },
+                                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                         trailingIcon = {
                                             if (settingsIconPosition == SettingsIconPosition.INSIDE) {
                                                 Icon(
@@ -1005,11 +1006,11 @@ class MainActivity : ComponentActivity() {
                                 }
 
                                 AliasRepository.SaveResult.DUPLICATE -> {
-                                    aliasDialogError = "Alias already exists"
+                                    aliasDialogError = this@MainActivity.getString(R.string.alias_already_exists)
                                 }
 
                                 AliasRepository.SaveResult.INVALID_ALIAS -> {
-                                    aliasDialogError = "Alias cannot be empty"
+                                    aliasDialogError = this@MainActivity.getString(R.string.alias_cannot_be_empty)
                                 }
                             }
                         },
@@ -1111,7 +1112,7 @@ class MainActivity : ComponentActivity() {
                 ProviderResult(
                     id = "alias:web:${entry.alias}:${query.hashCode()}",
                     title = if (query.isBlank()) resolvedSite.displayName else query,
-                    subtitle = "Alias \"${entry.alias}\" → ${resolvedSite.displayName}",
+                    subtitle = getString(R.string.alias_web_subtitle, entry.alias, resolvedSite.displayName),
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,
@@ -1136,7 +1137,7 @@ class MainActivity : ComponentActivity() {
                 ProviderResult(
                     id = "alias:app:${entry.alias}",
                     title = target.label,
-                    subtitle = "Alias \"${entry.alias}\"",
+                    subtitle = getString(R.string.alias_app_subtitle, entry.alias),
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,

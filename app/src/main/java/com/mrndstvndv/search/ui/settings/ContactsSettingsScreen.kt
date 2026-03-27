@@ -41,7 +41,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.settings.ContactsSettings
@@ -96,7 +98,7 @@ fun ContactsSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = "Contacts", onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.provider_contacts), onBack = onBack)
         }
 
         // Permission status card
@@ -177,15 +179,15 @@ private fun PermissionStatusCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (hasContactsPermission) "Permission granted" else "Permission required",
+                        text = if (hasContactsPermission) stringResource(R.string.permission_granted) else stringResource(R.string.permission_required),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
                         text =
                             if (hasContactsPermission) {
-                                "Contacts can be searched"
+                                stringResource(R.string.contacts_permission_granted_subtitle)
                             } else {
-                                "Allow access to search your contacts"
+                                stringResource(R.string.contacts_permission_required_subtitle)
                             },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -194,7 +196,7 @@ private fun PermissionStatusCard(
             }
             if (!hasContactsPermission) {
                 TextButton(onClick = onRequestPermission) {
-                    Text("Grant")
+                    Text(stringResource(R.string.grant))
                 }
             }
         }
@@ -218,8 +220,8 @@ private fun ContactsSettingsCard(
         Column {
             // Include phone numbers in search
             SettingsSwitch(
-                title = "Search phone numbers",
-                subtitle = "Include phone numbers when searching contacts",
+                title = stringResource(R.string.contacts_search_phone_numbers),
+                subtitle = stringResource(R.string.contacts_search_phone_numbers_subtitle),
                 checked = includePhoneNumbers,
                 onCheckedChange = onIncludePhoneNumbersChange,
             )
@@ -240,11 +242,11 @@ private fun ContactsSettingsCard(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Show my SIM numbers",
+                            text = stringResource(R.string.contacts_show_sim),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = "Display your own phone numbers in search",
+                            text = stringResource(R.string.contacts_show_sim_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -256,7 +258,7 @@ private fun ContactsSettingsCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Note: SIM card numbers may not be available depending on your carrier.",
+                    text = stringResource(R.string.contacts_sim_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )

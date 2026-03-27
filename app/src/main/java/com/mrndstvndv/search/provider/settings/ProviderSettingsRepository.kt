@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Environment
+import androidx.annotation.StringRes
 import androidx.core.content.edit
+import com.mrndstvndv.search.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +44,8 @@ class ProviderSettingsRepository(
         private const val DEFAULT_ANIMATIONS_ENABLED = true
     }
 
-    private val preferences: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    private val appContext: Context = context.applicationContext
+    private val preferences: SharedPreferences = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
     private val _translucentResultsEnabled = MutableStateFlow(true)
     val translucentResultsEnabled: StateFlow<Boolean> = _translucentResultsEnabled
@@ -642,14 +645,14 @@ data class FileSearchRoot(
             )
         }
 
-        fun downloadsRoot(): FileSearchRoot? {
+        fun downloadsRoot(context: Context): FileSearchRoot? {
             val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val uri = directory?.let { Uri.fromFile(it) } ?: return null
             val parentName = directory.parentFile?.name
             return FileSearchRoot(
                 id = FileSearchSettings.DOWNLOADS_ROOT_ID,
                 uri = uri,
-                displayName = "Downloads",
+                displayName = context.getString(R.string.file_search_downloads),
                 isEnabled = true,
                 addedAtMillis = directory.lastModified(),
                 parentDisplayName = parentName,
@@ -728,10 +731,12 @@ enum class FileSearchSortMode {
     }
 }
 
-enum class AppListType {
-    RECENT,
-    PINNED,
-    BOTH,
+enum class AppListType(
+    @StringRes val labelResId: Int,
+) {
+    RECENT(R.string.app_list_type_recent),
+    PINNED(R.string.app_list_type_pinned),
+    BOTH(R.string.app_list_type_both),
     ;
 
     companion object {
@@ -740,13 +745,6 @@ enum class AppListType {
             return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: RECENT
         }
     }
-
-    fun userFacingLabel(): String =
-        when (this) {
-            RECENT -> "Recent Apps"
-            PINNED -> "Pinned Apps"
-            BOTH -> "Both"
-        }
 }
 
 data class AppSearchSettings(

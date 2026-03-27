@@ -1,9 +1,14 @@
 package com.mrndstvndv.search.provider.settings
 
-enum class SettingsIconPosition {
-    BELOW,
-    INSIDE,
-    OFF,
+import androidx.annotation.StringRes
+import com.mrndstvndv.search.R
+
+enum class SettingsIconPosition(
+    @StringRes val labelResId: Int,
+) {
+    BELOW(R.string.appearance_settings_icon_below),
+    INSIDE(R.string.appearance_settings_icon_inside),
+    OFF(R.string.appearance_settings_icon_hidden),
     ;
 
     companion object {
@@ -12,11 +17,4 @@ enum class SettingsIconPosition {
             return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: INSIDE
         }
     }
-
-    fun userFacingLabel(): String =
-        when (this) {
-            BELOW -> "Below"
-            INSIDE -> "Inside"
-            OFF -> "Hidden"
-        }
 }

@@ -30,7 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
@@ -47,7 +50,8 @@ fun TextUtilitiesSettingsScreen(
     onBack: () -> Unit,
 ) {
     val textUtilitiesSettings by repository.flow.collectAsState()
-    val utilitiesInfo = remember { TextUtilitiesProvider.getUtilitiesInfo() }
+    val context = LocalContext.current
+    val utilitiesInfo = remember(context) { TextUtilitiesProvider.getUtilitiesInfo(context) }
 
     Box(
         modifier =
@@ -64,14 +68,14 @@ fun TextUtilitiesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = "Text Utilities", subtitle = "Configure text tools.", onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.provider_text_utilities), subtitle = stringResource(R.string.text_utilities_header_subtitle), onBack = onBack)
             }
 
             item {
                 SettingsGroup {
                     SettingsSwitch(
-                        title = "Open decoded URLs",
-                        subtitle = "Launch web links instead of copying them when decoding.",
+                        title = stringResource(R.string.text_utilities_open_decoded_urls),
+                        subtitle = stringResource(R.string.text_utilities_open_decoded_urls_subtitle),
                         checked = textUtilitiesSettings.openDecodedUrls,
                         onCheckedChange = { enabled -> repository.update { settings -> settings.copy(openDecodedUrls = enabled) } },
                     )
@@ -87,11 +91,11 @@ fun TextUtilitiesSettingsScreen(
                                 .padding(horizontal = 20.dp, vertical = 18.dp),
                     ) {
                         Text(
-                            text = "Available Utilities",
+                            text = stringResource(R.string.text_utilities_available_utilities),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = "Enable or disable utilities and their trigger keywords.",
+                            text = stringResource(R.string.text_utilities_available_utilities_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -197,7 +201,7 @@ private fun UtilityRow(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Keywords",
+                text = stringResource(R.string.text_utilities_keywords),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -226,7 +230,7 @@ private fun UtilityRow(
             // Mode selector for utilities that support both modes
             if (info.supportsBothModes) {
                 Text(
-                    text = "Default mode",
+                    text = stringResource(R.string.text_utilities_default_mode),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -240,7 +244,7 @@ private fun UtilityRow(
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         enabled = enabled,
                     ) {
-                        Text("Decode")
+                        Text(stringResource(R.string.text_utilities_decode))
                     }
                     SegmentedButton(
                         selected = defaultMode == TextUtilityDefaultMode.ENCODE,
@@ -248,7 +252,7 @@ private fun UtilityRow(
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         enabled = enabled,
                     ) {
-                        Text("Encode")
+                        Text(stringResource(R.string.text_utilities_encode))
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

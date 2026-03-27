@@ -10,6 +10,7 @@ import android.os.Build
 import android.provider.ContactsContract
 import android.telephony.SubscriptionManager
 import androidx.core.content.ContextCompat
+import com.mrndstvndv.search.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -208,7 +209,7 @@ class ContactsRepository(
 
                         SimNumber(
                             number = number,
-                            displayName = info.displayName?.toString() ?: "SIM ${info.simSlotIndex + 1}",
+                            displayName = info.displayName?.toString() ?: context.getString(R.string.contacts_sim_slot_fallback, info.simSlotIndex + 1),
                             slotIndex = info.simSlotIndex,
                             subscriptionId = info.subscriptionId,
                         )
