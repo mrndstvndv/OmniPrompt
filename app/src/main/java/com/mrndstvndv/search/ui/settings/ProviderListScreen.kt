@@ -32,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
@@ -89,23 +91,23 @@ fun ProviderListScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = "Providers", subtitle = "Manage search sources.", onBack = onBack)
+                SettingsHeader(title = stringResource(R.string.settings_providers), subtitle = stringResource(R.string.settings_providers_subtitle), onBack = onBack)
             }
 
             item {
                 SettingsGroup {
                     ProviderRow(
                         id = "app-list",
-                        name = "Applications",
-                        description = "Search installed apps",
+                        name = stringResource(R.string.provider_applications),
+                        description = stringResource(R.string.provider_desc_applications),
                         enabled = enabledProviders["app-list"] ?: true,
                         onToggle = { settingsRepository.setProviderEnabled("app-list", it) },
                     )
                     SettingsDivider()
                     ProviderRow(
                         id = "web-search",
-                        name = "Web Search",
-                        description = "Search the web",
+                        name = stringResource(R.string.provider_web_search),
+                        description = stringResource(R.string.provider_desc_web_search),
                         enabled = enabledProviders["web-search"] ?: true,
                         onToggle = { settingsRepository.setProviderEnabled("web-search", it) },
                         onClick = onOpenWebSearchSettings,
@@ -113,8 +115,8 @@ fun ProviderListScreen(
                     SettingsDivider()
                     ProviderRow(
                         id = "file-search",
-                        name = "Files & Folders",
-                        description = "Search local files",
+                        name = stringResource(R.string.provider_file_search),
+                        description = stringResource(R.string.provider_desc_file_search),
                         enabled = enabledProviders["file-search"] ?: true,
                         onToggle = { settingsRepository.setProviderEnabled("file-search", it) },
                         onClick = onOpenFileSearchSettings,
@@ -122,16 +124,16 @@ fun ProviderListScreen(
                     SettingsDivider()
                     ProviderRow(
                         id = "calculator",
-                        name = "Calculator",
-                        description = "Solve math expressions",
+                        name = stringResource(R.string.provider_calculator),
+                        description = stringResource(R.string.provider_desc_calculator),
                         enabled = enabledProviders["calculator"] ?: true,
                         onToggle = { settingsRepository.setProviderEnabled("calculator", it) },
                     )
                     SettingsDivider()
                     ProviderRow(
                         id = "text-utilities",
-                        name = "Text Utilities",
-                        description = "Base64 encoding/decoding",
+                        name = stringResource(R.string.provider_text_utilities),
+                        description = stringResource(R.string.provider_desc_text_utilities),
                         enabled = enabledProviders["text-utilities"] ?: true,
                         onToggle = { settingsRepository.setProviderEnabled("text-utilities", it) },
                         onClick = onOpenTextUtilitiesSettings,
@@ -140,8 +142,8 @@ fun ProviderListScreen(
                         SettingsDivider()
                         ProviderRow(
                             id = "termux",
-                            name = "Termux Commands",
-                            description = "Run commands in Termux",
+                            name = stringResource(R.string.provider_termux),
+                            description = stringResource(R.string.provider_desc_termux_installed),
                             enabled = enabledProviders["termux"] ?: true,
                             onToggle = { enabled ->
                                 // Check permission state fresh when toggling
@@ -200,7 +202,7 @@ private fun ProviderRow(
             if (onClick != null) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = "Settings",
+                    contentDescription = stringResource(R.string.cd_settings),
                     modifier = Modifier.padding(start = 12.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

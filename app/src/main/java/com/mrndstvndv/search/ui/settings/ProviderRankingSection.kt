@@ -31,7 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -65,8 +68,8 @@ fun ProviderRankingSection(
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         SettingsSection(
-            title = "Result Ranking",
-            subtitle = "Control how results are ordered.",
+            title = stringResource(R.string.ranking_result_ranking),
+            subtitle = stringResource(R.string.ranking_result_ranking_subtitle),
         ) {
             SettingsGroup {
                 // Frequency-based ranking toggle
@@ -82,11 +85,11 @@ fun ProviderRankingSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Use frequency-based ranking",
+                            text = stringResource(R.string.ranking_use_frequency),
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = if (useFrequencyRanking) "Most used items appear first" else "Provider order",
+                            text = if (useFrequencyRanking) stringResource(R.string.ranking_frequency_desc_on) else stringResource(R.string.ranking_frequency_desc_off),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -100,27 +103,27 @@ fun ProviderRankingSection(
                 if (useFrequencyRanking) {
                     SettingsDivider()
                     SettingsSwitch(
-                        title = "Use query-specific ranking",
-                        subtitle = if (queryBasedRankingEnabled) "Ranking depends on the specific search term" else "Ranking is global across all queries",
+                        title = stringResource(R.string.ranking_use_query_specific),
+                        subtitle = if (queryBasedRankingEnabled) stringResource(R.string.ranking_query_based) else stringResource(R.string.ranking_global),
                         checked = queryBasedRankingEnabled,
                         onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
                     )
                     SettingsDivider()
                     com.mrndstvndv.search.ui.components.settings.SettingsSliderRow(
-                        title = "Competitive decay",
-                        subtitle = "Score reduction for the top result when another is selected",
+                        title = stringResource(R.string.ranking_competitive_decay),
+                        subtitle = stringResource(R.string.ranking_competitive_decay_subtitle),
                         value = decayAmount,
                         onValueChange = { rankingRepository.setDecayAmount(it) },
                         valueRange = 0f..5f,
                         steps = 9,
-                        valueText = String.format("%.1f", decayAmount),
+                        valueText = stringResource(R.string.value_decimal, decayAmount),
                     )
                 }
             }
         }
 
         SettingsSection(
-            title = "Provider order",
+            title = stringResource(R.string.ranking_provider_order),
         ) {
             SettingsGroup {
                 visibleProviderOrder.forEachIndexed { index, providerId ->
@@ -152,18 +155,18 @@ private fun FrequencyRankingDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Frequency data") },
+        title = { Text(text = stringResource(R.string.ranking_frequency_data)) },
         text = {
             Column {
                 Text(
-                    text = "Usage is now scoped to specific search queries.",
+                    text = stringResource(R.string.ranking_usage_scoped),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 if (frequency.isEmpty()) {
                     Text(
-                        text = "No usage data yet",
+                        text = stringResource(R.string.ranking_no_usage_data),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -178,7 +181,7 @@ private fun FrequencyRankingDialog(
                         sortedQueries.forEach { query ->
                             item(key = query) {
                                 Text(
-                                    text = if (query.isEmpty()) "General (no query)" else "Query: \"$query\"",
+                                    text = if (query.isEmpty()) stringResource(R.string.ranking_general_no_query) else stringResource(R.string.ranking_query_label, query),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
@@ -211,12 +214,12 @@ private fun FrequencyRankingDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Done")
+                Text(text = stringResource(R.string.done))
             }
         },
         dismissButton = {
             TextButton(onClick = onReset) {
-                Text(text = "Reset data")
+                Text(text = stringResource(R.string.ranking_reset_data))
             }
         },
     )
@@ -246,7 +249,7 @@ private fun FrequencyItem(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = String.format("%.1f", score),
+                text = stringResource(R.string.value_decimal, score),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary,
             )
@@ -262,7 +265,8 @@ private fun ProviderRankingItem(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
 ) {
-    val displayName = getProviderDisplayName(providerId)
+    val context = LocalContext.current
+    val displayName = getProviderDisplayName(context, providerId)
 
     Row(
         modifier =
@@ -286,7 +290,7 @@ private fun ProviderRankingItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowUpward,
-                    contentDescription = "Move up",
+                    contentDescription = stringResource(R.string.move_up),
                     modifier = Modifier.width(16.dp),
                 )
             }
@@ -298,7 +302,7 @@ private fun ProviderRankingItem(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowDownward,
-                    contentDescription = "Move down",
+                    contentDescription = stringResource(R.string.move_down),
                     modifier = Modifier.width(16.dp),
                 )
             }
@@ -306,16 +310,16 @@ private fun ProviderRankingItem(
     }
 }
 
-private fun getProviderDisplayName(providerId: String): String =
+private fun getProviderDisplayName(context: android.content.Context, providerId: String): String =
     when (providerId) {
-        "app-list" -> "Applications"
-        "calculator" -> "Calculator"
-        "text-utilities" -> "Text Utilities"
-        "file-search" -> "Files & Folders"
-        "web-search" -> "Web Search"
-        "system-settings" -> "System Settings"
-        "contacts" -> "Contacts"
-        "termux" -> "Termux"
-        "intent" -> "Intent Launcher"
+        "app-list" -> context.getString(R.string.provider_applications)
+        "calculator" -> context.getString(R.string.provider_calculator)
+        "text-utilities" -> context.getString(R.string.provider_text_utilities)
+        "file-search" -> context.getString(R.string.provider_file_search)
+        "web-search" -> context.getString(R.string.provider_web_search)
+        "system-settings" -> context.getString(R.string.provider_system_settings)
+        "contacts" -> context.getString(R.string.provider_contacts)
+        "termux" -> context.getString(R.string.provider_termux)
+        "intent" -> context.getString(R.string.provider_intent_launcher)
         else -> providerId
     }

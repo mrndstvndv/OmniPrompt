@@ -55,8 +55,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
@@ -99,11 +101,11 @@ fun GeneralSettingsScreen(
     rankingRepository.useFrequencyRanking.collectAsState()
     rankingRepository.providerOrder.collectAsState()
 
-    val providerSubtitle = "Turn sources on or off and configure them."
-    val appearanceSubtitle = "Control how search looks on screen."
-    val behaviorSubtitle = "Adjust responsiveness and motion."
-    val aliasesSubtitle = "Shortcuts you’ve added from results."
-    val rankingSubtitle = "Control the order of results and providers."
+    val providerSubtitle = stringResource(R.string.settings_providers_subtitle)
+    val appearanceSubtitle = stringResource(R.string.settings_appearance_subtitle)
+    val behaviorSubtitle = stringResource(R.string.settings_behavior_subtitle)
+    val aliasesSubtitle = stringResource(R.string.settings_aliases_subtitle)
+    val rankingSubtitle = stringResource(R.string.settings_result_ranking_subtitle)
 
     Box(
         modifier =
@@ -121,7 +123,7 @@ fun GeneralSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             item {
-                SettingsHeader(title = "Settings", onBack = onClose)
+                SettingsHeader(title = stringResource(R.string.settings), onBack = onClose)
             }
 
             if (!isDefaultAssistant) {
@@ -134,14 +136,14 @@ fun GeneralSettingsScreen(
                 SettingsGroup {
                     SettingsNavigationRow(
                         icon = Icons.Rounded.Apps,
-                        title = "Providers",
-                        subtitle = providerSubtitle.ifEmpty { "Manage search sources" },
+                        title = stringResource(R.string.settings_providers),
+                        subtitle = providerSubtitle,
                         onClick = onOpenProviders,
                     )
                     SettingsDivider()
                     SettingsNavigationRow(
                         icon = Icons.Rounded.Palette,
-                        title = "Appearance",
+                        title = stringResource(R.string.settings_appearance),
                         subtitle = appearanceSubtitle,
                         onClick = onOpenAppearance,
                     )
@@ -152,21 +154,21 @@ fun GeneralSettingsScreen(
                 SettingsGroup {
                     SettingsNavigationRow(
                         icon = Icons.Rounded.Speed,
-                        title = "Behavior",
+                        title = stringResource(R.string.settings_behavior),
                         subtitle = behaviorSubtitle,
                         onClick = onOpenBehavior,
                     )
                     SettingsDivider()
                     SettingsNavigationRow(
                         icon = Icons.AutoMirrored.Rounded.Label,
-                        title = "Aliases",
+                        title = stringResource(R.string.settings_aliases),
                         subtitle = aliasesSubtitle,
                         onClick = onOpenAliases,
                     )
                     SettingsDivider()
                     SettingsNavigationRow(
                         icon = Icons.Rounded.BarChart,
-                        title = "Result ranking",
+                        title = stringResource(R.string.settings_result_ranking),
                         subtitle = rankingSubtitle,
                         onClick = onOpenResultRanking,
                     )
@@ -177,8 +179,8 @@ fun GeneralSettingsScreen(
                 SettingsGroup {
                     SettingsNavigationRow(
                         icon = Icons.Rounded.CloudUpload,
-                        title = "Backup & Restore",
-                        subtitle = "Export or import your settings",
+                        title = stringResource(R.string.settings_backup_restore),
+                        subtitle = stringResource(R.string.settings_backup_restore_subtitle),
                         onClick = onOpenBackupRestore,
                     )
                 }
@@ -234,7 +236,7 @@ fun ProvidersSettingsScreen(
             if (isGranted) {
                 settingsRepository.setProviderEnabled("contacts", true)
             } else {
-                Toast.makeText(context, "Permission required to search contacts", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.permission_contacts_required), Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -254,7 +256,7 @@ fun ProvidersSettingsScreen(
     }
 
     SettingsScaffold(
-        title = "Providers",
+        title = stringResource(R.string.settings_providers),
         onBack = onBack,
     ) {
         if (!isDefaultAssistant) {
@@ -268,8 +270,8 @@ fun ProvidersSettingsScreen(
             SettingsGroup {
                 ProviderRow(
                     id = "app-list",
-                    name = "Applications",
-                    description = "Search installed apps",
+                    name = stringResource(R.string.provider_applications),
+                    description = stringResource(R.string.provider_desc_applications),
                     enabled = enabledProviders["app-list"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("app-list", it) },
                     onClick = onOpenAppSearchSettings,
@@ -277,8 +279,8 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "contacts",
-                    name = "Contacts",
-                    description = "Search your contacts",
+                    name = stringResource(R.string.provider_contacts),
+                    description = stringResource(R.string.provider_desc_contacts),
                     enabled = enabledProviders["contacts"] ?: false,
                     onToggle = { enabled ->
                         if (enabled) {
@@ -296,8 +298,8 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "web-search",
-                    name = "Web search",
-                    description = "Configure engines and defaults",
+                    name = stringResource(R.string.provider_web_search),
+                    description = stringResource(R.string.provider_desc_web_search),
                     enabled = enabledProviders["web-search"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("web-search", it) },
                     onClick = onOpenWebSearchSettings,
@@ -305,8 +307,8 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "file-search",
-                    name = "Files & folders",
-                    description = "Local device indexing",
+                    name = stringResource(R.string.provider_file_search),
+                    description = stringResource(R.string.provider_desc_file_search),
                     enabled = enabledProviders["file-search"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("file-search", it) },
                     onClick = onOpenFileSearchSettings,
@@ -314,16 +316,16 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "calculator",
-                    name = "Calculator",
-                    description = "Solve math expressions",
+                    name = stringResource(R.string.provider_calculator),
+                    description = stringResource(R.string.provider_desc_calculator),
                     enabled = enabledProviders["calculator"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("calculator", it) },
                 )
                 SettingsDivider()
                 ProviderRow(
                     id = "system-settings",
-                    name = "System Settings",
-                    description = "Search for system settings",
+                    name = stringResource(R.string.provider_system_settings),
+                    description = stringResource(R.string.provider_desc_system_settings),
                     enabled = enabledProviders["system-settings"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("system-settings", it) },
                     onClick = onOpenSystemSettingsSettings,
@@ -331,8 +333,8 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "text-utilities",
-                    name = "Text utilities",
-                    description = "Base64, URL tools",
+                    name = stringResource(R.string.provider_text_utilities),
+                    description = stringResource(R.string.provider_desc_text_utilities),
                     enabled = enabledProviders["text-utilities"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("text-utilities", it) },
                     onClick = onOpenTextUtilitiesSettings,
@@ -340,8 +342,8 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "termux",
-                    name = "Termux Commands",
-                    description = if (isTermuxInstalled) "Run commands in Termux" else "Install Termux to enable",
+                    name = stringResource(R.string.provider_termux),
+                    description = if (isTermuxInstalled) stringResource(R.string.provider_desc_termux_installed) else stringResource(R.string.provider_desc_termux_not_installed),
                     enabled = if (isTermuxInstalled) enabledProviders["termux"] ?: true else false,
                     onToggle = { enabled ->
                         if (isTermuxInstalled) {
@@ -359,8 +361,8 @@ fun ProvidersSettingsScreen(
                 SettingsDivider()
                 ProviderRow(
                     id = "intent",
-                    name = "Intent Launcher",
-                    description = "Launch apps with triggers",
+                    name = stringResource(R.string.provider_intent_launcher),
+                    description = stringResource(R.string.provider_desc_intent_launcher),
                     enabled = enabledProviders["intent"] ?: true,
                     onToggle = { settingsRepository.setProviderEnabled("intent", it) },
                     onClick = onOpenIntentSettings,
@@ -382,31 +384,31 @@ fun AppearanceSettingsScreen(
     val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
 
     SettingsScaffold(
-        title = "Appearance",
+        title = stringResource(R.string.settings_appearance),
         onBack = onBack,
     ) {
         item {
             SettingsGroup {
                 SettingsSwitch(
-                    title = "Translucent results",
-                    subtitle = "Make list items slightly see-through.",
+                    title = stringResource(R.string.appearance_translucent_results),
+                    subtitle = stringResource(R.string.appearance_translucent_results_subtitle),
                     checked = translucentResultsEnabled,
                     onCheckedChange = { settingsRepository.setTranslucentResultsEnabled(it) },
                 )
                 SettingsDivider()
                 SettingsSliderRow(
-                    title = "Background opacity",
-                    subtitle = "Dim the wallpaper behind search.",
-                    valueText = "${(backgroundOpacity * 100).roundToInt()}%",
+                    title = stringResource(R.string.appearance_background_opacity),
+                    subtitle = stringResource(R.string.appearance_background_opacity_subtitle),
+                    valueText = stringResource(R.string.appearance_opacity_value, (backgroundOpacity * 100).roundToInt()),
                     value = backgroundOpacity,
                     onValueChange = { settingsRepository.setBackgroundOpacity(it) },
                     steps = 19,
                 )
                 SettingsDivider()
                 SettingsSliderRow(
-                    title = "Background blur strength",
-                    subtitle = "Control how soft the wallpaper appears.",
-                    valueText = "${(backgroundBlurStrength * 100).roundToInt()}%",
+                    title = stringResource(R.string.appearance_background_blur),
+                    subtitle = stringResource(R.string.appearance_background_blur_subtitle),
+                    valueText = stringResource(R.string.appearance_opacity_value, (backgroundBlurStrength * 100).roundToInt()),
                     value = backgroundBlurStrength,
                     onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
                     steps = 19,
@@ -421,11 +423,11 @@ fun AppearanceSettingsScreen(
                             .padding(horizontal = 20.dp, vertical = 18.dp),
                 ) {
                     Text(
-                        text = "Settings Icon",
+                        text = stringResource(R.string.appearance_settings_icon),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = "Position relative to the search bar.",
+                        text = stringResource(R.string.appearance_settings_icon_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -447,7 +449,7 @@ fun AppearanceSettingsScreen(
                                 },
                                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
                             ) {
-                                Text(text = position.userFacingLabel())
+                                Text(text = stringResource(position.labelResId))
                             }
                         }
                     }
@@ -455,8 +457,8 @@ fun AppearanceSettingsScreen(
 
                 SettingsDivider()
                 SettingsSwitch(
-                    title = "Search bar at bottom",
-                    subtitle = "Place search bar below results instead of above.",
+                    title = stringResource(R.string.appearance_search_bar_bottom),
+                    subtitle = stringResource(R.string.appearance_search_bar_bottom_subtitle),
                     checked = searchBarPosition == SearchBarPosition.BOTTOM,
                     onCheckedChange = { isBottom ->
                         settingsRepository.setSearchBarPosition(
@@ -479,22 +481,22 @@ fun BehaviorSettingsScreen(
     val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
 
     SettingsScaffold(
-        title = "Behavior",
+        title = stringResource(R.string.settings_behavior),
         onBack = onBack,
     ) {
         item {
             SettingsGroup {
                 SettingsSwitch(
-                    title = "Enable animations",
-                    subtitle = "Turn off to remove most in-app transitions.",
+                    title = stringResource(R.string.behavior_enable_animations),
+                    subtitle = stringResource(R.string.behavior_enable_animations_subtitle),
                     checked = motionPreferences.animationsEnabled,
                     onCheckedChange = { settingsRepository.setAnimationsEnabled(it) },
                 )
                 SettingsDivider()
                 SettingsSliderRow(
-                    title = "Activity indicator delay",
-                    subtitle = "Wait time before showing the loading spinner.",
-                    valueText = "$activityIndicatorDelayMs ms",
+                    title = stringResource(R.string.behavior_activity_indicator_delay),
+                    subtitle = stringResource(R.string.behavior_activity_indicator_delay_subtitle),
+                    valueText = stringResource(R.string.value_milliseconds, activityIndicatorDelayMs),
                     value = activityIndicatorDelayMs.toFloat(),
                     onValueChange = { settingsRepository.setActivityIndicatorDelayMs(it.roundToInt()) },
                     valueRange = 0f..1000f,
@@ -513,7 +515,7 @@ fun AliasesSettingsScreen(
     val aliasEntries by aliasRepository.aliases.collectAsState()
 
     SettingsScaffold(
-        title = "Aliases",
+        title = stringResource(R.string.settings_aliases),
         onBack = onBack,
     ) {
         item {
@@ -521,7 +523,7 @@ fun AliasesSettingsScreen(
                 if (aliasEntries.isEmpty()) {
                     Text(
                         modifier = Modifier.padding(20.dp),
-                        text = "No aliases yet. Long press a result in search to save one.",
+                        text = stringResource(R.string.settings_aliases_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -553,7 +555,7 @@ fun ResultRankingSettingsScreen(
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()
 
     SettingsScaffold(
-        title = "Result ranking",
+        title = stringResource(R.string.settings_result_ranking),
         onBack = onBack,
     ) {
         item {
@@ -680,7 +682,7 @@ private fun AliasRow(
             )
         }
         TextButton(onClick = onRemove) {
-            Text(text = "Remove")
+            Text(text = stringResource(R.string.remove))
         }
     }
 }
@@ -701,16 +703,16 @@ private fun DefaultAssistantCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Set $appName as the default assistant",
+                text = stringResource(R.string.assistant_set_default, appName),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = "$appName opens instantly from the system assistant gesture.",
+                text = stringResource(R.string.assistant_set_default_detail, appName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onRequestSetDefaultAssistant) {
-                Text(text = "Set as default")
+                Text(text = stringResource(R.string.assistant_set_as_default))
             }
         }
     }
@@ -737,17 +739,17 @@ private fun CompactAssistantCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Set $appName as default assistant",
+                    text = stringResource(R.string.assistant_set_compact, appName),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "Enable the system gesture for quicker launch.",
+                    text = stringResource(R.string.assistant_set_compact_detail),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             TextButton(onClick = onRequestSetDefaultAssistant) {
-                Text(text = "Set up")
+                Text(text = stringResource(R.string.assistant_set_up))
             }
         }
     }

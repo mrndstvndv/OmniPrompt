@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Link
 import androidx.core.net.toUri
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.QuicklinkAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.Provider
@@ -25,7 +26,7 @@ class WebSearchProvider(
     private val settingsRepository: SettingsRepository<WebSearchSettings>,
 ) : Provider {
     override val id: String = "web-search"
-    override val displayName: String = "Web Search"
+    override val displayName: String = activity.getString(R.string.provider_web_search)
 
     override fun canHandle(query: Query): Boolean {
         val cleaned = query.trimmedText
@@ -183,10 +184,10 @@ class WebSearchProvider(
             }
             ProviderResult(
                 id = "$id:${site.id}:${actualQuery.hashCode()}",
-                title = "Search \"$actualQuery\"",
+                title = activity.getString(R.string.web_search_result_title, actualQuery),
                 subtitle =
                     if (site.id == defaultSite.id) {
-                        "${site.displayName} (default)"
+                        activity.getString(R.string.web_search_default_site, site.displayName)
                     } else {
                         site.displayName
                     },

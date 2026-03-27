@@ -2,12 +2,15 @@ package com.mrndstvndv.search.provider.text
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import android.util.Patterns
 import androidx.activity.ComponentActivity
+import androidx.annotation.StringRes
 import androidx.core.net.toUri
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -23,18 +26,15 @@ class TextUtilitiesProvider(
     private val settingsRepository: SettingsRepository<TextUtilitiesSettings>,
 ) : Provider {
     override val id: String = "text-utilities"
-    override val displayName: String = "Text Utilities"
+    override val displayName: String = activity.getString(R.string.provider_text_utilities)
 
     override fun canHandle(query: Query): Boolean = parseCommand(query.text) != null
 
     override suspend fun query(query: Query): List<ProviderResult> {
         val parsed = parseCommand(query.text) ?: return emptyList()
-        val payload = parsed.payload
-        if (payload == null) {
-            return listOf(buildSuggestionResult(parsed))
-        }
+        val payload = parsed.payload ?: return listOf(buildSuggestionResult(parsed))
         val textUtilitiesSettings = settingsRepository.value
-        return when (val outcome = parsed.utility.transform(parsed.mode, parsed.payload)) {
+        return when (val outcome = parsed.utility.transform(parsed.mode, payload, activity)) {
             is TransformOutcome.Success -> listOf(buildSuccessResult(parsed, outcome, textUtilitiesSettings))
             is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(parsed, outcome))
         }
@@ -47,15 +47,20 @@ class TextUtilitiesProvider(
     ): ProviderResult {
         val preview = previewText(outcome.output)
         val autoLaunchUri = resolveAutoLaunchUri(command, outcome.output, settings)
-        val subtitleSuffix = if (autoLaunchUri != null) " • Tap to open" else " • Tap to copy"
-        val subtitle = buildActionSubtitle(command, suffix = subtitleSuffix)
+        val suffixResId =
+            if (autoLaunchUri != null) {
+                R.string.text_utilities_tap_to_open
+            } else {
+                R.string.text_utilities_tap_to_copy
+            }
+        val subtitle = buildActionSubtitle(command, suffixResId)
         val payload = command.payload.orEmpty()
         val action: suspend () -> Unit = {
             if (autoLaunchUri != null) {
                 openUri(autoLaunchUri)
             } else {
                 withContext(Dispatchers.Main) {
-                    copyToClipboard(command.utility.displayName, outcome.output)
+                    copyToClipboard(command.utility.displayName(activity), outcome.output)
                     finishOverlay()
                 }
             }
@@ -73,7 +78,6 @@ class TextUtilitiesProvider(
                 ),
             onSelect = action,
             keepOverlayUntilExit = autoLaunchUri != null,
-            // Aggregate frequency by utility id (exclude dynamic payload)
             frequencyKey = "$id:${command.utility.id}",
             frequencyQuery = command.canonicalKeyword,
         )
@@ -87,7 +91,7 @@ class TextUtilitiesProvider(
         return ProviderResult(
             id = "$id:${command.utility.id}:invalid:${payload.hashCode()}",
             title = outcome.message,
-            subtitle = command.utility.invalidInputHint,
+            subtitle = command.utility.invalidInputHint(activity),
             providerId = id,
             extras =
                 mapOf(
@@ -104,7 +108,7 @@ class TextUtilitiesProvider(
         val prefill = buildPrefillText(command)
         return ProviderResult(
             id = "$id:${command.utility.id}:suggest:${command.mode.name}:${command.canonicalKeyword.hashCode()}",
-            title = command.utility.displayName,
+            title = command.utility.displayName(activity),
             subtitle = instruction,
             providerId = id,
             extras = mapOf(PREFILL_QUERY_EXTRA to prefill),
@@ -142,7 +146,6 @@ class TextUtilitiesProvider(
         val utilityMatch = matchUtility(firstToken) ?: return null
         var remainder = if (firstSpaceIndex == -1) "" else trimmed.substring(firstSpaceIndex).trimStart()
 
-        // Get per-utility default mode from settings, fallback to utility's built-in default
         val settings = settingsRepository.value
         val savedMode = settings.utilityDefaultModes[utilityMatch.utility.id]
         var mode =
@@ -186,10 +189,8 @@ class TextUtilitiesProvider(
         val settings = settingsRepository.value
 
         for (utility in utilities) {
-            // Skip disabled utilities
             if (utility.id in settings.disabledUtilities) continue
 
-            // Get enabled keywords only
             val disabledKeywords = settings.disabledKeywords[utility.id] ?: emptySet()
             val enabledKeywords = utility.keywords - disabledKeywords
             if (enabledKeywords.isEmpty()) continue
@@ -209,7 +210,7 @@ class TextUtilitiesProvider(
         value: String,
         maxLength: Int = 60,
     ): String {
-        if (value.isEmpty()) return "(empty string)"
+        if (value.isEmpty()) return activity.getString(R.string.text_utilities_empty_string)
         if (value.length <= maxLength) return value
         val softLimit = min(maxLength, value.length)
         return value.substring(0, softLimit).trimEnd() + ELLIPSIS
@@ -227,15 +228,19 @@ class TextUtilitiesProvider(
 
     private fun buildActionSubtitle(
         command: ParsedCommand,
-        suffix: String = "",
+        @StringRes suffixResId: Int? = null,
     ): String {
-        val verb = command.mode.action.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
-        return buildString {
-            append(verb)
-            append(' ')
-            append(command.utility.displayName)
-            append(" text")
-            append(suffix)
+        val action = activity.getString(command.mode.actionRes)
+        val utilityName = command.utility.displayName(activity)
+        return if (suffixResId == null) {
+            activity.getString(R.string.text_utilities_action_subtitle, action, utilityName)
+        } else {
+            activity.getString(
+                R.string.text_utilities_action_subtitle_with_suffix,
+                action,
+                utilityName,
+                activity.getString(suffixResId),
+            )
         }
     }
 
@@ -265,26 +270,40 @@ class TextUtilitiesProvider(
     )
 
     private enum class TransformMode(
-        val verb: String,
-        val action: String,
+        @StringRes val actionRes: Int,
     ) {
-        ENCODE(verb = "encoded", action = "encode"),
-        DECODE(verb = "decoded", action = "decode"),
+        ENCODE(R.string.text_utilities_encode),
+        DECODE(R.string.text_utilities_decode),
     }
 
     private interface TextUtility {
         val id: String
-        val displayName: String
-        val description: String
+
+        @get:StringRes
+        val displayNameRes: Int
+
+        @get:StringRes
+        val descriptionRes: Int
+
         val primaryKeyword: String
         val keywords: Set<String>
-        val invalidInputHint: String
+
+        @get:StringRes
+        val invalidInputHintRes: Int
+
         val supportsBothModes: Boolean
         val defaultMode: TransformMode
+
+        fun displayName(context: Context): String = context.getString(displayNameRes)
+
+        fun description(context: Context): String = context.getString(descriptionRes)
+
+        fun invalidInputHint(context: Context): String = context.getString(invalidInputHintRes)
 
         fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome
     }
 
@@ -300,21 +319,22 @@ class TextUtilitiesProvider(
 
     private class Base64Utility : TextUtility {
         override val id: String = "base64"
-        override val displayName: String = "Base64"
-        override val description: String = "Encode or decode Base64 text"
+        override val displayNameRes: Int = R.string.text_utility_base64_name
+        override val descriptionRes: Int = R.string.text_utility_base64_description
         override val primaryKeyword: String = "base64"
         override val keywords: Set<String> = setOf("base64", "b64")
-        override val invalidInputHint: String = "base64 SGVsbG8gV29ybGQ= → Hello World"
+        override val invalidInputHintRes: Int = R.string.text_utility_base64_example
         override val supportsBothModes: Boolean = true
         override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome =
             when (mode) {
                 TransformMode.ENCODE -> encode(text)
-                TransformMode.DECODE -> decode(text)
+                TransformMode.DECODE -> decode(text, context)
             }
 
         private fun encode(text: String): TransformOutcome {
@@ -323,37 +343,41 @@ class TextUtilitiesProvider(
             return TransformOutcome.Success(encoded)
         }
 
-        private fun decode(text: String): TransformOutcome {
+        private fun decode(
+            text: String,
+            context: Context,
+        ): TransformOutcome {
             val sanitized = text.trim().replace("\\s+".toRegex(), "")
             if (sanitized.isEmpty()) {
-                return TransformOutcome.InvalidInput("Nothing to decode")
+                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_base64_error_nothing_to_decode))
             }
             return try {
                 val decoded = Base64.decode(sanitized, Base64.DEFAULT)
                 TransformOutcome.Success(decoded.toString(Charsets.UTF_8))
-            } catch (error: IllegalArgumentException) {
-                TransformOutcome.InvalidInput("Input is not valid Base64")
+            } catch (_: IllegalArgumentException) {
+                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_base64_error_invalid))
             }
         }
     }
 
     private class TrimUtility : TextUtility {
         override val id: String = "trim"
-        override val displayName: String = "Trim"
-        override val description: String = "Remove leading and trailing whitespace"
+        override val displayNameRes: Int = R.string.text_utility_trim_name
+        override val descriptionRes: Int = R.string.text_utility_trim_description
         override val primaryKeyword: String = "trim"
         override val keywords: Set<String> = setOf("trim", "strip")
-        override val invalidInputHint: String = "trim   hello world   → hello world"
+        override val invalidInputHintRes: Int = R.string.text_utility_trim_example
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome {
             val trimmed = text.trim()
             return if (trimmed.isEmpty()) {
-                TransformOutcome.InvalidInput("Nothing to trim")
+                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_trim_error_nothing_to_trim))
             } else {
                 TransformOutcome.Success(trimmed)
             }
@@ -362,21 +386,22 @@ class TextUtilitiesProvider(
 
     private class RemoveWhitespacesUtility : TextUtility {
         override val id: String = "remove-whitespaces"
-        override val displayName: String = "Remove Whitespaces"
-        override val description: String = "Remove all whitespace characters"
+        override val displayNameRes: Int = R.string.text_utility_remove_whitespaces_name
+        override val descriptionRes: Int = R.string.text_utility_remove_whitespaces_description
         override val primaryKeyword: String = "rmws"
         override val keywords: Set<String> = setOf("rmws", "removews", "nows")
-        override val invalidInputHint: String = "rmws hello world → helloworld"
+        override val invalidInputHintRes: Int = R.string.text_utility_remove_whitespaces_example
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome {
             val result = text.replace("\\s+".toRegex(), "")
             return if (result.isEmpty()) {
-                TransformOutcome.InvalidInput("Nothing left after removing whitespaces")
+                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_remove_whitespaces_error_empty))
             } else {
                 TransformOutcome.Success(result)
             }
@@ -385,21 +410,22 @@ class TextUtilitiesProvider(
 
     private class RemoveNewlinesUtility : TextUtility {
         override val id: String = "remove-newlines"
-        override val displayName: String = "Remove Newlines"
-        override val description: String = "Replace line breaks with a single space"
+        override val displayNameRes: Int = R.string.text_utility_remove_newlines_name
+        override val descriptionRes: Int = R.string.text_utility_remove_newlines_description
         override val primaryKeyword: String = "rnl"
         override val keywords: Set<String> = setOf("rnl", "removenl", "removelines", "stripnl", "stripnewlines")
-        override val invalidInputHint: String = "rnl hello\nworld → hello world"
+        override val invalidInputHintRes: Int = R.string.text_utility_remove_newlines_example
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                return TransformOutcome.InvalidInput("No text provided")
+                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_remove_newlines_error_no_text))
             }
             val result =
                 trimmed
@@ -407,7 +433,7 @@ class TextUtilitiesProvider(
                     .replace("\\s+".toRegex(), " ")
                     .trim()
             return if (result.isEmpty()) {
-                TransformOutcome.InvalidInput("Nothing left after removing newlines")
+                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_remove_newlines_error_empty))
             } else {
                 TransformOutcome.Success(result)
             }
@@ -416,40 +442,39 @@ class TextUtilitiesProvider(
 
     private class MessengerUrlExtractorUtility : TextUtility {
         override val id: String = "messenger-url"
-        override val displayName: String = "Extract Messenger URL"
-        override val description: String = "Extract the original URL from Facebook Messenger redirect links"
+        override val displayNameRes: Int = R.string.text_utility_messenger_url_name
+        override val descriptionRes: Int = R.string.text_utility_messenger_url_description
         override val primaryKeyword: String = "fblink"
         override val keywords: Set<String> = setOf("fblink", "fburl", "messengerurl")
-        override val invalidInputHint: String = "fblink <messenger link> → original URL"
+        override val invalidInputHintRes: Int = R.string.text_utility_messenger_url_example
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
 
         override fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                return TransformOutcome.InvalidInput("No URL provided")
+                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_no_url))
             }
 
             val uri =
                 try {
                     Uri.parse(trimmed)
-                } catch (e: Exception) {
-                    return TransformOutcome.InvalidInput("Invalid URL format")
+                } catch (_: Exception) {
+                    return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_invalid_url))
                 }
 
-            // Only accept l.facebook.com
             val host = uri.host?.lowercase()
             if (host != "l.facebook.com") {
-                return TransformOutcome.InvalidInput("Not a Facebook Messenger redirect URL")
+                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_not_redirect))
             }
 
-            // Extract the 'u' parameter (already URL-decoded by getQueryParameter)
             val originalUrl =
                 uri.getQueryParameter("u")
-                    ?: return TransformOutcome.InvalidInput("No redirect URL found in link")
+                    ?: return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_missing_redirect))
 
             return TransformOutcome.Success(originalUrl)
         }
@@ -457,41 +482,48 @@ class TextUtilitiesProvider(
 
     private class UrlEncodeUtility : TextUtility {
         override val id: String = "url-encode"
-        override val displayName: String = "URL Encode/Decode"
-        override val description: String = "Encode or decode URL percent-encoded text"
+        override val displayNameRes: Int = R.string.text_utility_url_name
+        override val descriptionRes: Int = R.string.text_utility_url_description
         override val primaryKeyword: String = "url"
         override val keywords: Set<String> = setOf("url", "urlencode", "urldecode", "percent")
-        override val invalidInputHint: String = "url encode hello world → hello%20world"
+        override val invalidInputHintRes: Int = R.string.text_utility_url_example
         override val supportsBothModes: Boolean = true
         override val defaultMode: TransformMode = TransformMode.ENCODE
 
         override fun transform(
             mode: TransformMode,
             text: String,
+            context: Context,
         ): TransformOutcome =
             when (mode) {
-                TransformMode.ENCODE -> encode(text)
-                TransformMode.DECODE -> decode(text)
+                TransformMode.ENCODE -> encode(text, context)
+                TransformMode.DECODE -> decode(text, context)
             }
 
-        private fun encode(text: String): TransformOutcome {
+        private fun encode(
+            text: String,
+            context: Context,
+        ): TransformOutcome {
             if (text.isEmpty()) {
-                return TransformOutcome.InvalidInput("Nothing to encode")
+                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_url_error_nothing_to_encode))
             }
             val encoded = Uri.encode(text)
             return TransformOutcome.Success(encoded)
         }
 
-        private fun decode(text: String): TransformOutcome {
+        private fun decode(
+            text: String,
+            context: Context,
+        ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                return TransformOutcome.InvalidInput("Nothing to decode")
+                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_url_error_nothing_to_decode))
             }
             return try {
                 val decoded = Uri.decode(trimmed)
                 TransformOutcome.Success(decoded)
-            } catch (e: Exception) {
-                TransformOutcome.InvalidInput("Invalid URL-encoded text")
+            } catch (_: Exception) {
+                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_url_error_invalid))
             }
         }
     }
@@ -519,14 +551,14 @@ class TextUtilitiesProvider(
                 UrlEncodeUtility(),
             )
 
-        fun getUtilitiesInfo(): List<TextUtilityInfo> =
+        fun getUtilitiesInfo(context: Context): List<TextUtilityInfo> =
             utilities.map { utility ->
                 TextUtilityInfo(
                     id = utility.id,
-                    displayName = utility.displayName,
-                    description = utility.description,
+                    displayName = utility.displayName(context),
+                    description = utility.description(context),
                     keywords = utility.keywords,
-                    example = utility.invalidInputHint,
+                    example = utility.invalidInputHint(context),
                     supportsBothModes = utility.supportsBothModes,
                     defaultMode =
                         when (utility.defaultMode) {

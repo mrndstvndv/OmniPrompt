@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.core.content.ContextCompat
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -30,7 +31,7 @@ class TermuxProvider(
     private val settingsRepository: SettingsRepository<TermuxSettings>,
 ) : Provider {
     override val id: String = "termux"
-    override val displayName: String = "Termux Commands"
+    override val displayName: String = activity.getString(R.string.provider_termux)
 
     private val isTermuxInstalled: Boolean by lazy {
         activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
@@ -119,7 +120,7 @@ class TermuxProvider(
             val preview = buildCommandPreview(command.executablePath, resolvedArgs)
             ProviderResult(
                 id = "$id:${command.id}",
-                title = if (argsText.isBlank()) command.displayName else "${command.displayName} \"$argsText\"",
+                title = if (argsText.isBlank()) command.displayName else activity.getString(R.string.termux_result_title_with_args, command.displayName, argsText),
                 subtitle = preview,
                 vectorIcon = Icons.Outlined.Terminal,
                 providerId = id,
@@ -179,11 +180,8 @@ class TermuxProvider(
      * Builds a command preview string showing the executable and resolved arguments.
      */
     private fun buildCommandPreview(executablePath: String, resolvedArgs: List<String>): String {
-        return if (resolvedArgs.isEmpty()) {
-            executablePath
-        } else {
-            "$executablePath ${resolvedArgs.joinToString(" ")}"
-        }
+        if (resolvedArgs.isEmpty()) return executablePath
+        return activity.getString(R.string.termux_command_preview, executablePath, resolvedArgs.joinToString(" "))
     }
 
     private suspend fun executeTermuxCommand(
@@ -195,9 +193,9 @@ class TermuxProvider(
             // 1. Check permission first to provide clear feedback
             if (!hasRunCommandPermission(activity)) {
                 Toast.makeText(
-                    activity, 
-                    "Permission denied: Grant 'Run commands in Termux environment' in App Info > Permissions > Additional permissions.", 
-                    Toast.LENGTH_LONG
+                    activity,
+                    activity.getString(R.string.termux_permission_denied_toast),
+                    Toast.LENGTH_LONG,
                 ).show()
                 activity.finish()
                 return@withContext
@@ -272,7 +270,8 @@ class TermuxProvider(
                     }
                 }
             } catch (e: Exception) {
-                Toast.makeText(activity, "Failed to send command: ${e.message}", Toast.LENGTH_LONG).show()
+                val message = e.message ?: activity.getString(R.string.unknown_error)
+                Toast.makeText(activity, activity.getString(R.string.toast_command_failed, message), Toast.LENGTH_LONG).show()
             }
 
             // 6. CRITICAL: Stay in foreground long enough for delivery to complete.

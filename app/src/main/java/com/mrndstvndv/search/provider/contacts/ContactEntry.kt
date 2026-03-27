@@ -1,5 +1,6 @@
 package com.mrndstvndv.search.provider.contacts
 
+import android.content.Context
 import android.provider.ContactsContract
 
 /**
@@ -23,25 +24,14 @@ data class PhoneNumber(
     val label: String?
 ) {
     /**
-     * Returns a human-readable label for this phone number type.
+     * Returns the platform-localized label for this phone number type.
      */
-    fun getTypeLabel(): String {
-        return when (type) {
-            ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
-            ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> "Mobile"
-            ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
-            ContactsContract.CommonDataKinds.Phone.TYPE_FAX_WORK -> "Work Fax"
-            ContactsContract.CommonDataKinds.Phone.TYPE_FAX_HOME -> "Home Fax"
-            ContactsContract.CommonDataKinds.Phone.TYPE_PAGER -> "Pager"
-            ContactsContract.CommonDataKinds.Phone.TYPE_OTHER -> "Other"
-            ContactsContract.CommonDataKinds.Phone.TYPE_CUSTOM -> label ?: "Custom"
-            ContactsContract.CommonDataKinds.Phone.TYPE_MAIN -> "Main"
-            ContactsContract.CommonDataKinds.Phone.TYPE_WORK_MOBILE -> "Work Mobile"
-            ContactsContract.CommonDataKinds.Phone.TYPE_WORK_PAGER -> "Work Pager"
-            ContactsContract.CommonDataKinds.Phone.TYPE_ASSISTANT -> "Assistant"
-            ContactsContract.CommonDataKinds.Phone.TYPE_MMS -> "MMS"
-            else -> "Phone"
-        }
+    fun getTypeLabel(context: Context): String {
+        return ContactsContract.CommonDataKinds.Phone.getTypeLabel(
+            context.resources,
+            type,
+            label,
+        ).toString()
     }
 }
 

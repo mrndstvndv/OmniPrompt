@@ -44,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.mrndstvndv.search.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
@@ -129,7 +131,7 @@ fun BackupRestoreSettingsScreen(
                             Toast
                                 .makeText(
                                     context,
-                                    "Backup saved (${String.format("%.1f", sizeKb)} KB)",
+                                    context.getString(R.string.backup_saved_size, sizeKb),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                         }
@@ -159,7 +161,7 @@ fun BackupRestoreSettingsScreen(
                                 pendingRestoreJson = json
                                 showRestorePreviewDialog = true
                             } else {
-                                Toast.makeText(context, "Invalid backup file", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, context.getString(R.string.backup_invalid_file), Toast.LENGTH_LONG).show()
                             }
                         },
                         onFailure = { error ->
@@ -189,9 +191,9 @@ fun BackupRestoreSettingsScreen(
                         currentSettings.copy(roots = updatedRoots)
                     }
 
-                    Toast.makeText(context, "Permission granted", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.permission_granted), Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Failed to save permission", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.backup_permission_failed), Toast.LENGTH_LONG).show()
                 }
             }
             pendingPermissionRootId = null
@@ -231,15 +233,14 @@ fun BackupRestoreSettingsScreen(
                             is BackupRestoreManager.RestoreResult.Success -> {
                                 restoreSuccessMessage =
                                     buildString {
-                                        append("Restored ")
                                         val parts = mutableListOf<String>()
                                         if (result.settingsRestored > 0) {
-                                            parts.add("${result.settingsRestored} setting group(s)")
+                                            parts.add(context.getString(R.string.backup_restored_setting_groups, result.settingsRestored))
                                         }
                                         if (result.aliasesRestored > 0) {
-                                            parts.add("${result.aliasesRestored} alias(es)")
+                                            parts.add(context.getString(R.string.backup_restored_aliases, result.aliasesRestored))
                                         }
-                                        append(parts.joinToString(", "))
+                                        append(context.getString(R.string.backup_restore_summary, parts.joinToString(", ")))
                                     }
                                 if (result.warnings.isNotEmpty()) {
                                     restoreWarnings = result.warnings
@@ -287,12 +288,12 @@ fun BackupRestoreSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = "Backup & Restore", onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.settings_backup_restore), onBack = onBack)
         }
 
         // Backup Section
         item {
-            SectionTitle(title = "Backup")
+            SectionTitle(title = stringResource(R.string.backup_section_backup))
         }
 
         item {
@@ -304,11 +305,11 @@ fun BackupRestoreSettingsScreen(
                             .padding(horizontal = 20.dp, vertical = 18.dp),
                 ) {
                     Text(
-                        text = "Export Settings",
+                        text = stringResource(R.string.backup_export),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = "Save all settings to a file",
+                        text = stringResource(R.string.backup_export_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -323,9 +324,9 @@ fun BackupRestoreSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (isExporting) {
-                            Text("Exporting...")
+                            Text(stringResource(R.string.backup_exporting))
                         } else {
-                            Text("Export")
+                            Text(stringResource(R.string.backup_export_button))
                         }
                     }
                 }
@@ -334,7 +335,7 @@ fun BackupRestoreSettingsScreen(
 
         // Restore Section
         item {
-            SectionTitle(title = "Restore")
+            SectionTitle(title = stringResource(R.string.backup_section_restore))
         }
 
         item {
@@ -346,11 +347,11 @@ fun BackupRestoreSettingsScreen(
                             .padding(horizontal = 20.dp, vertical = 18.dp),
                 ) {
                     Text(
-                        text = "Import Settings",
+                        text = stringResource(R.string.backup_import),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        text = "Load settings from a backup file",
+                        text = stringResource(R.string.backup_import_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -365,9 +366,9 @@ fun BackupRestoreSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         if (isRestoring) {
-                            Text("Importing...")
+                            Text(stringResource(R.string.backup_importing))
                         } else {
-                            Text("Import")
+                            Text(stringResource(R.string.backup_import_button))
                         }
                     }
                 }
@@ -377,7 +378,7 @@ fun BackupRestoreSettingsScreen(
         // File Search Permissions Section (only show if there are roots)
         if (fileSearchSettings.roots.isNotEmpty()) {
             item {
-                SectionTitle(title = "File Search Permissions")
+                SectionTitle(title = stringResource(R.string.backup_section_file_permissions))
             }
 
             item {
@@ -474,7 +475,7 @@ private fun FileSearchRootRow(
         }
         Icon(
             imageVector = if (hasPermission) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
-            contentDescription = if (hasPermission) "Has permission" else "Needs permission",
+            contentDescription = if (hasPermission) stringResource(R.string.cd_has_permission) else stringResource(R.string.cd_needs_permission),
             tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(24.dp),
         )
@@ -491,7 +492,7 @@ private fun RestorePreviewDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Restore from Backup?",
+                text = stringResource(R.string.backup_restore_confirm),
                 style = MaterialTheme.typography.headlineSmall,
             )
         },
@@ -500,7 +501,7 @@ private fun RestorePreviewDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "Backup from: ${preview.formattedTimestamp()}",
+                    text = stringResource(R.string.backup_from_timestamp, preview.formattedTimestamp()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -508,7 +509,7 @@ private fun RestorePreviewDialog(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "This will restore:",
+                    text = stringResource(R.string.backup_will_restore),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
@@ -518,25 +519,25 @@ private fun RestorePreviewDialog(
                     modifier = Modifier.padding(start = 8.dp),
                 ) {
                     if (preview.webSearchSitesCount > 0) {
-                        BulletPoint("${preview.webSearchSitesCount} web search engine(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_search_engines, preview.webSearchSitesCount))
                     }
                     if (preview.quicklinksCount > 0) {
-                        BulletPoint("${preview.quicklinksCount} quicklink(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_quicklinks, preview.quicklinksCount))
                     }
                     if (preview.aliasesCount > 0) {
-                        BulletPoint("${preview.aliasesCount} alias(es)")
+                        BulletPoint(stringResource(R.string.backup_preview_aliases, preview.aliasesCount))
                     }
                     if (preview.fileSearchRootsCount > 0) {
-                        BulletPoint("${preview.fileSearchRootsCount} file search folder(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_file_folders, preview.fileSearchRootsCount))
                     }
                     if (preview.enabledProvidersCount > 0) {
-                        BulletPoint("${preview.enabledProvidersCount} provider toggle(s)")
+                        BulletPoint(stringResource(R.string.backup_preview_provider_toggles, preview.enabledProvidersCount))
                     }
                     if (preview.hasAppearanceSettings) {
-                        BulletPoint("Appearance settings")
+                        BulletPoint(stringResource(R.string.backup_preview_appearance_settings))
                     }
                     if (preview.hasBehaviorSettings) {
-                        BulletPoint("Behavior settings")
+                        BulletPoint(stringResource(R.string.backup_preview_behavior_settings))
                     }
                 }
 
@@ -548,7 +549,7 @@ private fun RestorePreviewDialog(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            text = "File search folders may require permission requests after restore.",
+                            text = stringResource(R.string.backup_folder_permission_note),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.padding(12.dp),
@@ -559,12 +560,12 @@ private fun RestorePreviewDialog(
         },
         confirmButton = {
             Button(onClick = onConfirm) {
-                Text("Restore")
+                Text(stringResource(R.string.backup_restore))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         },
     )
@@ -580,7 +581,7 @@ private fun RestoreWarningsDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Restore Completed",
+                text = stringResource(R.string.backup_restore_completed),
                 style = MaterialTheme.typography.headlineSmall,
             )
         },
@@ -607,7 +608,7 @@ private fun RestoreWarningsDialog(
                 if (warnings.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Some items had issues:",
+                        text = stringResource(R.string.backup_some_issues),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -628,7 +629,7 @@ private fun RestoreWarningsDialog(
         },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("OK")
+                Text(stringResource(R.string.ok))
             }
         },
     )

@@ -55,7 +55,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import androidx.core.graphics.drawable.toBitmap
 import android.util.Log
 import com.mrndstvndv.search.provider.apps.AppListRepository
@@ -165,8 +167,8 @@ fun IntentSettingsScreen(
         ) {
             item {
                 SettingsHeader(
-                    title = "Intent Launcher",
-                    subtitle = "Launch apps by fuzzy searching titles.",
+                    title = stringResource(R.string.provider_intent_launcher),
+                    subtitle = stringResource(R.string.intent_header_subtitle),
                     onBack = onBack
                 )
             }
@@ -174,13 +176,13 @@ fun IntentSettingsScreen(
             // Intents section
             item {
                 SettingsSection(
-                    title = "Intents",
-                    subtitle = "Define intents to launch apps.",
+                    title = stringResource(R.string.intent_section_intents),
+                    subtitle = stringResource(R.string.intent_section_intents_subtitle),
                 ) {
                     SettingsGroup {
                         if (configs.isEmpty()) {
                             Text(
-                                text = "No intents configured. Add your first intent.",
+                                text = stringResource(R.string.intent_no_configured),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(20.dp),
@@ -211,7 +213,7 @@ fun IntentSettingsScreen(
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "Add Intent")
+                            Text(text = stringResource(R.string.intent_add))
                         }
                     }
                 }
@@ -220,45 +222,43 @@ fun IntentSettingsScreen(
             // Info section
             item {
                 SettingsSection(
-                    title = "About",
-                    subtitle = "How intent matching works.",
+                    title = stringResource(R.string.about),
+                    subtitle = stringResource(R.string.intent_about_subtitle),
                 ) {
                     SettingsGroup {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(
-                                text = "Usage:",
+                                text = stringResource(R.string.intent_usage),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Type keywords to fuzzy match intent titles, followed by text or a URL to launch.",
+                                text = stringResource(R.string.intent_usage_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Examples:",
+                                text = stringResource(R.string.intent_examples),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "• ytdl https://youtube.com/watch?v=... → Opens in YTDLnis\n" +
-                                        "• open https://google.com → Opens in browser\n" +
-                                        "• share Check this out! → Opens share sheet",
+                                text = stringResource(R.string.intent_examples_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Custom extras:",
+                                text = stringResource(R.string.intent_custom_extras),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Use \$query in extra value to include the payload text.",
+                                text = stringResource(R.string.intent_custom_extras_detail),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -311,7 +311,11 @@ private fun IntentConfigRow(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${config.action.substringAfterLast(".")} • ${config.packageName.ifEmpty { "System" }}",
+                text = stringResource(
+                    R.string.intent_action_package,
+                    config.action.substringAfterLast("."),
+                    config.packageName.ifEmpty { stringResource(R.string.intent_system) },
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -339,6 +343,7 @@ private fun IntentConfigAddDialog(
     var mimeType by remember { mutableStateOf<String?>(null) }
     var payloadTemplate by remember { mutableStateOf<String?>(null) }
     var extras by remember { mutableStateOf(listOf<IntentExtra>()) }
+    val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
 
     when (currentStep) {
         AddDialogStep.AppSelection -> {
@@ -349,7 +354,7 @@ private fun IntentConfigAddDialog(
                     if (app.packageName.isEmpty()) {
                         // Manual entry - skip to config
                         currentStep = AddDialogStep.Configuration
-                        selectedIntent = IntentOption("android.intent.action.SEND", "Share content")
+                        selectedIntent = IntentOption("android.intent.action.SEND", context.getString(R.string.intent_share_content))
                         title = ""
                     } else {
                         currentStep = AddDialogStep.IntentSelection
@@ -377,7 +382,7 @@ private fun IntentConfigAddDialog(
             var manualAction by remember { mutableStateOf("android.intent.action.SEND") }
 
             IntentConfigDialogContent(
-                title = if (selectedApp!!.packageName.isEmpty()) "Manual Intent" else "Configure Intent",
+                title = if (selectedApp!!.packageName.isEmpty()) stringResource(R.string.intent_manual_intent) else stringResource(R.string.intent_configure),
                 title_ = title,
                 onTitleChange = { title = it },
                 packageName = selectedApp!!.packageName.ifEmpty { manualPackageName },
@@ -387,6 +392,7 @@ private fun IntentConfigAddDialog(
                 type = mimeType ?: "",
                 onTypeChange = { mimeType = it },
                 typeOptions = selectedIntent?.mimeTypes ?: emptyList(),
+                anyMimeTypeLabel = anyMimeTypeLabel,
                 payloadTemplate = payloadTemplate ?: "",
                 onPayloadTemplateChange = { payloadTemplate = it.takeIf { it.isNotBlank() } },
                 extras = extras,
@@ -401,7 +407,7 @@ private fun IntentConfigAddDialog(
                         title = title.trim(),
                         packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
                         action = selectedIntent?.action ?: manualAction,
-                        type = mimeType?.takeIf { it != "(any)" },
+                        type = mimeType?.takeIf { it != anyMimeTypeLabel },
                         payloadTemplate = payloadTemplate?.trim(),
                         extras = extras
                     ))
@@ -417,6 +423,7 @@ private fun AppSelectionStep(
     onAppSelected: (AppInfo) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     
     val appsState by produceState<List<AppInfo>?>(initialValue = null) {
@@ -448,11 +455,11 @@ private fun AppSelectionStep(
         title = {
             Column {
                 Text(
-                    text = "Select App",
+                    text = stringResource(R.string.intent_select_app),
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Apps that support share/view/sendto",
+                    text = stringResource(R.string.intent_select_app_subtitle),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -461,7 +468,7 @@ private fun AppSelectionStep(
         buttons = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         },
@@ -470,7 +477,7 @@ private fun AppSelectionStep(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search apps...") },
+                    placeholder = { Text(stringResource(R.string.search_apps_placeholder)) },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -478,17 +485,17 @@ private fun AppSelectionStep(
                 
                 if (appsState == null) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text("Searching for apps...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.intent_searching_apps), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else if (filteredApps.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("No compatible apps found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.intent_no_compatible_apps), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(modifier = Modifier.height(16.dp))
                             TextButton(onClick = { 
-                                onAppSelected(AppInfo("", "Manual Entry", null))
+                                onAppSelected(AppInfo("", context.getString(R.string.intent_manual_entry), null))
                             }) {
-                                Text("Configure manually")
+                                Text(stringResource(R.string.intent_configure_manually))
                             }
                         }
                     }
@@ -548,7 +555,7 @@ private fun IntentSelectionStep(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
                 Text(
                     text = app.name,
@@ -559,13 +566,13 @@ private fun IntentSelectionStep(
         buttons = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         },
         content = {
             Text(
-                text = "Select an intent this app supports:",
+                text = stringResource(R.string.intent_select_supported_intent),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -590,7 +597,7 @@ private fun IntentSelectionStep(
                 }
                 
                 if (intents.isEmpty()) {
-                    Text("No compatible intents found for this app.", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.intent_no_compatible_intents), color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -621,6 +628,7 @@ private fun IntentConfigEditDialog(
     var mimeType by remember { mutableStateOf(config.type ?: "") }
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
+    val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
 
     val canSave = title.isNotBlank()
 
@@ -630,7 +638,7 @@ private fun IntentConfigEditDialog(
             config.copy(
                 title = title.trim(),
                 action = action,
-                type = mimeType.takeIf { it.isNotBlank() && it != "(any)" },
+                type = mimeType.takeIf { it.isNotBlank() && it != anyMimeTypeLabel },
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
                 extras = extras
             )
@@ -638,14 +646,15 @@ private fun IntentConfigEditDialog(
     }
 
     IntentConfigDialogContent(
-        title = "Edit Intent",
+        title = stringResource(R.string.intent_edit),
         title_ = title,
         onTitleChange = { title = it },
         packageName = config.packageName,
         action = action,
         type = mimeType,
         onTypeChange = { mimeType = it },
-        typeOptions = (currentIntentOption?.mimeTypes ?: emptyList()) + listOf("(any)"),
+        typeOptions = currentIntentOption?.mimeTypes ?: emptyList(),
+        anyMimeTypeLabel = anyMimeTypeLabel,
         payloadTemplate = payloadTemplate,
         onPayloadTemplateChange = { payloadTemplate = it },
         extras = extras,
@@ -672,6 +681,7 @@ private fun IntentConfigDialogContent(
     type: String,
     onTypeChange: (String) -> Unit,
     typeOptions: List<String>,
+    anyMimeTypeLabel: String,
     payloadTemplate: String,
     onPayloadTemplateChange: (String) -> Unit,
     extras: List<IntentExtra>,
@@ -699,7 +709,7 @@ private fun IntentConfigDialogContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
                 Text(
@@ -717,7 +727,7 @@ private fun IntentConfigDialogContent(
                 if (showRemove) {
                     TextButton(onClick = onRemove) {
                         Text(
-                            text = "Remove",
+                            text = stringResource(R.string.remove),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -727,14 +737,14 @@ private fun IntentConfigDialogContent(
 
                 Row {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = onSave,
                         enabled = canSave,
                     ) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -747,9 +757,9 @@ private fun IntentConfigDialogContent(
                 OutlinedTextField(
                     value = title_,
                     onValueChange = onTitleChange,
-                    label = { Text("Title *") },
-                    placeholder = { Text("Instagram") },
-                    supportingText = { Text("Display name for fuzzy matching") },
+                    label = { Text(stringResource(R.string.intent_label_title)) },
+                    placeholder = { Text(stringResource(R.string.intent_placeholder_title)) },
+                    supportingText = { Text(stringResource(R.string.intent_supporting_title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -757,10 +767,10 @@ private fun IntentConfigDialogContent(
                 OutlinedTextField(
                     value = packageName,
                     onValueChange = onPackageNameChange,
-                    label = { Text("Package Name (optional)") },
-                    placeholder = { Text("com.example.app") },
+                    label = { Text(stringResource(R.string.intent_label_package)) },
+                    placeholder = { Text(stringResource(R.string.intent_placeholder_package)) },
                     readOnly = packageName.isNotEmpty() && onPackageNameChange == {},
-                    supportingText = { Text("Leave empty for system share/view") },
+                    supportingText = { Text(stringResource(R.string.intent_supporting_package)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -770,7 +780,7 @@ private fun IntentConfigDialogContent(
                         value = action.substringAfterLast("."),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Action (auto-selected)") },
+                        label = { Text(stringResource(R.string.intent_label_action_auto)) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {
@@ -782,7 +792,7 @@ private fun IntentConfigDialogContent(
                             value = action.substringAfterLast("."),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Action") },
+                            label = { Text(stringResource(R.string.intent_label_action)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = actionExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -810,10 +820,10 @@ private fun IntentConfigDialogContent(
                     onExpandedChange = { typeExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = type.ifEmpty { "(any)" },
+                        value = type.ifEmpty { anyMimeTypeLabel },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("MIME Type") },
+                        label = { Text(stringResource(R.string.intent_label_mime_type)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -823,7 +833,7 @@ private fun IntentConfigDialogContent(
                         expanded = typeExpanded,
                         onDismissRequest = { typeExpanded = false }
                     ) {
-                        val options = (typeOptions + listOf("text/plain", "text/*", "*/*", "(any)")).distinct()
+                        val options = (typeOptions + listOf("text/plain", "text/*", "*/*", anyMimeTypeLabel)).distinct()
                         options.forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },
@@ -839,14 +849,14 @@ private fun IntentConfigDialogContent(
                 OutlinedTextField(
                     value = payloadTemplate,
                     onValueChange = onPayloadTemplateChange,
-                    label = { Text("Payload Template (optional)") },
-                    placeholder = { Text("yabai \$query") },
-                    supportingText = { Text("💡 \$query = user input after title") },
+                    label = { Text(stringResource(R.string.intent_label_payload_template)) },
+                    placeholder = { Text(stringResource(R.string.intent_placeholder_payload)) },
+                    supportingText = { Text(stringResource(R.string.intent_supporting_payload)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Text("Custom Extras", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.intent_custom_extras_label), style = MaterialTheme.typography.titleSmall)
                 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     extras.forEachIndexed { index, extra ->
@@ -863,7 +873,7 @@ private fun IntentConfigDialogContent(
                                         }
                                         onExtrasChange(newExtras)
                                     },
-                                    label = { Text("Extra Key") },
+                                    label = { Text(stringResource(R.string.intent_label_extra_key)) },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -876,7 +886,7 @@ private fun IntentConfigDialogContent(
                                         }
                                         onExtrasChange(newExtras)
                                     },
-                                    label = { Text("Extra Value") },
+                                    label = { Text(stringResource(R.string.intent_label_extra_value)) },
                                     singleLine = true,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -884,7 +894,7 @@ private fun IntentConfigDialogContent(
                             IconButton(onClick = {
                                 onExtrasChange(extras.toMutableList().apply { removeAt(index) })
                             }) {
-                                Icon(Icons.Outlined.Delete, contentDescription = "Remove Extra", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.cd_remove_extra), tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -894,7 +904,7 @@ private fun IntentConfigDialogContent(
                     }) {
                         Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Extra")
+                        Text(stringResource(R.string.intent_add_extra))
                     }
                 }
             }

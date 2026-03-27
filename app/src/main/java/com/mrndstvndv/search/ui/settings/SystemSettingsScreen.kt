@@ -35,7 +35,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
@@ -81,14 +84,14 @@ fun SystemSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = "System Settings", onBack = onBack)
+            SettingsHeader(title = stringResource(R.string.provider_system_settings), onBack = onBack)
         }
 
         item {
             SettingsGroup {
                 SettingsSwitch(
-                    title = "Developer options toggle",
-                    subtitle = "Enable toggling developer options from search results",
+                    title = stringResource(R.string.system_developer_toggle),
+                    subtitle = stringResource(R.string.system_developer_toggle_subtitle),
                     checked = systemSettings.developerToggleEnabled,
                     onCheckedChange = { enabled ->
                         repository.update { it.copy(developerToggleEnabled = enabled) }
@@ -132,29 +135,29 @@ private fun PermissionStatusCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Permission Status",
+                text = stringResource(R.string.system_permission_status),
                 style = MaterialTheme.typography.titleMedium,
             )
 
             when {
                 permissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.ADB -> {
                     ReadyStatusRow(
-                        title = "ADB Permission Granted",
-                        subtitle = "Ready to toggle developer options",
+                        title = stringResource(R.string.system_status_adb_granted),
+                        subtitle = stringResource(R.string.system_status_ready_toggle),
                     )
                 }
 
                 permissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.ROOT -> {
                     ReadyStatusRow(
-                        title = "Root Access Detected",
-                        subtitle = "Ready to toggle developer options",
+                        title = stringResource(R.string.system_status_root_detected),
+                        subtitle = stringResource(R.string.system_status_ready_toggle),
                     )
                 }
 
                 permissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.SHIZUKU -> {
                     ReadyStatusRow(
-                        title = "Shizuku Connected",
-                        subtitle = "Ready to toggle developer options",
+                        title = stringResource(R.string.system_status_shizuku_connected),
+                        subtitle = stringResource(R.string.system_status_ready_toggle),
                     )
                 }
 
@@ -230,11 +233,11 @@ private fun ShizukuPermissionCard(onRequestPermission: () -> Unit) {
             }
             Column {
                 Text(
-                    text = "Shizuku Available",
+                    text = stringResource(R.string.system_shizuku_available),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = "Permission required to use this feature",
+                    text = stringResource(R.string.system_permission_required_feature),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -244,13 +247,15 @@ private fun ShizukuPermissionCard(onRequestPermission: () -> Unit) {
             onClick = onRequestPermission,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Grant Shizuku Permission")
+            Text(stringResource(R.string.system_settings_grant_shizuku))
         }
     }
 }
 
 @Composable
 private fun AdbInstructionsCard() {
+    val context = LocalContext.current
+
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -272,11 +277,11 @@ private fun AdbInstructionsCard() {
             }
             Column {
                 Text(
-                    text = "Permission Required",
+                    text = stringResource(R.string.system_permission_required),
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = "Grant via ADB or install Shizuku",
+                    text = stringResource(R.string.system_grant_adb_shizuku),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -284,7 +289,7 @@ private fun AdbInstructionsCard() {
         }
 
         Text(
-            text = "Run this command via ADB:",
+            text = stringResource(R.string.system_adb_command),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -296,7 +301,7 @@ private fun AdbInstructionsCard() {
         ) {
             SelectionContainer {
                 Text(
-                    text = "adb shell pm grant com.mrndstvndv.search android.permission.WRITE_SECURE_SETTINGS",
+                    text = stringResource(R.string.system_adb_command_value, context.packageName),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(12.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -305,7 +310,7 @@ private fun AdbInstructionsCard() {
         }
 
         Text(
-            text = "Or install Shizuku from Play Store for a permanent solution without a computer.",
+            text = stringResource(R.string.system_install_shizuku),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
