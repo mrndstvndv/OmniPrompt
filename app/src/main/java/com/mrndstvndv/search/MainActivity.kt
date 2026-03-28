@@ -742,10 +742,13 @@ class MainActivity : ComponentActivity() {
                                                         indication = null,
                                                         onClick = {
                                                             val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                                             startActivity(intent)
+                                                            finish()
                                                         },
                                                         onLongClick = {
-                                                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                                                            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                                            finish()
                                                         },
                                                     ),
                                             )
@@ -776,10 +779,13 @@ class MainActivity : ComponentActivity() {
                                         showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                         onSettingsClick = {
                                             val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                             startActivity(intent)
+                                            finish()
                                         },
                                         onSettingsLongClick = {
-                                            startActivity(Intent(Settings.ACTION_SETTINGS))
+                                            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                            finish()
                                         },
                                     ) {
                                         AppListSection(
@@ -847,10 +853,13 @@ class MainActivity : ComponentActivity() {
                                                     indication = null,
                                                     onClick = {
                                                         val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                                         startActivity(intent)
+                                                        finish()
                                                     },
                                                     onLongClick = {
-                                                        startActivity(Intent(Settings.ACTION_SETTINGS))
+                                                        startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                                        finish()
                                                     },
                                                 ),
                                         )
@@ -881,10 +890,13 @@ class MainActivity : ComponentActivity() {
                                     showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                     onSettingsClick = {
                                         val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         startActivity(intent)
+                                        finish()
                                     },
                                     onSettingsLongClick = {
-                                        startActivity(Intent(Settings.ACTION_SETTINGS))
+                                        startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                        finish()
                                     },
                                 ) {
                                     AppListSection(
