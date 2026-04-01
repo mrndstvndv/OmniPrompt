@@ -119,7 +119,8 @@ fun SearchField(
     val latestValue = rememberUpdatedState(value)
     val latestOnBackspaceAtStart = rememberUpdatedState(onBackspaceAtStart)
 
-    fun isCursorAtStart(currentValue: TextFieldValue): Boolean {
+    fun canDismissTriggerWithBackspace(currentValue: TextFieldValue): Boolean {
+        if (currentValue.text.isNotEmpty()) return false
         val selection = currentValue.selection
         return selection.start == 0 && selection.end == 0
     }
@@ -127,7 +128,7 @@ fun SearchField(
     val effectiveModifier = modifier.onPreviewKeyEvent { event ->
         val callback = latestOnBackspaceAtStart.value ?: return@onPreviewKeyEvent false
         if (event.key != Key.Backspace) return@onPreviewKeyEvent false
-        if (!isCursorAtStart(latestValue.value)) return@onPreviewKeyEvent false
+        if (!canDismissTriggerWithBackspace(latestValue.value)) return@onPreviewKeyEvent false
         callback()
         true
     }
@@ -204,7 +205,7 @@ fun SearchField(
                 object : InputConnectionWrapper(inputConnection, false) {
                     private fun handleBackspace(): Boolean {
                         val callback = latestOnBackspaceAtStart.value ?: return false
-                        if (!isCursorAtStart(latestValue.value)) return false
+                        if (!canDismissTriggerWithBackspace(latestValue.value)) return false
                         view.post(callback)
                         return true
                     }

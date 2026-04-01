@@ -9,7 +9,10 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerInvocation
+import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
+import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -35,17 +38,18 @@ class IntentProvider(
                 label = config.title,
                 vectorIcon = Icons.Outlined.Share,
                 resultPolicy = TriggerResultPolicy.EXCLUSIVE,
-                execute = { payload -> executeIntentTrigger(config.id, payload) },
+                execute = { invocation -> executeIntentTrigger(config.id, invocation) },
             )
         }
 
     private suspend fun executeIntentTrigger(
         configId: String,
-        payload: String,
+        invocation: TriggerInvocation,
     ): List<ProviderResult> {
         val settings = settingsRepository.value
         val config = settings.configs.firstOrNull { it.id == configId } ?: return emptyList()
 
+        val payload = invocation.payload
         val systemLabel = activity.getString(R.string.intent_system)
         val targetLabel = config.packageName.ifEmpty { systemLabel }
         val subtitle = if (payload.isNotEmpty()) {
@@ -57,14 +61,15 @@ class IntentProvider(
         }
 
         return listOf(
-            ProviderResult(
+            createTriggerResult(
+                invocation = invocation,
                 id = "$id:${config.id}",
                 title = config.title,
                 subtitle = subtitle,
                 vectorIcon = Icons.Outlined.Share,
                 providerId = id,
+                triggerId = config.id,
                 onSelect = { executeIntent(config, payload) },
-                keepOverlayUntilExit = true,
             )
         )
     }
@@ -89,9 +94,8 @@ class IntentProvider(
         val configs = settings.configs
         if (configs.isEmpty()) return emptyList()
 
-        // Extract first word for matching
-        val spaceIndex = cleaned.indexOf(' ')
-        val searchTerm = if (spaceIndex > 0) cleaned.substring(0, spaceIndex) else cleaned
+        val parsedTrigger = TriggerParser.parse(cleaned)
+        val searchTerm = parsedTrigger.firstToken
 
         // Fuzzy match first word against titles
         val scored = configs.mapNotNull { config ->
@@ -105,8 +109,7 @@ class IntentProvider(
 
         if (scored.isEmpty()) return emptyList()
 
-        // Use remaining text after the first word as raw payload
-        val rawPayload = if (spaceIndex > 0) cleaned.substring(spaceIndex + 1).trim() else ""
+        val rawPayload = parsedTrigger.payload.trim()
         
         val systemLabel = activity.getString(R.string.intent_system)
         val payloadHint = activity.getString(R.string.intent_payload_required_hint)

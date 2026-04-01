@@ -14,7 +14,10 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerInvocation
+import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
+import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
@@ -33,7 +36,7 @@ class WebSearchProvider(
 
     override val triggers: List<SearchTrigger>
         get() {
-            val settings = settingsRepository.value
+            val settings = settingsRepository.value.normalized()
             val defaultId = settings.defaultSiteId
             return settings.sites
                 .filter { it.enabled && it.id != defaultId }
@@ -44,18 +47,18 @@ class WebSearchProvider(
                         label = site.displayName,
                         vectorIcon = Icons.Outlined.Search,
                         resultPolicy = TriggerResultPolicy.INCLUDE_OWNER_RESULTS,
-                        execute = { payload -> executeSiteTrigger(site.id, payload) },
+                        execute = { invocation -> executeSiteTrigger(site.id, invocation) },
                     )
                 }
         }
 
     private suspend fun executeSiteTrigger(
         siteId: String,
-        payload: String,
+        invocation: TriggerInvocation,
     ): List<ProviderResult> {
-        val settings = settingsRepository.value
+        val settings = settingsRepository.value.normalized()
         val site = settings.sites.firstOrNull { it.id == siteId } ?: return emptyList()
-        val queryText = payload.ifBlank { "" }
+        val queryText = invocation.payload
         val searchUrl = site.buildUrl(queryText)
         val action: suspend () -> Unit = {
             withContext(Dispatchers.Main) {
@@ -65,15 +68,15 @@ class WebSearchProvider(
             }
         }
         return listOf(
-            ProviderResult(
+            createTriggerResult(
+                invocation = invocation,
                 id = "$id:${site.id}:${queryText.hashCode()}",
                 title = activity.getString(R.string.web_search_result_title, queryText),
                 subtitle = site.displayName,
                 providerId = id,
+                triggerId = site.id,
                 onSelect = action,
                 aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
-                keepOverlayUntilExit = true,
-                frequencyKey = "$id:${site.id}",
             )
         )
     }
@@ -88,7 +91,7 @@ class WebSearchProvider(
         val cleaned = query.trimmedText
         if (cleaned.isBlank()) return emptyList()
 
-        val settings = settingsRepository.value
+        val settings = settingsRepository.value.normalized()
 
         // 1. Match quicklinks first (prioritized)
         val quicklinkResults = matchQuicklinks(cleaned, settings.quicklinks)
@@ -192,11 +195,9 @@ class WebSearchProvider(
         val sites = settings.sites.filter { it.enabled }
         if (sites.isEmpty()) return emptyList()
 
-        val defaultSite = sites.firstOrNull { it.id == settings.defaultSiteId } ?: sites.first()
-        // Use first word (space-separated) as trigger token
-        val trimmedOriginal = query.originalText.trimStart()
-        val firstSpace = trimmedOriginal.indexOf(' ')
-        val triggerToken = if (firstSpace == -1) trimmedOriginal else trimmedOriginal.substring(0, firstSpace)
+        val defaultSite = settings.effectiveDefaultSite() ?: return emptyList()
+        val parsedTrigger = TriggerParser.parse(query.originalText)
+        val triggerToken = parsedTrigger.firstToken
 
         // Use fuzzy matching for trigger tokens and keep matched indices for highlighting
         val triggerMatchMap: Map<String, com.mrndstvndv.search.util.FuzzyMatchResult> =
@@ -214,7 +215,7 @@ class WebSearchProvider(
 
         val triggerMatches = triggerMatchMap.keys.mapNotNull { id -> sites.firstOrNull { it.id == id } }
 
-        val searchTerms = dropTriggerToken(cleaned, triggerToken).ifBlank { cleaned }.trim()
+        val searchTerms = parsedTrigger.payload.ifBlank { cleaned }.trim()
         val visibleSites =
             if (triggerMatches.isEmpty()) {
                 listOf(defaultSite)
@@ -252,22 +253,6 @@ class WebSearchProvider(
                 frequencyQuery = triggerToken,
             )
         }
-    }
-
-    private fun dropTriggerToken(
-        queryText: String,
-        triggerToken: String,
-    ): String {
-        if (triggerToken.isBlank()) return queryText.trimStart()
-        val trimmed = queryText.trimStart()
-        val lowerTrimmed = trimmed.lowercase()
-        val lowerToken = triggerToken.lowercase()
-        if (!lowerTrimmed.startsWith(lowerToken)) return trimmed
-        if (trimmed.length > triggerToken.length) {
-            val boundary = trimmed[triggerToken.length]
-            if (!boundary.isWhitespace()) return trimmed
-        }
-        return trimmed.substring(triggerToken.length).trimStart()
     }
 
     private companion object {

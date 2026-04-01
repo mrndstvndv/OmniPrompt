@@ -10,6 +10,14 @@ enum class TriggerResultPolicy {
     INCLUDE_ALL_RESULTS,
 }
 
+data class TriggerInvocation(
+    val matchedToken: String,
+    val payload: String,
+) {
+    val frequencyQuery: String
+        get() = matchedToken
+}
+
 class SearchTrigger private constructor(
     val id: String,
     val ownerProviderId: String,
@@ -19,11 +27,14 @@ class SearchTrigger private constructor(
     val iconLoader: (suspend () -> Bitmap?)? = null,
     val resultPolicy: TriggerResultPolicy = TriggerResultPolicy.EXCLUSIVE,
     private val matchLogic: (SearchTrigger, String) -> TriggerMatch?,
-    private val executeLogic: suspend (String) -> List<ProviderResult>,
+    private val executeLogic: suspend (TriggerInvocation) -> List<ProviderResult>,
 ) {
     fun match(firstToken: String): TriggerMatch? = matchLogic(this, firstToken)
 
-    suspend fun execute(payload: String): List<ProviderResult> = executeLogic(payload)
+    suspend fun execute(
+        matchedToken: String,
+        payload: String,
+    ): List<ProviderResult> = executeLogic(TriggerInvocation(matchedToken = matchedToken, payload = payload))
 
     companion object {
         fun create(
@@ -35,7 +46,7 @@ class SearchTrigger private constructor(
             iconLoader: (suspend () -> Bitmap?)? = null,
             resultPolicy: TriggerResultPolicy = TriggerResultPolicy.EXCLUSIVE,
             matchLogic: ((SearchTrigger, String) -> TriggerMatch?)? = null,
-            execute: suspend (String) -> List<ProviderResult>,
+            execute: suspend (TriggerInvocation) -> List<ProviderResult>,
         ): SearchTrigger =
             SearchTrigger(
                 id = id,

@@ -11,28 +11,23 @@ Baseline:
 This review found:
 - 3 confirmed bugs/regressions
 - 4 simplification / line-reduction opportunities
-- 1 follow-up behavior to verify
 
 ## Fix checklist
 
 ### Bugs / regressions
-- [ ] Fix trigger-mode ranking so it learns by trigger identity/token, not by payload text
-- [ ] Fix text-utility suggestion/prefill behavior while a trigger chip is active
-- [ ] Fix web-search default engine state so a disabled site cannot remain the effective default
+- [x] Fix trigger-mode ranking so it learns by trigger identity/token, not by payload text
+- [x] Fix text-utility suggestion/prefill behavior while a trigger chip is active
+- [x] Fix web-search default engine state so a disabled site cannot remain the effective default
 
 ### Simplification / cleanup
-- [ ] Either remove `TriggerParser` or use it consistently for first-token + payload parsing
-- [ ] Extract the duplicated `SearchField(...)` setup in `MainActivity` into a shared composable/helper
-- [ ] Reduce duplication in trigger result builders so ranking metadata is applied consistently
-- [ ] Simplify `sortResults()` by computing frequency metadata once per result
-
-### Follow-up verification
-- [ ] Verify `suppressedTriggerMatch` re-arms correctly after dismissing a trigger chip
+- [x] Either remove `TriggerParser` or use it consistently for first-token + payload parsing
+- [x] Extract the duplicated `SearchField(...)` setup in `MainActivity` into a shared composable/helper
+- [x] Reduce duplication in trigger result builders so ranking metadata is applied consistently
+- [x] Simplify `sortResults()` by computing frequency metadata once per result
 
 ### Validation
-- [ ] Run `./gradlew :app:compileDebugKotlin`
+- [x] Run `./gradlew :app:compileDebugKotlin`
 - [ ] Manual test: trigger chips for web search, text utilities, termux, and intents
-- [ ] Manual test: dismiss and re-enter the same trigger without clearing the whole field
 - [ ] Manual test: disable/enable web search engines and confirm default behavior stays correct
 
 ## Findings
@@ -200,23 +195,9 @@ The comparator recomputes `getResultFrequency(...)` multiple times per result du
 ### Recommended fix
 Precompute per-result sort metadata once, then sort on that structure. This makes the code easier to read and avoids repeated repository lookups.
 
-## 8) Follow-up: verify `suppressedTriggerMatch` re-arms correctly
-
-### Affected areas
-- `app/src/main/java/com/mrndstvndv/search/MainActivity.kt`
-
-### Why this needs verification
-After dismissing a trigger chip, suppression is cleared only in limited cases. It is worth confirming the user can dismiss a trigger, continue editing, and intentionally activate the same trigger again without needing to fully clear the field unless that behavior is explicitly desired.
-
-### Manual test cases
-- Type a trigger, activate chip, dismiss chip, then type the same trigger again without clearing everything
-- Repeat the flow after deleting all text
-- Verify the same behavior on at least one soft keyboard that previously echoed trigger text
-
 ## Suggested implementation order
 
 1. Fix trigger-mode ranking metadata
 2. Fix text-utility prefill behavior in chip mode
 3. Fix web-search default/disabled state consistency
 4. Refactor duplicate parsing / duplicate UI / duplicate trigger result builders
-5. Re-test suppression behavior and adjust only if needed

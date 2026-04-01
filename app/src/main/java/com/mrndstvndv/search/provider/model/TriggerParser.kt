@@ -13,10 +13,20 @@ object TriggerParser {
      */
     fun parse(text: String): ParsedTrigger {
         val trimmed = text.trimStart()
-        val spaceIndex = trimmed.indexOf(' ')
-        val firstToken = if (spaceIndex == -1) trimmed else trimmed.substring(0, spaceIndex)
-        val payload = if (spaceIndex == -1) "" else trimmed.substring(spaceIndex + 1).trim()
-        return ParsedTrigger(firstToken = firstToken, payload = payload)
+        val separatorIndex = trimmed.indexOfFirst { it.isWhitespace() }
+        if (separatorIndex == -1) {
+            return ParsedTrigger(
+                firstToken = trimmed,
+                payload = "",
+                hasPayloadSeparator = false,
+            )
+        }
+
+        return ParsedTrigger(
+            firstToken = trimmed.substring(0, separatorIndex),
+            payload = trimmed.substring(separatorIndex + 1).trimStart(),
+            hasPayloadSeparator = true,
+        )
     }
 }
 
@@ -26,6 +36,8 @@ object TriggerParser {
 data class ParsedTrigger(
     /** The first whitespace-delimited token (potential trigger). */
     val firstToken: String,
-    /** Everything after the first token, trimmed. Empty if no payload. */
+    /** Everything after the first token, with only leading separator whitespace removed. */
     val payload: String,
+    /** True when the original text contained whitespace after the first token. */
+    val hasPayloadSeparator: Boolean,
 )

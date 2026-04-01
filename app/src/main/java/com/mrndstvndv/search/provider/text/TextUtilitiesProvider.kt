@@ -17,8 +17,10 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerInvocation
 import com.mrndstvndv.search.provider.model.TriggerMatch
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
+import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
@@ -60,7 +62,7 @@ class TextUtilitiesProvider(
                                 matchedIndices = emptyList(),
                             )
                         },
-                        execute = { payload -> executeUtilityTrigger(utility.id, payload) },
+                        execute = { invocation -> executeUtilityTrigger(utility.id, invocation) },
                     )
                 }
         }
@@ -95,18 +97,18 @@ class TextUtilitiesProvider(
 
     private suspend fun executeUtilityTrigger(
         utilityId: String,
-        payload: String,
+        invocation: TriggerInvocation,
     ): List<ProviderResult> {
         val utility = utilities.firstOrNull { it.id == utilityId } ?: return emptyList()
         val settings = settingsRepository.value
 
-        val (mode, cleanPayload) = parseModeFromPayload(payload, utility, settings)
+        val (mode, cleanPayload) = parseModeFromPayload(invocation.payload, utility, settings)
         if (cleanPayload.isBlank()) {
-            return listOf(buildSuggestionResult(utility, mode))
+            return listOf(buildSuggestionResult(utility, mode, includePrefill = false))
         }
 
         return when (val outcome = utility.transform(mode, cleanPayload, activity)) {
-            is TransformOutcome.Success -> listOf(buildSuccessResult(utility, mode, cleanPayload, outcome, settings))
+            is TransformOutcome.Success -> listOf(buildSuccessResult(invocation, utility, mode, cleanPayload, outcome, settings))
             is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(utility, mode, cleanPayload, outcome))
         }
     }
@@ -140,6 +142,7 @@ class TextUtilitiesProvider(
     }
 
     private fun buildSuccessResult(
+        invocation: TriggerInvocation,
         utility: TextUtility,
         mode: TransformMode,
         payload: String,
@@ -165,11 +168,13 @@ class TextUtilitiesProvider(
                 }
             }
         }
-        return ProviderResult(
+        return createTriggerResult(
+            invocation = invocation,
             id = "$id:${utility.id}:${mode.name}:${payload.hashCode()}",
             title = preview,
             subtitle = subtitle,
             providerId = id,
+            triggerId = utility.id,
             extras =
                 mapOf(
                     EXTRA_UTILITY_ID to utility.id,
@@ -178,7 +183,6 @@ class TextUtilitiesProvider(
                 ),
             onSelect = action,
             keepOverlayUntilExit = autoLaunchUri != null,
-            frequencyKey = "$id:${utility.id}",
         )
     }
 
@@ -203,15 +207,24 @@ class TextUtilitiesProvider(
         )
     }
 
-    private fun buildSuggestionResult(utility: TextUtility, mode: TransformMode): ProviderResult {
+    private fun buildSuggestionResult(
+        utility: TextUtility,
+        mode: TransformMode,
+        includePrefill: Boolean = true,
+    ): ProviderResult {
         val instruction = buildActionSubtitle(utility, mode)
-        val prefill = "${utility.primaryKeyword} "
+        val extras =
+            if (includePrefill) {
+                mapOf(PREFILL_QUERY_EXTRA to "${utility.primaryKeyword} ")
+            } else {
+                emptyMap()
+            }
         return ProviderResult(
             id = "$id:${utility.id}:suggest:${mode.name}:${utility.primaryKeyword.hashCode()}",
             title = utility.displayName(activity),
             subtitle = instruction,
             providerId = id,
-            extras = mapOf(PREFILL_QUERY_EXTRA to prefill),
+            extras = extras,
             excludeFromFrequencyRanking = true,
         )
     }
