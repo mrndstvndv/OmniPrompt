@@ -1,6 +1,8 @@
 package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
+import android.view.KeyEvent as AndroidKeyEvent
+import android.view.inputmethod.InputConnectionWrapper
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,13 +35,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.platform.PlatformTextInputInterceptor
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.TriggerProvider
@@ -85,6 +95,7 @@ fun findTriggerMatch(
  * decoration around it so the IME/editor state stays stable when the trigger
  * chip appears or disappears.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SearchField(
     value: TextFieldValue,
@@ -96,6 +107,7 @@ fun SearchField(
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    onBackspaceAtStart: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(50)
@@ -107,65 +119,137 @@ fun SearchField(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val textColor = colors.textColor(enabled = true, isError = false, focused = isFocused)
     val placeholderColor = colors.placeholderColor(enabled = true, isError = false, focused = isFocused)
+    val latestValue = rememberUpdatedState(value)
+    val latestOnBackspaceAtStart = rememberUpdatedState(onBackspaceAtStart)
 
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(
-            color = textColor,
-        ),
-        singleLine = singleLine,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        interactionSource = interactionSource,
-        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-        decorationBox = { innerTextField ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-            ) {
-                TextFieldDefaults.Container(
-                    enabled = true,
-                    isError = false,
-                    interactionSource = interactionSource,
-                    modifier = Modifier.fillMaxSize(),
-                    colors = colors,
-                    shape = shape,
-                )
+    fun isCursorAtStart(currentValue: TextFieldValue): Boolean {
+        val selection = currentValue.selection
+        return selection.start == 0 && selection.end == 0
+    }
 
-                Row(
+    val effectiveModifier = if (onBackspaceAtStart != null) {
+        modifier.onPreviewKeyEvent { event ->
+            if (event.key != Key.Backspace) return@onPreviewKeyEvent false
+            if (!isCursorAtStart(value)) return@onPreviewKeyEvent false
+            onBackspaceAtStart()
+            true
+        }
+    } else {
+        modifier
+    }
+
+    val textField: @Composable () -> Unit = {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = effectiveModifier,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = textColor,
+            ),
+            singleLine = singleLine,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            interactionSource = interactionSource,
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            decorationBox = { innerTextField ->
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .fillMaxWidth()
+                        .height(56.dp),
                 ) {
-                    triggerChip?.let { chip ->
-                        chip()
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
+                    TextFieldDefaults.Container(
+                        enabled = true,
+                        isError = false,
+                        interactionSource = interactionSource,
+                        modifier = Modifier.fillMaxSize(),
+                        colors = colors,
+                        shape = shape,
+                    )
 
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.CenterStart,
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (value.text.isEmpty()) {
-                            CompositionLocalProvider(LocalContentColor provides placeholderColor) {
-                                placeholder?.invoke()
-                            }
+                        triggerChip?.let { chip ->
+                            chip()
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
-                        innerTextField()
+
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            if (value.text.isEmpty()) {
+                                CompositionLocalProvider(LocalContentColor provides placeholderColor) {
+                                    placeholder?.invoke()
+                                }
+                            }
+                            innerTextField()
+                        }
+
+                        trailingIcon?.let {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            it()
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    if (onBackspaceAtStart == null) {
+        textField()
+        return
+    }
+
+    val interceptor = remember {
+        PlatformTextInputInterceptor { request, nextHandler ->
+            val wrappedRequest = PlatformTextInputMethodRequest { outAttributes ->
+                val inputConnection = request.createInputConnection(outAttributes)
+                val view = nextHandler.view
+
+                object : InputConnectionWrapper(inputConnection, false) {
+                    private fun handleBackspace(): Boolean {
+                        val callback = latestOnBackspaceAtStart.value ?: return false
+                        if (!isCursorAtStart(latestValue.value)) return false
+                        view.post(callback)
+                        return true
                     }
 
-                    trailingIcon?.let {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        it()
+                    override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
+                        if (beforeLength > 0 && afterLength == 0 && handleBackspace()) return true
+                        return super.deleteSurroundingText(beforeLength, afterLength)
+                    }
+
+                    override fun deleteSurroundingTextInCodePoints(
+                        beforeLength: Int,
+                        afterLength: Int,
+                    ): Boolean {
+                        if (beforeLength > 0 && afterLength == 0 && handleBackspace()) return true
+                        return super.deleteSurroundingTextInCodePoints(beforeLength, afterLength)
+                    }
+
+                    override fun sendKeyEvent(event: AndroidKeyEvent): Boolean {
+                        if (
+                            event.action == AndroidKeyEvent.ACTION_DOWN &&
+                                event.keyCode == AndroidKeyEvent.KEYCODE_DEL &&
+                                handleBackspace()
+                        ) {
+                            return true
+                        }
+                        return super.sendKeyEvent(event)
                     }
                 }
             }
-        },
-    )
+            nextHandler.startInputMethod(wrappedRequest)
+        }
+    }
+
+    InterceptPlatformTextInput(interceptor) {
+        textField()
+    }
 }
 
 /**
