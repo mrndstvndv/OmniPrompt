@@ -89,22 +89,23 @@ fun WebSearchSettingsScreen(
     val placeholder = WebSearchSettings.QUERY_PLACEHOLDER
     val context = LocalContext.current
 
+    fun applySettings(settings: WebSearchSettings) {
+        sites = settings.sites
+        defaultSiteId = settings.defaultSiteId
+        quicklinks = settings.quicklinks
+    }
+
     LaunchedEffect(initialSettings) {
-        sites = initialSettings.sites
-        defaultSiteId = initialSettings.defaultSiteId
-        quicklinks = initialSettings.quicklinks
+        applySettings(initialSettings.normalized())
     }
 
     val allTemplatesValid = sites.all { it.urlTemplate.contains(placeholder) }
 
     fun saveSettings() {
-        val resolvedDefault =
-            sites.firstOrNull { it.id == defaultSiteId }?.id
-                ?: sites.firstOrNull()?.id
-                ?: ""
-        if (resolvedDefault.isNotBlank() && allTemplatesValid) {
-            onSave(WebSearchSettings(resolvedDefault, sites, quicklinks))
-        }
+        val normalizedSettings = WebSearchSettings(defaultSiteId, sites, quicklinks).normalized()
+        if (!allTemplatesValid || normalizedSettings.sites.isEmpty()) return
+        applySettings(normalizedSettings)
+        onSave(normalizedSettings)
     }
 
     fun updateSite(
@@ -318,6 +319,9 @@ fun WebSearchSettingsScreen(
                                 site = site,
                                 isDefault = defaultSiteId == site.id,
                                 onSetDefault = {
+                                    val mutable = sites.toMutableList()
+                                    mutable[index] = mutable[index].copy(enabled = true)
+                                    sites = mutable
                                     defaultSiteId = site.id
                                     saveSettings()
                                 },
@@ -972,6 +976,7 @@ private fun WebSearchSiteRow(
         Switch(
             checked = site.enabled,
             onCheckedChange = onToggleEnabled,
+            enabled = !isDefault,
         )
     }
 }

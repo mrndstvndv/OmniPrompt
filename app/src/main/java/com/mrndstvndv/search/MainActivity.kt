@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -90,6 +91,7 @@ import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
@@ -144,6 +146,25 @@ private data class SuppressedTriggerMatch(
     val triggerId: String,
     val matchedToken: String,
 )
+
+private data class ResultSortMetadata(
+    val result: ProviderResult,
+    val providerRank: Int,
+    val frequencyScore: Float,
+) {
+    val hasFrequency: Boolean
+        get() = frequencyScore > 0f
+}
+
+private fun buildTriggerText(
+    matchedToken: String,
+    payload: String,
+): String =
+    when {
+        matchedToken.isBlank() -> payload
+        payload.isBlank() -> "$matchedToken "
+        else -> "$matchedToken $payload"
+    }
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -416,6 +437,33 @@ class MainActivity : ComponentActivity() {
                     selection = TextRange(text.length),
                 )
 
+            fun applyPrefillQuery(prefillQuery: String) {
+                val completedPrefill = ensureTrailingSpace(prefillQuery)
+                val parsedTrigger = TriggerParser.parse(completedPrefill)
+                val match =
+                    if (parsedTrigger.hasPayloadSeparator && parsedTrigger.firstToken.isNotBlank()) {
+                        findTriggerMatch(parsedTrigger.firstToken, availableTriggers)
+                    } else {
+                        null
+                    }
+
+                if (match != null) {
+                    suppressedTriggerMatch = null
+                    pendingActivationEchoToken = parsedTrigger.firstToken
+                    triggerState =
+                        TriggerState(
+                            trigger = match.trigger,
+                            matchedToken = parsedTrigger.firstToken,
+                            payload = parsedTrigger.payload,
+                        )
+                    textState.value = textFieldValueAtEnd(parsedTrigger.payload)
+                    return
+                }
+
+                pendingActivationEchoToken = null
+                textState.value = textFieldValueAtEnd(completedPrefill)
+            }
+
             fun deduplicateResults(results: List<ProviderResult>): List<ProviderResult> {
                 val seenIds = mutableSetOf<String>()
                 return results.filter { seenIds.add(it.id) }
@@ -448,44 +496,44 @@ class MainActivity : ComponentActivity() {
                 results: List<ProviderResult>,
                 normalizedText: String,
             ): List<ProviderResult> {
-                if (!useFrequencyRanking) {
-                    return results.sortedBy { result ->
-                        rankingRepository.getProviderRank(result.providerId)
+                val sortMetadata =
+                    results.map { result ->
+                        val providerRank = rankingRepository.getProviderRank(result.providerId)
+                        val frequencyQuery = result.frequencyQuery ?: normalizedText
+                        val frequencyScore =
+                            if (useFrequencyRanking) {
+                                rankingRepository.getResultFrequency(result.frequencyKey, frequencyQuery)
+                            } else {
+                                0f
+                            }
+                        ResultSortMetadata(
+                            result = result,
+                            providerRank = providerRank,
+                            frequencyScore = frequencyScore,
+                        )
                     }
+
+                if (!useFrequencyRanking) {
+                    return sortMetadata
+                        .sortedBy { it.providerRank }
+                        .map { it.result }
                 }
 
-                return results.sortedWith(
-                    compareBy(
-                        { result ->
-                            val freqId = result.frequencyKey
-                            val freqQuery = result.frequencyQuery ?: normalizedText
-                            val score = rankingRepository.getResultFrequency(freqId, freqQuery)
-                            if (score > 0f) 0 else 1
-                        },
-                        { result ->
-                            val freqId = result.frequencyKey
-                            val freqQuery = result.frequencyQuery ?: normalizedText
-                            val score = rankingRepository.getResultFrequency(freqId, freqQuery)
-                            if (score > 0f) {
-                                -score
-                            } else {
-                                rankingRepository.getProviderRank(result.providerId).toFloat()
-                            }
-                        },
-                    ),
-                )
+                return sortMetadata
+                    .sortedWith(
+                        compareBy<ResultSortMetadata>(
+                            { if (it.hasFrequency) 0 else 1 },
+                            { if (it.hasFrequency) -it.frequencyScore else it.providerRank.toFloat() },
+                        ),
+                    ).map { it.result }
             }
 
             fun handleResultSelection(result: ProviderResult?): Boolean {
                 val candidate = result ?: return false
                 val prefillQuery = candidate.extras[TextUtilitiesProvider.PREFILL_QUERY_EXTRA] as? String
                 if (prefillQuery != null) {
-                    val completedPrefill = ensureTrailingSpace(prefillQuery)
-                    textState.value =
-                        TextFieldValue(
-                            text = completedPrefill,
-                            selection = TextRange(completedPrefill.length),
-                        )
+                    if (triggerState != null) return true
+                    applyPrefillQuery(prefillQuery)
                     shouldShowResults = true
                     return true
                 }
@@ -518,12 +566,7 @@ class MainActivity : ComponentActivity() {
 
             fun dismissTrigger() {
                 val activeTrigger = triggerState ?: return
-                val restoredText =
-                    when {
-                        activeTrigger.matchedToken.isBlank() -> activeTrigger.payload
-                        activeTrigger.payload.isBlank() -> "${activeTrigger.matchedToken} "
-                        else -> "${activeTrigger.matchedToken} ${activeTrigger.payload}"
-                    }
+                val restoredText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload)
 
                 suppressedTriggerMatch =
                     SuppressedTriggerMatch(
@@ -539,13 +582,11 @@ class MainActivity : ComponentActivity() {
                 val activeTrigger = triggerState
                 if (activeTrigger != null) {
                     val activationEchoToken = pendingActivationEchoToken
-                    var consumedActivationEcho = false
                     val normalizedValue =
                         when {
                             activationEchoToken == null -> newValue
                             newValue.text == activationEchoToken || newValue.text == "$activationEchoToken " -> {
                                 pendingActivationEchoToken = null
-                                consumedActivationEcho = true
                                 newValue.copy(text = "", selection = TextRange.Zero)
                             }
                             else -> {
@@ -553,11 +594,6 @@ class MainActivity : ComponentActivity() {
                                 newValue
                             }
                         }
-
-                    if (normalizedValue.text.isEmpty() && !consumedActivationEcho) {
-                        dismissTrigger()
-                        return
-                    }
 
                     triggerState = activeTrigger.copy(payload = normalizedValue.text)
                     textState.value = normalizedValue
@@ -569,23 +605,23 @@ class MainActivity : ComponentActivity() {
                     suppressedTriggerMatch = null
                 }
 
-                val spaceIndex = text.indexOf(' ')
-                if (spaceIndex > 0) {
-                    val firstWord = text.substring(0, spaceIndex)
-                    val payload = text.substring(spaceIndex + 1)
-                    val match = findTriggerMatch(firstWord, availableTriggers)
+                val parsedTrigger = TriggerParser.parse(text)
+                if (parsedTrigger.hasPayloadSeparator && parsedTrigger.firstToken.isNotBlank()) {
+                    val firstToken = parsedTrigger.firstToken
+                    val payload = parsedTrigger.payload
+                    val match = findTriggerMatch(firstToken, availableTriggers)
                     if (match != null) {
                         val suppressed = suppressedTriggerMatch
                         val isSuppressed =
                             suppressed?.triggerId == match.trigger.id &&
-                                suppressed?.matchedToken?.equals(firstWord, ignoreCase = true) == true
+                                suppressed?.matchedToken?.equals(firstToken, ignoreCase = true) == true
                         if (!isSuppressed) {
                             suppressedTriggerMatch = null
-                            pendingActivationEchoToken = firstWord
+                            pendingActivationEchoToken = firstToken
                             triggerState =
                                 TriggerState(
                                     trigger = match.trigger,
-                                    matchedToken = firstWord,
+                                    matchedToken = firstToken,
                                     payload = payload,
                                 )
                             textState.value = textFieldValueAtEnd(payload)
@@ -615,12 +651,17 @@ class MainActivity : ComponentActivity() {
 
                         val activeTrigger = triggerState
                         if (activeTrigger != null) {
-                            currentNormalizedQuery = activeTrigger.payload
+                            val triggerFrequencyQuery = activeTrigger.matchedToken
+                            currentNormalizedQuery = triggerFrequencyQuery
                             try {
                                 val triggerResults = withContext(Dispatchers.IO) {
-                                    activeTrigger.trigger.execute(activeTrigger.payload)
+                                    activeTrigger.trigger.execute(activeTrigger.matchedToken, activeTrigger.payload)
                                 }
-                                val payloadQuery = Query(activeTrigger.payload)
+                                val payloadQuery =
+                                    Query(
+                                        text = activeTrigger.payload,
+                                        originalText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload),
+                                    )
                                 val supplementalProviders =
                                     when (activeTrigger.trigger.resultPolicy) {
                                         TriggerResultPolicy.EXCLUSIVE -> emptyList()
@@ -636,7 +677,7 @@ class MainActivity : ComponentActivity() {
                                             activeProviders.filter { provider -> provider.canHandle(payloadQuery) }
                                         }
                                     }
-                                val supplementalResults = sortResults(queryProviders(payloadQuery, supplementalProviders), activeTrigger.payload)
+                                val supplementalResults = sortResults(queryProviders(payloadQuery, supplementalProviders), triggerFrequencyQuery)
                                 val mergedResults = deduplicateResults(triggerResults + supplementalResults)
                                 if (providerResults != mergedResults) {
                                     providerResults = mergedResults
@@ -674,6 +715,81 @@ class MainActivity : ComponentActivity() {
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
                     }
+            }
+
+            fun openSettingsScreen() {
+                val intent =
+                    Intent(this@MainActivity, SettingsActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                finish()
+            }
+
+            fun openSystemSettingsScreen() {
+                startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                finish()
+            }
+
+            fun submitSearch() {
+                val primaryResult = providerResults.firstOrNull()
+                val handled = handleResultSelection(primaryResult)
+                if (handled) return
+
+                val query = textState.value.text.trim()
+                if (query.isNotEmpty()) {
+                    handleQuerySubmission(query)
+                }
+            }
+
+            @Composable
+            fun SearchBar() {
+                Box {
+                    SearchField(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                        value = textState.value,
+                        onValueChange = ::onSearchChange,
+                        triggerChip = triggerState?.let { activeTrigger ->
+                            {
+                                TriggerChip(
+                                    item = activeTrigger.trigger,
+                                    onDismiss = ::dismissTrigger,
+                                )
+                            }
+                        },
+                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                        trailingIcon = {
+                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Settings,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { submitSearch() }),
+                        onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
+                    )
+
+                    if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 6.dp)
+                                    .size(48.dp)
+                                    .combinedClickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = ::openSettingsScreen,
+                                        onLongClick = ::openSystemSettingsScreen,
+                                    ),
+                        )
+                    }
+                }
             }
 
             SearchTheme(motionPreferences = motionPreferences) {
@@ -842,70 +958,7 @@ class MainActivity : ComponentActivity() {
                                             .padding(bottom = animatedBottomPadding),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
-                                    Box {
-                                        SearchField(
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .focusRequester(focusRequester),
-                                            value = textState.value,
-                                            onValueChange = { onSearchChange(it) },
-                                            triggerChip = triggerState?.let { ts ->
-                                                {
-                                                    TriggerChip(
-                                                        item = ts.trigger,
-                                                        onDismiss = { dismissTrigger() },
-                                                    )
-                                                }
-                                            },
-                                            placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                                            trailingIcon = {
-                                                if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                                    Icon(
-                                                        imageVector = Icons.Outlined.Settings,
-                                                        contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    )
-                                                }
-                                            },
-                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                            keyboardActions =
-                                                KeyboardActions(onDone = {
-                                                    val primaryResult = providerResults.firstOrNull()
-                                                    val handled = handleResultSelection(primaryResult)
-                                                    if (!handled) {
-                                                        val query = textState.value.text.trim()
-                                                        if (query.isNotEmpty()) {
-                                                            handleQuerySubmission(query)
-                                                        }
-                                                    }
-                                                }),
-                                            onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
-                                        )
-
-                                        if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .align(Alignment.CenterEnd)
-                                                    .padding(end = 6.dp)
-                                                    .size(48.dp)
-                                                    .combinedClickable(
-                                                        interactionSource = remember { MutableInteractionSource() },
-                                                        indication = null,
-                                                        onClick = {
-                                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                            startActivity(intent)
-                                                            finish()
-                                                        },
-                                                        onLongClick = {
-                                                            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                                            finish()
-                                                        },
-                                                    ),
-                                            )
-                                        }
-                                    }
+                                    SearchBar()
 
                                     Spacer(modifier = Modifier.height(4.dp))
                                     val shouldCenterAppList =
@@ -961,70 +1014,7 @@ class MainActivity : ComponentActivity() {
                             }
                         } else {
                             Column(Modifier.fillMaxWidth()) {
-                                Box {
-                                    SearchField(
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .focusRequester(focusRequester),
-                                        value = textState.value,
-                                        onValueChange = { onSearchChange(it) },
-                                        triggerChip = triggerState?.let { ts ->
-                                            {
-                                                TriggerChip(
-                                                    item = ts.trigger,
-                                                    onDismiss = { dismissTrigger() },
-                                                )
-                                            }
-                                        },
-                                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                                        trailingIcon = {
-                                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Settings,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                        },
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        keyboardActions =
-                                            KeyboardActions(onDone = {
-                                                val primaryResult = providerResults.firstOrNull()
-                                                val handled = handleResultSelection(primaryResult)
-                                                if (!handled) {
-                                                    val query = textState.value.text.trim()
-                                                    if (query.isNotEmpty()) {
-                                                        handleQuerySubmission(query)
-                                                    }
-                                                }
-                                            }),
-                                        onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
-                                    )
-
-                                    if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.CenterEnd)
-                                                .padding(end = 6.dp)
-                                                .size(48.dp)
-                                                .combinedClickable(
-                                                    interactionSource = remember { MutableInteractionSource() },
-                                                    indication = null,
-                                                    onClick = {
-                                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                        startActivity(intent)
-                                                        finish()
-                                                    },
-                                                    onLongClick = {
-                                                        startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                                                        finish()
-                                                    },
-                                                ),
-                                        )
-                                    }
-                                }
+                                SearchBar()
 
                                 Spacer(modifier = Modifier.height(4.dp))
                                 val shouldCenterAppList =

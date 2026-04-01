@@ -272,22 +272,45 @@ data class WebSearchSettings(
                 Quicklink.fromJson(quicklinksArray.optJSONObject(i))?.let { quicklinks.add(it) }
             }
 
-            return WebSearchSettings(defaultSiteId = defaultId, sites = sites, quicklinks = quicklinks)
+            return WebSearchSettings(defaultSiteId = defaultId, sites = sites, quicklinks = quicklinks).normalized()
         }
     }
 
     fun siteForId(id: String?): WebSearchSite? = sites.firstOrNull { it.id == id }
 
+    fun normalized(): WebSearchSettings {
+        if (sites.isEmpty()) return this
+
+        val existingDefault = sites.firstOrNull { it.id == defaultSiteId }
+        val resolvedDefaultId = existingDefault?.id ?: sites.firstOrNull { it.enabled }?.id ?: sites.first().id
+        val normalizedSites =
+            sites.map { site ->
+                if (site.id == resolvedDefaultId) {
+                    site.copy(enabled = true)
+                } else {
+                    site
+                }
+            }
+
+        return copy(defaultSiteId = resolvedDefaultId, sites = normalizedSites)
+    }
+
+    fun effectiveDefaultSite(): WebSearchSite? {
+        val normalized = normalized()
+        return normalized.sites.firstOrNull { it.id == normalized.defaultSiteId && it.enabled }
+    }
+
     override fun toJson(): JSONObject {
+        val normalized = normalized()
         val root = JSONObject()
-        root.put("defaultSiteId", defaultSiteId)
+        root.put("defaultSiteId", normalized.defaultSiteId)
 
         val sitesArray = JSONArray()
-        sites.forEach { sitesArray.put(it.toJson()) }
+        normalized.sites.forEach { sitesArray.put(it.toJson()) }
         root.put("sites", sitesArray)
 
         val quicklinksArray = JSONArray()
-        quicklinks.forEach { quicklinksArray.put(it.toJson()) }
+        normalized.quicklinks.forEach { quicklinksArray.put(it.toJson()) }
         root.put("quicklinks", quicklinksArray)
 
         return root

@@ -14,7 +14,10 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerInvocation
+import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
+import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -46,36 +49,37 @@ class TermuxProvider(
                     aliases = setOf(command.executablePath.substringAfterLast('/')),
                     vectorIcon = Icons.Outlined.Terminal,
                     resultPolicy = TriggerResultPolicy.EXCLUSIVE,
-                    execute = { payload -> executeCommandTrigger(command.id, payload) },
+                    execute = { invocation -> executeCommandTrigger(command.id, invocation) },
                 )
             }
         }
 
     private suspend fun executeCommandTrigger(
         commandId: String,
-        payload: String,
+        invocation: TriggerInvocation,
     ): List<ProviderResult> {
         if (!isTermuxInstalled) return emptyList()
 
         val settings = settingsRepository.value
         val command = settings.commands.firstOrNull { it.id == commandId } ?: return emptyList()
-        val queryArgs = if (payload.isBlank()) emptyList() else payload.split(' ')
-        val resolvedArgs = resolveArguments(command.arguments, queryArgs, payload)
+        val queryArgs = splitArguments(invocation.payload)
+        val resolvedArgs = resolveArguments(command.arguments, queryArgs, invocation.payload)
         val preview = buildCommandPreview(command.executablePath, resolvedArgs)
 
         return listOf(
-            ProviderResult(
+            createTriggerResult(
+                invocation = invocation,
                 id = "$id:${command.id}",
-                title = if (payload.isBlank()) {
+                title = if (invocation.payload.isBlank()) {
                     command.displayName
                 } else {
-                    activity.getString(R.string.termux_result_title_with_args, command.displayName, payload)
+                    activity.getString(R.string.termux_result_title_with_args, command.displayName, invocation.payload)
                 },
                 subtitle = preview,
                 vectorIcon = Icons.Outlined.Terminal,
                 providerId = id,
-                onSelect = { executeTermuxCommand(command, queryArgs, payload) },
-                keepOverlayUntilExit = true,
+                triggerId = command.id,
+                onSelect = { executeTermuxCommand(command, queryArgs, invocation.payload) },
             )
         )
     }
@@ -102,11 +106,10 @@ class TermuxProvider(
         val commands = settings.commands
         if (commands.isEmpty()) return emptyList()
 
-        // Parse query: "ytdl url_link" -> commandPart="ytdl", argsPart="url_link"
-        val spaceIndex = cleaned.indexOf(' ')
-        val commandPart = if (spaceIndex > 0) cleaned.substring(0, spaceIndex) else cleaned
-        val argsPart = if (spaceIndex > 0) cleaned.substring(spaceIndex + 1).trim() else ""
-        val queryArgs = if (argsPart.isBlank()) emptyList() else argsPart.split(' ')
+        val parsedTrigger = TriggerParser.parse(cleaned)
+        val commandPart = parsedTrigger.firstToken
+        val argsPart = parsedTrigger.payload.trim()
+        val queryArgs = splitArguments(argsPart)
 
         data class ScoredCommand(
             val command: TermuxCommand,
@@ -178,6 +181,12 @@ class TermuxProvider(
                 frequencyQuery = commandPart,
             )
         }
+    }
+
+    private fun splitArguments(input: String): List<String> {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return emptyList()
+        return trimmed.split(Regex("\\s+"))
     }
 
     /**
