@@ -11,10 +11,10 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.QuicklinkAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.Provider
-import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.model.TriggerItem
+import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
@@ -27,28 +27,34 @@ import kotlinx.coroutines.withContext
 class WebSearchProvider(
     private val activity: ComponentActivity,
     private val settingsRepository: SettingsRepository<WebSearchSettings>,
-) : TriggerProvider {
+) : Provider {
     override val id: String = "web-search"
     override val displayName: String = activity.getString(R.string.provider_web_search)
 
-    override val triggerItems: List<TriggerItem>
+    override val triggers: List<SearchTrigger>
         get() {
             val settings = settingsRepository.value
             val defaultId = settings.defaultSiteId
             return settings.sites
                 .filter { it.enabled && it.id != defaultId }
                 .map { site ->
-                    TriggerItem(
+                    SearchTrigger.create(
                         id = site.id,
+                        ownerProviderId = id,
                         label = site.displayName,
                         vectorIcon = Icons.Outlined.Search,
+                        resultPolicy = TriggerResultPolicy.INCLUDE_OWNER_RESULTS,
+                        execute = { payload -> executeSiteTrigger(site.id, payload) },
                     )
                 }
         }
 
-    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+    private suspend fun executeSiteTrigger(
+        siteId: String,
+        payload: String,
+    ): List<ProviderResult> {
         val settings = settingsRepository.value
-        val site = settings.sites.firstOrNull { it.id == item.id } ?: return emptyList()
+        val site = settings.sites.firstOrNull { it.id == siteId } ?: return emptyList()
         val queryText = payload.ifBlank { "" }
         val searchUrl = site.buildUrl(queryText)
         val action: suspend () -> Unit = {

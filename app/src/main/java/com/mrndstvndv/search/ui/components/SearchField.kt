@@ -52,40 +52,37 @@ import androidx.compose.ui.platform.PlatformTextInputInterceptor
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import com.mrndstvndv.search.provider.TriggerProvider
-import com.mrndstvndv.search.provider.model.TriggerItem
+import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerMatch
 
 /**
  * State representing an active trigger in the search field.
  */
 data class TriggerState(
-    /** The provider that owns this trigger. */
-    val provider: TriggerProvider,
-    /** The matched trigger item. */
-    val item: TriggerItem,
+    /** The active trigger entry. */
+    val trigger: SearchTrigger,
+    /** The exact token that activated this trigger. */
+    val matchedToken: String,
     /** The payload text (everything after the trigger + space). */
     val payload: String,
 )
 
 /**
- * Find the best trigger match across all providers for a given first token.
- * Returns (provider, item) pair or null.
+ * Find the best trigger match across all trigger entries for a given first token.
  */
 fun findTriggerMatch(
     firstToken: String,
-    triggerProviders: List<TriggerProvider>,
-): Pair<TriggerProvider, TriggerItem>? {
-    if (firstToken.isBlank() || triggerProviders.isEmpty()) return null
-    var best: Pair<TriggerProvider, TriggerItem>? = null
-    var bestScore = 0
-    for (provider in triggerProviders) {
-        val match = provider.matchTrigger(firstToken) ?: continue
-        if (match.score > bestScore) {
-            bestScore = match.score
-            best = provider to match.item
+    triggers: List<SearchTrigger>,
+): TriggerMatch? {
+    if (firstToken.isBlank() || triggers.isEmpty()) return null
+    var bestMatch: TriggerMatch? = null
+    for (trigger in triggers) {
+        val match = trigger.match(firstToken) ?: continue
+        if (bestMatch == null || match.score > bestMatch.score) {
+            bestMatch = match
         }
     }
-    return best
+    return bestMatch
 }
 
 /**
@@ -257,7 +254,7 @@ fun SearchField(
  */
 @Composable
 fun TriggerChip(
-    item: TriggerItem,
+    item: SearchTrigger,
     onDismiss: () -> Unit,
 ) {
     var iconBitmap by remember(item.id) { mutableStateOf<Bitmap?>(null) }

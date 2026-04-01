@@ -2,6 +2,7 @@ package com.mrndstvndv.search.provider
 
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.SearchTrigger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -19,6 +20,10 @@ interface Provider {
      */
     val refreshSignal: SharedFlow<Unit>
         get() = MutableSharedFlow() // Default: never emits
+
+    /** Trigger entries exposed by this provider. */
+    val triggers: List<SearchTrigger>
+        get() = emptyList()
 
     /** Optional initialization hook for heavy setup. */
     fun initialize() {}

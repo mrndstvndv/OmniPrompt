@@ -6,10 +6,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
-import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.model.TriggerItem
+import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -23,26 +23,31 @@ class IntentProvider(
     private val activity: ComponentActivity,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<IntentSettings>,
-) : TriggerProvider {
+) : Provider {
     override val id: String = "intent"
     override val displayName: String = activity.getString(R.string.provider_intent_launcher)
 
-    override val triggerItems: List<TriggerItem>
+    override val triggers: List<SearchTrigger>
         get() = settingsRepository.value.configs.map { config ->
-            TriggerItem(
+            SearchTrigger.create(
                 id = config.id,
+                ownerProviderId = id,
                 label = config.title,
                 vectorIcon = Icons.Outlined.Share,
+                resultPolicy = TriggerResultPolicy.EXCLUSIVE,
+                execute = { payload -> executeIntentTrigger(config.id, payload) },
             )
         }
 
-    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+    private suspend fun executeIntentTrigger(
+        configId: String,
+        payload: String,
+    ): List<ProviderResult> {
         val settings = settingsRepository.value
-        val config = settings.configs.firstOrNull { it.id == item.id } ?: return emptyList()
+        val config = settings.configs.firstOrNull { it.id == configId } ?: return emptyList()
 
         val systemLabel = activity.getString(R.string.intent_system)
         val targetLabel = config.packageName.ifEmpty { systemLabel }
-
         val subtitle = if (payload.isNotEmpty()) {
             activity.getString(R.string.intent_result_subtitle_with_payload, payload, targetLabel)
         } else if (config.requiresPayload) {
