@@ -5,6 +5,7 @@ import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Search
 import androidx.core.net.toUri
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.QuicklinkAliasTarget
@@ -36,7 +37,13 @@ class WebSearchProvider(
             val defaultId = settings.defaultSiteId
             return settings.sites
                 .filter { it.enabled && it.id != defaultId }
-                .map { site -> TriggerItem(id = site.id, label = site.displayName) }
+                .map { site ->
+                    TriggerItem(
+                        id = site.id,
+                        label = site.displayName,
+                        vectorIcon = Icons.Outlined.Search,
+                    )
+                }
         }
 
     override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {

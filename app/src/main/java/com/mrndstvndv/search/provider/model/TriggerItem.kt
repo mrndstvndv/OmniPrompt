@@ -1,5 +1,8 @@
 package com.mrndstvndv.search.provider.model
 
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+
 /**
  * A single trigger item exposed by a [TriggerProvider].
  *
@@ -13,6 +16,10 @@ data class TriggerItem(
     val label: String,
     /** Optional extra aliases that can also trigger this item (fuzzy matched). */
     val aliases: Set<String> = emptySet(),
+    /** Optional vector icon for the chip. */
+    val vectorIcon: ImageVector? = null,
+    /** Optional async icon loader for the chip. */
+    val iconLoader: (suspend () -> Bitmap?)? = null,
 )
 
 /**

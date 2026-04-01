@@ -41,6 +41,7 @@ class TermuxProvider(
                 id = cmd.id,
                 label = cmd.displayName,
                 aliases = setOf(cmd.executablePath.substringAfterLast('/')),
+                vectorIcon = Icons.Outlined.Terminal,
             )
         }
 

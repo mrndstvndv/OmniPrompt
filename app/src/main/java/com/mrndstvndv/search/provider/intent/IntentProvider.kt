@@ -29,7 +29,11 @@ class IntentProvider(
 
     override val triggerItems: List<TriggerItem>
         get() = settingsRepository.value.configs.map { config ->
-            TriggerItem(id = config.id, label = config.title)
+            TriggerItem(
+                id = config.id,
+                label = config.title,
+                vectorIcon = Icons.Outlined.Share,
+            )
         }
 
     override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
