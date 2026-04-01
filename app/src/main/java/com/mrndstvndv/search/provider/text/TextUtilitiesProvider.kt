@@ -18,6 +18,7 @@ import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.TriggerItem
+import com.mrndstvndv.search.provider.model.TriggerMatch
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
@@ -66,9 +67,46 @@ class TextUtilitiesProvider(
         }
     }
 
-    override fun canHandle(query: Query): Boolean = false // Handled via TriggerProvider
+    override fun canHandle(query: Query): Boolean {
+        val text = query.text.trim()
+        if (text.isBlank()) return false
+        return triggerItems.any { item ->
+            item.aliases.any { it.startsWith(text, ignoreCase = true) }
+        }
+    }
 
-    override suspend fun query(query: Query): List<ProviderResult> = emptyList() // Handled via TriggerProvider
+    override suspend fun query(query: Query): List<ProviderResult> {
+        val text = query.text.trim()
+        if (text.isBlank()) return emptyList()
+        return triggerItems.mapNotNull { item ->
+            val aliasMatch = item.aliases.firstOrNull { it.startsWith(text, ignoreCase = true) }
+                ?: return@mapNotNull null
+
+            val utility = utilities.firstOrNull { it.id == item.id } ?: return@mapNotNull null
+            val settings = settingsRepository.value
+            val savedMode = settings.utilityDefaultModes[utility.id]
+            val mode = when (savedMode) {
+                TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
+                TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+                null -> utility.defaultMode
+            }
+            buildSuggestionResult(utility, mode)
+        }
+    }
+
+    override fun matchTrigger(firstToken: String): TriggerMatch? {
+        if (firstToken.isBlank()) return null
+        val normalized = firstToken.lowercase()
+        var best: TriggerMatch? = null
+        for (item in triggerItems) {
+            val exactAlias = item.aliases.firstOrNull { normalized == it } ?: continue
+            val score = 100 + exactAlias.length
+            if (best == null || score > best.score) {
+                best = TriggerMatch(item = item, score = score, matchedIndices = emptyList())
+            }
+        }
+        return best
+    }
 
     private fun parseModeFromPayload(
         payload: String,
