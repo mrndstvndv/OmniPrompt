@@ -11,8 +11,10 @@ import androidx.compose.material.icons.outlined.Terminal
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.TriggerItem
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -29,9 +31,45 @@ class TermuxProvider(
     private val activity: ComponentActivity,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<TermuxSettings>,
-) : Provider {
+) : TriggerProvider {
     override val id: String = "termux"
     override val displayName: String = activity.getString(R.string.provider_termux)
+
+    override val triggerItems: List<TriggerItem>
+        get() = settingsRepository.value.commands.map { cmd ->
+            TriggerItem(
+                id = cmd.id,
+                label = cmd.displayName,
+                aliases = setOf(cmd.executablePath.substringAfterLast('/')),
+            )
+        }
+
+    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+        if (!isTermuxInstalled) return emptyList()
+
+        val settings = settingsRepository.value
+        val command = settings.commands.firstOrNull { it.id == item.id } ?: return emptyList()
+        val queryArgs = if (payload.isBlank()) emptyList() else payload.split(' ')
+
+        val resolvedArgs = resolveArguments(command.arguments, queryArgs, payload)
+        val preview = buildCommandPreview(command.executablePath, resolvedArgs)
+
+        return listOf(
+            ProviderResult(
+                id = "$id:${command.id}",
+                title = if (payload.isBlank()) {
+                    command.displayName
+                } else {
+                    activity.getString(R.string.termux_result_title_with_args, command.displayName, payload)
+                },
+                subtitle = preview,
+                vectorIcon = Icons.Outlined.Terminal,
+                providerId = id,
+                onSelect = { executeTermuxCommand(command, queryArgs, payload) },
+                keepOverlayUntilExit = true,
+            )
+        )
+    }
 
     private val isTermuxInstalled: Boolean by lazy {
         activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
