@@ -597,8 +597,8 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(triggerState?.trigger?.id, triggerState?.matchedToken) {
-                val activeTrigger = triggerState ?: return@LaunchedEffect
-                if (textState.value.text != activeTrigger.payload) {
+                val activeTrigger = triggerState
+                if (activeTrigger != null && textState.value.text != activeTrigger.payload) {
                     textState.value = textFieldValueAtEnd(activeTrigger.payload)
                 }
                 focusRequester.requestFocus()
