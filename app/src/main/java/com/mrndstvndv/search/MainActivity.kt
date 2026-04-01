@@ -73,6 +73,7 @@ import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.apps.AppListProvider
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
@@ -119,6 +120,9 @@ import com.mrndstvndv.search.ui.components.ContactActionData
 import com.mrndstvndv.search.ui.components.ContactActionSheet
 import com.mrndstvndv.search.ui.components.ItemsList
 import com.mrndstvndv.search.ui.components.SearchField
+import com.mrndstvndv.search.ui.components.TriggerChip
+import com.mrndstvndv.search.ui.components.TriggerState
+import com.mrndstvndv.search.ui.components.findTriggerMatch
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
@@ -358,6 +362,14 @@ class MainActivity : ComponentActivity() {
             var shouldShowResults by remember { mutableStateOf(false) }
             var pendingQueryJob by remember { mutableStateOf<Job?>(null) }
             var refreshTrigger by remember { mutableStateOf(0) }
+            var triggerState by remember { mutableStateOf<TriggerState?>(null) }
+            var preTriggerText by remember { mutableStateOf("") }
+            var suppressedAutoTriggerItemId by remember { mutableStateOf<String?>(null) }
+
+            // Collect trigger providers
+            val triggerProviders = remember(providers) {
+                providers.filterIsInstance<TriggerProvider>()
+            }
 
             // Listen for provider refresh signals
             LaunchedEffect(providers) {
@@ -391,6 +403,12 @@ class MainActivity : ComponentActivity() {
                 val trimmed = input.trimEnd()
                 return if (trimmed.isEmpty()) " " else "$trimmed "
             }
+
+            fun textFieldValueAtEnd(text: String): TextFieldValue =
+                TextFieldValue(
+                    text = text,
+                    selection = TextRange(text.length),
+                )
 
             fun handleResultSelection(result: ProviderResult?): Boolean {
                 val candidate = result ?: return false
@@ -434,7 +452,88 @@ class MainActivity : ComponentActivity() {
                 return false
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger, queryBasedRankingEnabled) {
+            // Dismiss active trigger, restore plain-text query and suppress re-auto-triggering
+            // for the same trigger item until the field is cleared or a different item matches.
+            fun dismissTrigger() {
+                val activeTrigger = triggerState
+                val triggerToken = preTriggerText.substringBefore(' ').trim()
+                val restoredText =
+                    when {
+                        activeTrigger == null -> preTriggerText
+                        triggerToken.isBlank() -> activeTrigger.payload
+                        activeTrigger.payload.isBlank() -> "$triggerToken "
+                        else -> "$triggerToken ${activeTrigger.payload}"
+                    }
+
+                suppressedAutoTriggerItemId = activeTrigger?.item?.id
+                triggerState = null
+                preTriggerText = ""
+                textState.value = textFieldValueAtEnd(restoredText)
+            }
+
+            // Handle search field value changes with trigger detection
+            fun onSearchChange(newValue: TextFieldValue) {
+                val ts = triggerState
+                if (ts != null) {
+                    val triggerToken = preTriggerText.substringBefore(' ').trim()
+                    val normalizedValue =
+                        if (
+                            ts.payload.isEmpty() &&
+                            triggerToken.isNotEmpty() &&
+                            newValue.text == triggerToken
+                        ) {
+                            newValue.copy(text = "", selection = TextRange.Zero)
+                        } else {
+                            newValue
+                        }
+
+                    // Backspace on empty payload → dismiss trigger
+                    if (newValue.text.isEmpty()) {
+                        dismissTrigger()
+                        return
+                    }
+
+                    // Update trigger payload
+                    triggerState = ts.copy(payload = normalizedValue.text)
+                    textState.value = normalizedValue
+                    return
+                }
+
+                // No trigger active: detect trigger from first word
+                val text = newValue.text
+                if (text.isBlank()) {
+                    suppressedAutoTriggerItemId = null
+                }
+
+                val spaceIdx = text.indexOf(' ')
+                if (spaceIdx > 0) {
+                    val firstWord = text.substring(0, spaceIdx)
+                    val payload = text.substring(spaceIdx + 1)
+                    val match = findTriggerMatch(firstWord, triggerProviders)
+                    if (match != null) {
+                        val payloadValue = textFieldValueAtEnd(payload)
+                        val (provider, item) = match
+                        if (suppressedAutoTriggerItemId != item.id) {
+                            suppressedAutoTriggerItemId = null
+                            preTriggerText = text
+                            triggerState = TriggerState(provider, item, payload)
+                            textState.value = payloadValue
+                            return
+                        }
+                    }
+                }
+                textState.value = newValue
+            }
+
+            LaunchedEffect(triggerState?.provider?.id, triggerState?.item?.id) {
+                val activeTrigger = triggerState ?: return@LaunchedEffect
+                if (textState.value.text != activeTrigger.payload) {
+                    textState.value = textFieldValueAtEnd(activeTrigger.payload)
+                }
+                focusRequester.requestFocus()
+            }
+
+            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger, queryBasedRankingEnabled, triggerState) {
                 // Cancel previous query job to debounce typing
                 pendingQueryJob?.cancel()
 
@@ -442,6 +541,25 @@ class MainActivity : ComponentActivity() {
                     launch {
                         // Minimal debounce: 50ms to reduce jank while still batching keystrokes
                         delay(50)
+
+                        // Check for active trigger state
+                        val activeTrigger = triggerState
+                        if (activeTrigger != null) {
+                            // Execute trigger (provider handles blank payload with suggestions)
+                            try {
+                                val triggerResults = withContext(Dispatchers.IO) {
+                                    activeTrigger.provider.executeTrigger(activeTrigger.item, activeTrigger.payload)
+                                }
+                                if (providerResults != triggerResults) {
+                                    providerResults = triggerResults
+                                }
+                                shouldShowResults = triggerResults.isNotEmpty()
+                            } catch (_: Exception) {
+                                providerResults = emptyList()
+                                shouldShowResults = false
+                            }
+                            return@launch
+                        }
 
                         val currentText = textState.value.text
                         val match = aliasRepository.matchAlias(currentText)
@@ -705,8 +823,15 @@ class MainActivity : ComponentActivity() {
                                                     .fillMaxWidth()
                                                     .focusRequester(focusRequester),
                                             value = textState.value,
-                                            onValueChange = { textState.value = it },
-                                            singleLine = true,
+                                            onValueChange = { onSearchChange(it) },
+                                            triggerChip = triggerState?.let { ts ->
+                                                {
+                                                    TriggerChip(
+                                                        item = ts.item,
+                                                        onDismiss = { dismissTrigger() },
+                                                    )
+                                                }
+                                            },
                                             placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                             trailingIcon = {
                                                 if (settingsIconPosition == SettingsIconPosition.INSIDE) {
@@ -816,8 +941,15 @@ class MainActivity : ComponentActivity() {
                                                 .fillMaxWidth()
                                                 .focusRequester(focusRequester),
                                         value = textState.value,
-                                        onValueChange = { textState.value = it },
-                                        singleLine = true,
+                                        onValueChange = { onSearchChange(it) },
+                                        triggerChip = triggerState?.let { ts ->
+                                            {
+                                                TriggerChip(
+                                                    item = ts.item,
+                                                    onDismiss = { dismissTrigger() },
+                                                )
+                                            }
+                                        },
                                         placeholder = { Text(stringResource(R.string.search_placeholder)) },
                                         trailingIcon = {
                                             if (settingsIconPosition == SettingsIconPosition.INSIDE) {

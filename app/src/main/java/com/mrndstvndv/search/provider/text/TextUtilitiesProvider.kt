@@ -9,6 +9,8 @@ import android.util.Base64
 import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.TextFields
 import androidx.core.net.toUri
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
@@ -42,6 +44,7 @@ class TextUtilitiesProvider(
                         id = utility.id,
                         label = utility.displayName(activity),
                         aliases = activeKeywords,
+                        vectorIcon = Icons.Outlined.TextFields,
                     )
                 }
         }
