@@ -10,8 +10,10 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.QuicklinkAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.TriggerItem
 import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
@@ -24,9 +26,45 @@ import kotlinx.coroutines.withContext
 class WebSearchProvider(
     private val activity: ComponentActivity,
     private val settingsRepository: SettingsRepository<WebSearchSettings>,
-) : Provider {
+) : TriggerProvider {
     override val id: String = "web-search"
     override val displayName: String = activity.getString(R.string.provider_web_search)
+
+    override val triggerItems: List<TriggerItem>
+        get() {
+            val settings = settingsRepository.value
+            val defaultId = settings.defaultSiteId
+            return settings.sites
+                .filter { it.enabled && it.id != defaultId }
+                .map { site -> TriggerItem(id = site.id, label = site.displayName) }
+        }
+
+    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+        val settings = settingsRepository.value
+        val site = settings.sites.firstOrNull { it.id == item.id } ?: return emptyList()
+        val queryText = payload.ifBlank { "" }
+        val searchUrl = site.buildUrl(queryText)
+        val action: suspend () -> Unit = {
+            withContext(Dispatchers.Main) {
+                val intent = Intent(Intent.ACTION_VIEW, searchUrl.toUri())
+                activity.startActivity(intent)
+                activity.finish()
+            }
+        }
+        return listOf(
+            ProviderResult(
+                id = "$id:${site.id}:${queryText.hashCode()}",
+                title = activity.getString(R.string.web_search_result_title, queryText),
+                subtitle = site.displayName,
+                providerId = id,
+                onSelect = action,
+                aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
+                keepOverlayUntilExit = true,
+                excludeFromFrequencyRanking = true,
+                frequencyKey = "$id:${site.id}",
+            )
+        )
+    }
 
     override fun canHandle(query: Query): Boolean {
         val cleaned = query.trimmedText

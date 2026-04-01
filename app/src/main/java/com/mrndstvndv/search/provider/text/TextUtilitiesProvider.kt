@@ -12,8 +12,10 @@ import androidx.annotation.StringRes
 import androidx.core.net.toUri
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.TriggerItem
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
@@ -24,91 +26,145 @@ import kotlin.math.min
 class TextUtilitiesProvider(
     private val activity: ComponentActivity,
     private val settingsRepository: SettingsRepository<TextUtilitiesSettings>,
-) : Provider {
+) : TriggerProvider {
     override val id: String = "text-utilities"
     override val displayName: String = activity.getString(R.string.provider_text_utilities)
 
-    override fun canHandle(query: Query): Boolean = parseCommand(query.text) != null
+    override val triggerItems: List<TriggerItem>
+        get() {
+            val settings = settingsRepository.value
+            return utilities
+                .filter { it.id !in settings.disabledUtilities }
+                .map { utility ->
+                    val disabledKeywords = settings.disabledKeywords[utility.id] ?: emptySet()
+                    val activeKeywords = utility.keywords - disabledKeywords
+                    TriggerItem(
+                        id = utility.id,
+                        label = utility.displayName(activity),
+                        aliases = activeKeywords,
+                    )
+                }
+        }
 
-    override suspend fun query(query: Query): List<ProviderResult> {
-        val parsed = parseCommand(query.text) ?: return emptyList()
-        val payload = parsed.payload ?: return listOf(buildSuggestionResult(parsed))
-        val textUtilitiesSettings = settingsRepository.value
-        return when (val outcome = parsed.utility.transform(parsed.mode, payload, activity)) {
-            is TransformOutcome.Success -> listOf(buildSuccessResult(parsed, outcome, textUtilitiesSettings))
-            is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(parsed, outcome))
+    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+        val utility = utilities.firstOrNull { it.id == item.id } ?: return emptyList()
+        val settings = settingsRepository.value
+
+        // Parse optional mode token from payload
+        val (mode, cleanPayload) = parseModeFromPayload(payload, utility, settings)
+
+        if (cleanPayload.isBlank()) {
+            return listOf(buildSuggestionResult(utility, mode))
+        }
+
+        return when (val outcome = utility.transform(mode, cleanPayload, activity)) {
+            is TransformOutcome.Success -> listOf(buildSuccessResult(utility, mode, cleanPayload, outcome, settings))
+            is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(utility, mode, cleanPayload, outcome))
+        }
+    }
+
+    override fun canHandle(query: Query): Boolean = false // Handled via TriggerProvider
+
+    override suspend fun query(query: Query): List<ProviderResult> = emptyList() // Handled via TriggerProvider
+
+    private fun parseModeFromPayload(
+        payload: String,
+        utility: TextUtility,
+        settings: TextUtilitiesSettings,
+    ): Pair<TransformMode, String> {
+        val savedMode = settings.utilityDefaultModes[utility.id]
+        var mode = if (savedMode != null) {
+            when (savedMode) {
+                TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
+                TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+            }
+        } else {
+            utility.defaultMode
+        }
+
+        if (!utility.supportsBothModes || payload.isBlank()) return mode to payload
+
+        val nextSpaceIndex = payload.indexOfFirst { it.isWhitespace() }
+        val candidate = if (nextSpaceIndex == -1) payload else payload.substring(0, nextSpaceIndex)
+        val normalized = candidate.lowercase()
+
+        return when (normalized) {
+            in ENCODE_TOKENS -> TransformMode.ENCODE to (if (nextSpaceIndex == -1) "" else payload.substring(nextSpaceIndex).trimStart())
+            in DECODE_TOKENS -> TransformMode.DECODE to (if (nextSpaceIndex == -1) "" else payload.substring(nextSpaceIndex).trimStart())
+            else -> mode to payload
         }
     }
 
     private fun buildSuccessResult(
-        command: ParsedCommand,
+        utility: TextUtility,
+        mode: TransformMode,
+        payload: String,
         outcome: TransformOutcome.Success,
         settings: TextUtilitiesSettings,
     ): ProviderResult {
         val preview = previewText(outcome.output)
-        val autoLaunchUri = resolveAutoLaunchUri(command, outcome.output, settings)
+        val autoLaunchUri = resolveAutoLaunchUri(mode, outcome.output, settings)
         val suffixResId =
             if (autoLaunchUri != null) {
                 R.string.text_utilities_tap_to_open
             } else {
                 R.string.text_utilities_tap_to_copy
             }
-        val subtitle = buildActionSubtitle(command, suffixResId)
-        val payload = command.payload.orEmpty()
+        val subtitle = buildActionSubtitle(utility, mode, suffixResId)
         val action: suspend () -> Unit = {
             if (autoLaunchUri != null) {
                 openUri(autoLaunchUri)
             } else {
                 withContext(Dispatchers.Main) {
-                    copyToClipboard(command.utility.displayName(activity), outcome.output)
+                    copyToClipboard(utility.displayName(activity), outcome.output)
                     finishOverlay()
                 }
             }
         }
         return ProviderResult(
-            id = "$id:${command.utility.id}:${command.mode.name}:${payload.hashCode()}",
+            id = "$id:${utility.id}:${mode.name}:${payload.hashCode()}",
             title = preview,
             subtitle = subtitle,
             providerId = id,
             extras =
                 mapOf(
-                    EXTRA_UTILITY_ID to command.utility.id,
-                    EXTRA_MODE to command.mode.name,
+                    EXTRA_UTILITY_ID to utility.id,
+                    EXTRA_MODE to mode.name,
                     EXTRA_PAYLOAD to payload,
                 ),
             onSelect = action,
             keepOverlayUntilExit = autoLaunchUri != null,
-            frequencyKey = "$id:${command.utility.id}",
-            frequencyQuery = command.canonicalKeyword,
+            frequencyKey = "$id:${utility.id}",
         )
     }
 
     private fun buildInvalidInputResult(
-        command: ParsedCommand,
+        utility: TextUtility,
+        mode: TransformMode,
+        payload: String,
         outcome: TransformOutcome.InvalidInput,
     ): ProviderResult {
-        val payload = command.payload.orEmpty()
         return ProviderResult(
-            id = "$id:${command.utility.id}:invalid:${payload.hashCode()}",
+            id = "$id:${utility.id}:invalid:${payload.hashCode()}",
             title = outcome.message,
-            subtitle = command.utility.invalidInputHint(activity),
+            subtitle = utility.invalidInputHint(activity),
             providerId = id,
             extras =
                 mapOf(
-                    EXTRA_UTILITY_ID to command.utility.id,
-                    EXTRA_MODE to command.mode.name,
+                    EXTRA_UTILITY_ID to utility.id,
+                    EXTRA_MODE to mode.name,
                     EXTRA_PAYLOAD to payload,
                 ),
             excludeFromFrequencyRanking = true,
         )
     }
 
-    private fun buildSuggestionResult(command: ParsedCommand): ProviderResult {
-        val instruction = buildActionSubtitle(command)
-        val prefill = buildPrefillText(command)
+    private fun buildSuggestionResult(utility: TextUtility, mode: TransformMode): ProviderResult {
+        val instruction = buildActionSubtitle(utility, mode)
+        val prefill = "${utility.primaryKeyword} "
         return ProviderResult(
-            id = "$id:${command.utility.id}:suggest:${command.mode.name}:${command.canonicalKeyword.hashCode()}",
-            title = command.utility.displayName(activity),
+            id = "$id:${utility.id}:suggest:${mode.name}:${utility.primaryKeyword.hashCode()}",
+            title = utility.displayName(activity),
             subtitle = instruction,
             providerId = id,
             extras = mapOf(PREFILL_QUERY_EXTRA to prefill),
@@ -137,75 +193,6 @@ class TextUtilitiesProvider(
         activity.finish()
     }
 
-    private fun parseCommand(rawText: String): ParsedCommand? {
-        val trimmed = rawText.trimStart()
-        if (trimmed.isBlank()) return null
-
-        val firstSpaceIndex = trimmed.indexOfFirst { it.isWhitespace() }
-        val firstToken = if (firstSpaceIndex == -1) trimmed else trimmed.substring(0, firstSpaceIndex)
-        val utilityMatch = matchUtility(firstToken) ?: return null
-        var remainder = if (firstSpaceIndex == -1) "" else trimmed.substring(firstSpaceIndex).trimStart()
-
-        val settings = settingsRepository.value
-        val savedMode = settings.utilityDefaultModes[utilityMatch.utility.id]
-        var mode =
-            if (savedMode != null) {
-                when (savedMode) {
-                    TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
-                    TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
-                }
-            } else {
-                utilityMatch.utility.defaultMode
-            }
-        var consumedModeToken: String? = null
-        if (remainder.isNotBlank()) {
-            val nextSpaceIndex = remainder.indexOfFirst { it.isWhitespace() }
-            val candidate = if (nextSpaceIndex == -1) remainder else remainder.substring(0, nextSpaceIndex)
-            val normalized = candidate.lowercase()
-            if (normalized in ENCODE_TOKENS) {
-                mode = TransformMode.ENCODE
-                consumedModeToken = candidate
-                remainder = if (nextSpaceIndex == -1) "" else remainder.substring(nextSpaceIndex).trimStart()
-            } else if (normalized in DECODE_TOKENS) {
-                mode = TransformMode.DECODE
-                consumedModeToken = candidate
-                remainder = if (nextSpaceIndex == -1) "" else remainder.substring(nextSpaceIndex).trimStart()
-            }
-        }
-
-        val payload = remainder.takeIf { it.isNotBlank() }
-        return ParsedCommand(
-            utility = utilityMatch.utility,
-            canonicalKeyword = utilityMatch.canonicalKeyword,
-            mode = mode,
-            payload = payload,
-            consumedModeToken = consumedModeToken,
-        )
-    }
-
-    private fun matchUtility(token: String): UtilityMatch? {
-        val normalized = token.lowercase()
-        if (normalized.isBlank()) return null
-        val settings = settingsRepository.value
-
-        for (utility in utilities) {
-            if (utility.id in settings.disabledUtilities) continue
-
-            val disabledKeywords = settings.disabledKeywords[utility.id] ?: emptySet()
-            val enabledKeywords = utility.keywords - disabledKeywords
-            if (enabledKeywords.isEmpty()) continue
-
-            val exact = enabledKeywords.firstOrNull { normalized == it }
-            val prefix = enabledKeywords.firstOrNull { it.startsWith(normalized) }
-            val startsWith = enabledKeywords.firstOrNull { normalized.startsWith(it) }
-            val match = exact ?: prefix ?: startsWith
-            if (match != null) {
-                return UtilityMatch(utility, utility.primaryKeyword)
-            }
-        }
-        return null
-    }
-
     private fun previewText(
         value: String,
         maxLength: Int = 60,
@@ -217,21 +204,22 @@ class TextUtilitiesProvider(
     }
 
     private fun resolveAutoLaunchUri(
-        command: ParsedCommand,
+        mode: TransformMode,
         decodedText: String,
         settings: TextUtilitiesSettings,
     ): Uri? {
-        if (command.mode != TransformMode.DECODE) return null
+        if (mode != TransformMode.DECODE) return null
         if (!settings.openDecodedUrls) return null
         return decodedText.toNavigableUriOrNull()
     }
 
     private fun buildActionSubtitle(
-        command: ParsedCommand,
+        utility: TextUtility,
+        mode: TransformMode,
         @StringRes suffixResId: Int? = null,
     ): String {
-        val action = activity.getString(command.mode.actionRes)
-        val utilityName = command.utility.displayName(activity)
+        val action = activity.getString(mode.actionRes)
+        val utilityName = utility.displayName(activity)
         return if (suffixResId == null) {
             activity.getString(R.string.text_utilities_action_subtitle, action, utilityName)
         } else {
@@ -251,23 +239,6 @@ class TextUtilitiesProvider(
         val candidate = if (hasScheme) trimmed else "https://$trimmed"
         return if (Patterns.WEB_URL.matcher(candidate).matches()) candidate.toUri() else null
     }
-
-    private fun buildPrefillText(command: ParsedCommand): String {
-        val builder = StringBuilder(command.canonicalKeyword).append(' ')
-        val modeToken = command.consumedModeToken
-        if (modeToken != null) {
-            builder.append(modeToken).append(' ')
-        }
-        return builder.toString()
-    }
-
-    private data class ParsedCommand(
-        val utility: TextUtility,
-        val canonicalKeyword: String,
-        val mode: TransformMode,
-        val payload: String?,
-        val consumedModeToken: String?,
-    )
 
     private enum class TransformMode(
         @StringRes val actionRes: Int,
@@ -527,11 +498,6 @@ class TextUtilitiesProvider(
             }
         }
     }
-
-    private data class UtilityMatch(
-        val utility: TextUtility,
-        val canonicalKeyword: String,
-    )
 
     companion object {
         private const val ELLIPSIS = "…"

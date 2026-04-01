@@ -6,8 +6,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.TriggerItem
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -21,9 +23,42 @@ class IntentProvider(
     private val activity: ComponentActivity,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<IntentSettings>,
-) : Provider {
+) : TriggerProvider {
     override val id: String = "intent"
     override val displayName: String = activity.getString(R.string.provider_intent_launcher)
+
+    override val triggerItems: List<TriggerItem>
+        get() = settingsRepository.value.configs.map { config ->
+            TriggerItem(id = config.id, label = config.title)
+        }
+
+    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+        val settings = settingsRepository.value
+        val config = settings.configs.firstOrNull { it.id == item.id } ?: return emptyList()
+
+        val systemLabel = activity.getString(R.string.intent_system)
+        val targetLabel = config.packageName.ifEmpty { systemLabel }
+
+        val subtitle = if (payload.isNotEmpty()) {
+            activity.getString(R.string.intent_result_subtitle_with_payload, payload, targetLabel)
+        } else if (config.requiresPayload) {
+            activity.getString(R.string.intent_payload_required_hint)
+        } else {
+            targetLabel
+        }
+
+        return listOf(
+            ProviderResult(
+                id = "$id:${config.id}",
+                title = config.title,
+                subtitle = subtitle,
+                vectorIcon = Icons.Outlined.Share,
+                providerId = id,
+                onSelect = { executeIntent(config, payload) },
+                keepOverlayUntilExit = true,
+            )
+        )
+    }
 
     override fun canHandle(query: Query): Boolean {
         val isEnabled = globalSettingsRepository.enabledProviders.value[id] ?: true
