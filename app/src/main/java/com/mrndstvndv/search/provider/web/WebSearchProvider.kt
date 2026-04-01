@@ -139,10 +139,10 @@ class WebSearchProvider(
         cleaned: String,
         settings: WebSearchSettings,
     ): List<ProviderResult> {
-        val sites = settings.sites
+        val sites = settings.sites.filter { it.enabled }
         if (sites.isEmpty()) return emptyList()
 
-        val defaultSite = settings.siteForId(settings.defaultSiteId) ?: sites.first()
+        val defaultSite = sites.firstOrNull { it.id == settings.defaultSiteId } ?: sites.first()
         // Use first word (space-separated) as trigger token
         val trimmedOriginal = query.originalText.trimStart()
         val firstSpace = trimmedOriginal.indexOf(' ')
