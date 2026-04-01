@@ -72,8 +72,8 @@ import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
+import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.ProviderRankingRepository
-import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.apps.AppListProvider
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
@@ -90,6 +90,7 @@ import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ContactsSettings
@@ -138,6 +139,11 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
+
+private data class SuppressedTriggerMatch(
+    val triggerId: String,
+    val matchedToken: String,
+)
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -363,13 +369,12 @@ class MainActivity : ComponentActivity() {
             var pendingQueryJob by remember { mutableStateOf<Job?>(null) }
             var refreshTrigger by remember { mutableStateOf(0) }
             var triggerState by remember { mutableStateOf<TriggerState?>(null) }
-            var preTriggerText by remember { mutableStateOf("") }
-            var suppressedAutoTriggerItemId by remember { mutableStateOf<String?>(null) }
+            var pendingTriggerEditorEcho by remember { mutableStateOf<String?>(null) }
+            var suppressedTriggerMatch by remember { mutableStateOf<SuppressedTriggerMatch?>(null) }
 
-            // Collect trigger providers
-            val triggerProviders = remember(providers) {
-                providers.filterIsInstance<TriggerProvider>()
-            }
+            val activeProviders = providers.filter { enabledProviders[it.id] ?: true }
+            val availableTriggers = activeProviders.flatMap { it.triggers }
+            val providersById = remember(providers) { providers.associateBy { it.id } }
 
             // Listen for provider refresh signals
             LaunchedEffect(providers) {
@@ -390,7 +395,6 @@ class MainActivity : ComponentActivity() {
                 val action = result?.onSelect ?: return
                 if (isPerformingAction) return
                 isPerformingAction = true
-                // Track result usage frequency when result is selected
                 if (!result.excludeFromFrequencyRanking) {
                     val freqId = result.frequencyKey
                     val freqQuery = result.frequencyQuery ?: currentNormalizedQuery
@@ -410,6 +414,66 @@ class MainActivity : ComponentActivity() {
                     selection = TextRange(text.length),
                 )
 
+            fun deduplicateResults(results: List<ProviderResult>): List<ProviderResult> {
+                val seenIds = mutableSetOf<String>()
+                return results.filter { seenIds.add(it.id) }
+            }
+
+            suspend fun queryProviders(
+                query: Query,
+                providersToQuery: List<Provider>,
+            ): List<ProviderResult> {
+                if (providersToQuery.isEmpty()) return emptyList()
+                val allResults =
+                    supervisorScope {
+                        providersToQuery
+                            .map { provider ->
+                                async {
+                                    try {
+                                        withContext(Dispatchers.IO) { provider.query(query) }
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (_: Exception) {
+                                        emptyList()
+                                    }
+                                }
+                            }.awaitAll()
+                    }
+                return deduplicateResults(allResults.flatten())
+            }
+
+            fun sortResults(
+                results: List<ProviderResult>,
+                normalizedText: String,
+            ): List<ProviderResult> {
+                if (!useFrequencyRanking) {
+                    return results.sortedBy { result ->
+                        rankingRepository.getProviderRank(result.providerId)
+                    }
+                }
+
+                return results.sortedWith(
+                    compareBy(
+                        { result ->
+                            val freqId = result.frequencyKey
+                            val freqQuery = result.frequencyQuery ?: normalizedText
+                            val score = rankingRepository.getResultFrequency(freqId, freqQuery)
+                            if (score > 0f) 0 else 1
+                        },
+                        { result ->
+                            val freqId = result.frequencyKey
+                            val freqQuery = result.frequencyQuery ?: normalizedText
+                            val score = rankingRepository.getResultFrequency(freqId, freqQuery)
+                            if (score > 0f) {
+                                -score
+                            } else {
+                                rankingRepository.getProviderRank(result.providerId).toFloat()
+                            }
+                        },
+                    ),
+                )
+            }
+
             fun handleResultSelection(result: ProviderResult?): Boolean {
                 val candidate = result ?: return false
                 val prefillQuery = candidate.extras[TextUtilitiesProvider.PREFILL_QUERY_EXTRA] as? String
@@ -423,7 +487,6 @@ class MainActivity : ComponentActivity() {
                     shouldShowResults = true
                     return true
                 }
-                // Handle contacts specially - show action sheet
                 if (candidate.providerId == "contacts") {
                     @Suppress("UNCHECKED_CAST")
                     val phoneNumbers = candidate.extras[ContactsProvider.EXTRA_PHONE_NUMBERS] as? List<PhoneNumber> ?: emptyList()
@@ -437,7 +500,6 @@ class MainActivity : ComponentActivity() {
                             phoneNumbers = phoneNumbers,
                             isSimNumber = isSimNumber,
                         )
-                    // Track usage for contacts too
                     if (!candidate.excludeFromFrequencyRanking) {
                         val freqId = candidate.frequencyKey
                         val freqQuery = candidate.frequencyQuery ?: currentNormalizedQuery
@@ -452,80 +514,89 @@ class MainActivity : ComponentActivity() {
                 return false
             }
 
-            // Dismiss active trigger, restore plain-text query and suppress re-auto-triggering
-            // for the same trigger item until the field is cleared or a different item matches.
             fun dismissTrigger() {
-                val activeTrigger = triggerState
-                val triggerToken = preTriggerText.substringBefore(' ').trim()
+                val activeTrigger = triggerState ?: return
                 val restoredText =
                     when {
-                        activeTrigger == null -> preTriggerText
-                        triggerToken.isBlank() -> activeTrigger.payload
-                        activeTrigger.payload.isBlank() -> "$triggerToken "
-                        else -> "$triggerToken ${activeTrigger.payload}"
+                        activeTrigger.matchedToken.isBlank() -> activeTrigger.payload
+                        activeTrigger.payload.isBlank() -> "${activeTrigger.matchedToken} "
+                        else -> "${activeTrigger.matchedToken} ${activeTrigger.payload}"
                     }
 
-                suppressedAutoTriggerItemId = activeTrigger?.item?.id
+                suppressedTriggerMatch =
+                    SuppressedTriggerMatch(
+                        triggerId = activeTrigger.trigger.id,
+                        matchedToken = activeTrigger.matchedToken,
+                    )
+                pendingTriggerEditorEcho = null
                 triggerState = null
-                preTriggerText = ""
                 textState.value = textFieldValueAtEnd(restoredText)
             }
 
-            // Handle search field value changes with trigger detection
             fun onSearchChange(newValue: TextFieldValue) {
-                val ts = triggerState
-                if (ts != null) {
-                    val triggerToken = preTriggerText.substringBefore(' ').trim()
+                val activeTrigger = triggerState
+                if (activeTrigger != null) {
+                    val staleEditorEcho = pendingTriggerEditorEcho
+                    var consumedStaleEditorEcho = false
                     val normalizedValue =
-                        if (
-                            ts.payload.isEmpty() &&
-                            triggerToken.isNotEmpty() &&
-                            newValue.text == triggerToken
-                        ) {
-                            newValue.copy(text = "", selection = TextRange.Zero)
-                        } else {
-                            newValue
+                        when {
+                            staleEditorEcho == null -> newValue
+                            newValue.text == staleEditorEcho || newValue.text == "$staleEditorEcho " -> {
+                                pendingTriggerEditorEcho = null
+                                consumedStaleEditorEcho = true
+                                newValue.copy(text = "", selection = TextRange.Zero)
+                            }
+                            else -> {
+                                pendingTriggerEditorEcho = null
+                                newValue
+                            }
                         }
 
-                    // Backspace on empty payload → dismiss trigger
-                    if (newValue.text.isEmpty()) {
+                    if (normalizedValue.text.isEmpty() && !consumedStaleEditorEcho) {
                         dismissTrigger()
                         return
                     }
 
-                    // Update trigger payload
-                    triggerState = ts.copy(payload = normalizedValue.text)
+                    triggerState = activeTrigger.copy(payload = normalizedValue.text)
                     textState.value = normalizedValue
                     return
                 }
 
-                // No trigger active: detect trigger from first word
                 val text = newValue.text
                 if (text.isBlank()) {
-                    suppressedAutoTriggerItemId = null
+                    suppressedTriggerMatch = null
                 }
 
-                val spaceIdx = text.indexOf(' ')
-                if (spaceIdx > 0) {
-                    val firstWord = text.substring(0, spaceIdx)
-                    val payload = text.substring(spaceIdx + 1)
-                    val match = findTriggerMatch(firstWord, triggerProviders)
+                val spaceIndex = text.indexOf(' ')
+                if (spaceIndex > 0) {
+                    val firstWord = text.substring(0, spaceIndex)
+                    val payload = text.substring(spaceIndex + 1)
+                    val match = findTriggerMatch(firstWord, availableTriggers)
                     if (match != null) {
-                        val payloadValue = textFieldValueAtEnd(payload)
-                        val (provider, item) = match
-                        if (suppressedAutoTriggerItemId != item.id) {
-                            suppressedAutoTriggerItemId = null
-                            preTriggerText = text
-                            triggerState = TriggerState(provider, item, payload)
-                            textState.value = payloadValue
+                        val suppressed = suppressedTriggerMatch
+                        val isSuppressed =
+                            suppressed?.triggerId == match.trigger.id &&
+                                suppressed?.matchedToken?.equals(firstWord, ignoreCase = true) == true
+                        if (!isSuppressed) {
+                            suppressedTriggerMatch = null
+                            pendingTriggerEditorEcho = firstWord
+                            triggerState =
+                                TriggerState(
+                                    trigger = match.trigger,
+                                    matchedToken = firstWord,
+                                    payload = payload,
+                                )
+                            textState.value = textFieldValueAtEnd(payload)
                             return
                         }
                     }
                 }
+
+                pendingTriggerEditorEcho = null
                 textState.value = newValue
             }
 
-            LaunchedEffect(triggerState?.provider?.id, triggerState?.item?.id) {
+            LaunchedEffect(triggerState?.trigger?.id, triggerState?.matchedToken) {
                 val activeTrigger = triggerState ?: return@LaunchedEffect
                 if (textState.value.text != activeTrigger.payload) {
                     textState.value = textFieldValueAtEnd(activeTrigger.payload)
@@ -533,27 +604,42 @@ class MainActivity : ComponentActivity() {
                 focusRequester.requestFocus()
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, refreshTrigger, queryBasedRankingEnabled, triggerState) {
-                // Cancel previous query job to debounce typing
+            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, enabledProviders, refreshTrigger, queryBasedRankingEnabled, useFrequencyRanking, triggerState) {
                 pendingQueryJob?.cancel()
 
                 pendingQueryJob =
                     launch {
-                        // Minimal debounce: 50ms to reduce jank while still batching keystrokes
                         delay(50)
 
-                        // Check for active trigger state
                         val activeTrigger = triggerState
                         if (activeTrigger != null) {
-                            // Execute trigger (provider handles blank payload with suggestions)
+                            currentNormalizedQuery = activeTrigger.payload
                             try {
                                 val triggerResults = withContext(Dispatchers.IO) {
-                                    activeTrigger.provider.executeTrigger(activeTrigger.item, activeTrigger.payload)
+                                    activeTrigger.trigger.execute(activeTrigger.payload)
                                 }
-                                if (providerResults != triggerResults) {
-                                    providerResults = triggerResults
+                                val payloadQuery = Query(activeTrigger.payload)
+                                val supplementalProviders =
+                                    when (activeTrigger.trigger.resultPolicy) {
+                                        TriggerResultPolicy.EXCLUSIVE -> emptyList()
+                                        TriggerResultPolicy.INCLUDE_OWNER_RESULTS -> {
+                                            val ownerProvider = providersById[activeTrigger.trigger.ownerProviderId]
+                                            if (ownerProvider != null && (enabledProviders[ownerProvider.id] ?: true) && ownerProvider.canHandle(payloadQuery)) {
+                                                listOf(ownerProvider)
+                                            } else {
+                                                emptyList()
+                                            }
+                                        }
+                                        TriggerResultPolicy.INCLUDE_ALL_RESULTS -> {
+                                            activeProviders.filter { provider -> provider.canHandle(payloadQuery) }
+                                        }
+                                    }
+                                val supplementalResults = sortResults(queryProviders(payloadQuery, supplementalProviders), activeTrigger.payload)
+                                val mergedResults = deduplicateResults(triggerResults + supplementalResults)
+                                if (providerResults != mergedResults) {
+                                    providerResults = mergedResults
                                 }
-                                shouldShowResults = triggerResults.isNotEmpty()
+                                shouldShowResults = mergedResults.isNotEmpty()
                             } catch (_: Exception) {
                                 providerResults = emptyList()
                                 shouldShowResults = false
@@ -566,82 +652,20 @@ class MainActivity : ComponentActivity() {
                         val normalizedText = match?.remainingQuery ?: currentText
                         currentNormalizedQuery = normalizedText
                         val query = Query(normalizedText, originalText = currentText)
-
-                        val matchingProviders =
-                            providers
-                                .filter { enabledProviders[it.id] ?: true }
-                                .filter { it.canHandle(query) }
+                        val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
                         val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
-
-                        // Use async/awaitAll to isolate provider failures without shared mutable state
-                        val allResults =
-                            supervisorScope {
-                                matchingProviders
-                                    .map { provider ->
-                                        async {
-                                            try {
-                                                withContext(Dispatchers.IO) { provider.query(query) }
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (_: Exception) {
-                                                emptyList()
-                                            }
-                                        }
-                                    }.awaitAll()
-                            }
-                        val seenIds = mutableSetOf<String>()
-                        val aggregated = allResults.flatten().filter { seenIds.add(it.id) }
-
-                        // Final update after all providers complete - only if results changed
+                        val aggregated = queryProviders(query, matchingProviders)
                         val filtered =
                             match?.entry?.target?.let { aliasTarget ->
                                 aggregated.filterNot { it.aliasTarget == aliasTarget }
                             } ?: aggregated
-
-                        // Sort results:
-                        // If frequency ranking enabled:
-                        //   - Items with score > 0 appear first (sorted by score descending)
-                        //   - Items with score 0 follow provider ranking
-                        // Otherwise: sort purely by provider ranking
-                        val sortedResults =
-                            if (useFrequencyRanking) {
-                                filtered.sortedWith(
-                                    compareBy(
-                                        { result ->
-                                            // Primary: items with score (>0) come first, then items without (=0)
-                                            val freqId = result.frequencyKey
-                                            val fq = result.frequencyQuery ?: normalizedText
-                                            val score = rankingRepository.getResultFrequency(freqId, fq)
-                                            if (score > 0f) 0 else 1
-                                        },
-                                        { result ->
-                                            // Secondary: within each group, sort appropriately
-                                            val freqId = result.frequencyKey
-                                            val fq = result.frequencyQuery ?: normalizedText
-                                            val score = rankingRepository.getResultFrequency(freqId, fq)
-                                            if (score > 0f) {
-                                                // For items with score, sort by score descending (negative for descending)
-                                                -score
-                                            } else {
-                                                // For items with no score, sort by provider rank
-                                                rankingRepository.getProviderRank(result.providerId).toFloat()
-                                            }
-                                        },
-                                    ),
-                                )
-                            } else {
-                                filtered.sortedBy { result ->
-                                    rankingRepository.getProviderRank(result.providerId)
-                                }
-                            }
-
+                        val sortedResults = sortResults(filtered, normalizedText)
                         val newResults =
                             buildList {
                                 aliasResult?.let { add(it) }
                                 addAll(sortedResults)
                             }
 
-                        // Only update UI if results actually changed
                         if (providerResults != newResults) {
                             providerResults = newResults
                         }
@@ -827,7 +851,7 @@ class MainActivity : ComponentActivity() {
                                             triggerChip = triggerState?.let { ts ->
                                                 {
                                                     TriggerChip(
-                                                        item = ts.item,
+                                                        item = ts.trigger,
                                                         onDismiss = { dismissTrigger() },
                                                     )
                                                 }
@@ -946,7 +970,7 @@ class MainActivity : ComponentActivity() {
                                         triggerChip = triggerState?.let { ts ->
                                             {
                                                 TriggerChip(
-                                                    item = ts.item,
+                                                    item = ts.trigger,
                                                     onDismiss = { dismissTrigger() },
                                                 )
                                             }

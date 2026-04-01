@@ -11,10 +11,10 @@ import androidx.compose.material.icons.outlined.Terminal
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
-import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.model.TriggerItem
+import com.mrndstvndv.search.provider.model.SearchTrigger
+import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -31,27 +31,35 @@ class TermuxProvider(
     private val activity: ComponentActivity,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<TermuxSettings>,
-) : TriggerProvider {
+) : Provider {
     override val id: String = "termux"
     override val displayName: String = activity.getString(R.string.provider_termux)
 
-    override val triggerItems: List<TriggerItem>
-        get() = settingsRepository.value.commands.map { cmd ->
-            TriggerItem(
-                id = cmd.id,
-                label = cmd.displayName,
-                aliases = setOf(cmd.executablePath.substringAfterLast('/')),
-                vectorIcon = Icons.Outlined.Terminal,
-            )
+    override val triggers: List<SearchTrigger>
+        get() {
+            if (!isTermuxInstalled) return emptyList()
+            return settingsRepository.value.commands.map { command ->
+                SearchTrigger.create(
+                    id = command.id,
+                    ownerProviderId = id,
+                    label = command.displayName,
+                    aliases = setOf(command.executablePath.substringAfterLast('/')),
+                    vectorIcon = Icons.Outlined.Terminal,
+                    resultPolicy = TriggerResultPolicy.EXCLUSIVE,
+                    execute = { payload -> executeCommandTrigger(command.id, payload) },
+                )
+            }
         }
 
-    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
+    private suspend fun executeCommandTrigger(
+        commandId: String,
+        payload: String,
+    ): List<ProviderResult> {
         if (!isTermuxInstalled) return emptyList()
 
         val settings = settingsRepository.value
-        val command = settings.commands.firstOrNull { it.id == item.id } ?: return emptyList()
+        val command = settings.commands.firstOrNull { it.id == commandId } ?: return emptyList()
         val queryArgs = if (payload.isBlank()) emptyList() else payload.split(' ')
-
         val resolvedArgs = resolveArguments(command.arguments, queryArgs, payload)
         val preview = buildCommandPreview(command.executablePath, resolvedArgs)
 

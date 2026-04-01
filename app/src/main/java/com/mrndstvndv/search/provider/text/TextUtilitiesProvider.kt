@@ -14,11 +14,11 @@ import androidx.compose.material.icons.outlined.TextFields
 import androidx.core.net.toUri
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
-import com.mrndstvndv.search.provider.TriggerProvider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.model.TriggerItem
+import com.mrndstvndv.search.provider.model.SearchTrigger
 import com.mrndstvndv.search.provider.model.TriggerMatch
+import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
@@ -29,60 +29,59 @@ import kotlin.math.min
 class TextUtilitiesProvider(
     private val activity: ComponentActivity,
     private val settingsRepository: SettingsRepository<TextUtilitiesSettings>,
-) : TriggerProvider {
+) : Provider {
     override val id: String = "text-utilities"
     override val displayName: String = activity.getString(R.string.provider_text_utilities)
 
-    override val triggerItems: List<TriggerItem>
+    override val triggers: List<SearchTrigger>
         get() {
             val settings = settingsRepository.value
             return utilities
                 .filter { it.id !in settings.disabledUtilities }
-                .map { utility ->
+                .mapNotNull { utility ->
                     val disabledKeywords = settings.disabledKeywords[utility.id] ?: emptySet()
                     val activeKeywords = utility.keywords - disabledKeywords
-                    TriggerItem(
+                    if (activeKeywords.isEmpty()) return@mapNotNull null
+
+                    SearchTrigger.create(
                         id = utility.id,
+                        ownerProviderId = id,
                         label = utility.displayName(activity),
                         aliases = activeKeywords,
                         vectorIcon = Icons.Outlined.TextFields,
+                        resultPolicy = TriggerResultPolicy.EXCLUSIVE,
+                        matchLogic = { trigger, firstToken ->
+                            if (firstToken.isBlank()) return@create null
+                            val exactAlias = trigger.aliases.firstOrNull { it.equals(firstToken, ignoreCase = true) }
+                                ?: return@create null
+                            TriggerMatch(
+                                trigger = trigger,
+                                score = 100 + exactAlias.length,
+                                matchedIndices = emptyList(),
+                            )
+                        },
+                        execute = { payload -> executeUtilityTrigger(utility.id, payload) },
                     )
                 }
         }
 
-    override suspend fun executeTrigger(item: TriggerItem, payload: String): List<ProviderResult> {
-        val utility = utilities.firstOrNull { it.id == item.id } ?: return emptyList()
-        val settings = settingsRepository.value
-
-        // Parse optional mode token from payload
-        val (mode, cleanPayload) = parseModeFromPayload(payload, utility, settings)
-
-        if (cleanPayload.isBlank()) {
-            return listOf(buildSuggestionResult(utility, mode))
-        }
-
-        return when (val outcome = utility.transform(mode, cleanPayload, activity)) {
-            is TransformOutcome.Success -> listOf(buildSuccessResult(utility, mode, cleanPayload, outcome, settings))
-            is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(utility, mode, cleanPayload, outcome))
-        }
-    }
-
     override fun canHandle(query: Query): Boolean {
         val text = query.text.trim()
         if (text.isBlank()) return false
-        return triggerItems.any { item ->
-            item.aliases.any { it.startsWith(text, ignoreCase = true) }
+        return triggers.any { trigger ->
+            trigger.aliases.any { it.startsWith(text, ignoreCase = true) }
         }
     }
 
     override suspend fun query(query: Query): List<ProviderResult> {
         val text = query.text.trim()
         if (text.isBlank()) return emptyList()
-        return triggerItems.mapNotNull { item ->
-            val aliasMatch = item.aliases.firstOrNull { it.startsWith(text, ignoreCase = true) }
-                ?: return@mapNotNull null
+        return triggers.mapNotNull { trigger ->
+            if (trigger.aliases.none { it.startsWith(text, ignoreCase = true) }) {
+                return@mapNotNull null
+            }
 
-            val utility = utilities.firstOrNull { it.id == item.id } ?: return@mapNotNull null
+            val utility = utilities.firstOrNull { it.id == trigger.id } ?: return@mapNotNull null
             val settings = settingsRepository.value
             val savedMode = settings.utilityDefaultModes[utility.id]
             val mode = when (savedMode) {
@@ -94,18 +93,22 @@ class TextUtilitiesProvider(
         }
     }
 
-    override fun matchTrigger(firstToken: String): TriggerMatch? {
-        if (firstToken.isBlank()) return null
-        val normalized = firstToken.lowercase()
-        var best: TriggerMatch? = null
-        for (item in triggerItems) {
-            val exactAlias = item.aliases.firstOrNull { normalized == it } ?: continue
-            val score = 100 + exactAlias.length
-            if (best == null || score > best.score) {
-                best = TriggerMatch(item = item, score = score, matchedIndices = emptyList())
-            }
+    private suspend fun executeUtilityTrigger(
+        utilityId: String,
+        payload: String,
+    ): List<ProviderResult> {
+        val utility = utilities.firstOrNull { it.id == utilityId } ?: return emptyList()
+        val settings = settingsRepository.value
+
+        val (mode, cleanPayload) = parseModeFromPayload(payload, utility, settings)
+        if (cleanPayload.isBlank()) {
+            return listOf(buildSuggestionResult(utility, mode))
         }
-        return best
+
+        return when (val outcome = utility.transform(mode, cleanPayload, activity)) {
+            is TransformOutcome.Success -> listOf(buildSuccessResult(utility, mode, cleanPayload, outcome, settings))
+            is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(utility, mode, cleanPayload, outcome))
+        }
     }
 
     private fun parseModeFromPayload(
