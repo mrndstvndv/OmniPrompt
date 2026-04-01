@@ -101,6 +101,7 @@ fun SearchField(
     triggerChip: (@Composable () -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
+    onClear: (() -> Unit)? = null,
     singleLine: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
@@ -184,9 +185,27 @@ fun SearchField(
                             innerTextField()
                         }
 
-                        trailingIcon?.let {
+                        if (value.text.isNotEmpty() && onClear != null) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            it()
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable { onClear() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Clear search",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            trailingIcon?.let {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                it()
+                            }
                         }
                     }
                 }

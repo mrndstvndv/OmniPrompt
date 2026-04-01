@@ -769,12 +769,13 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         },
+                        onClear = { onSearchChange(TextFieldValue("")) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { submitSearch() }),
                         onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
                     )
 
-                    if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                    if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.value.text.isEmpty()) {
                         Box(
                             modifier =
                                 Modifier
