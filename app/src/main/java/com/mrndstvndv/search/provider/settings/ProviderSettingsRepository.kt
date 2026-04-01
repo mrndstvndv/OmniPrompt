@@ -208,11 +208,13 @@ data class WebSearchSettings(
                     id = "bing",
                     displayName = "Bing",
                     urlTemplate = "https://www.bing.com/search?q={query}&form=QBLH",
+                    enabled = false,
                 ),
                 WebSearchSite(
                     id = "duckduckgo",
                     displayName = "DuckDuckGo",
                     urlTemplate = "https://duckduckgo.com/?q={query}",
+                    enabled = false,
                 ),
                 WebSearchSite(
                     id = "google",
@@ -223,28 +225,32 @@ data class WebSearchSettings(
                     id = "youtube",
                     displayName = "YouTube",
                     urlTemplate = "https://m.youtube.com/results?search_query={query}",
+                    enabled = false,
                 ),
                 WebSearchSite(
                     id = "twitter",
                     displayName = "Twitter",
                     urlTemplate = "https://x.com/search?q={query}",
+                    enabled = false,
                 ),
                 WebSearchSite(
                     id = "playstore",
                     displayName = "Play Store",
                     urlTemplate = "https://play.google.com/store/search?q={query}&c=apps",
+                    enabled = false,
                 ),
                 WebSearchSite(
                     id = "github",
                     displayName = "GitHub",
                     urlTemplate = "https://github.com/search?q={query}",
+                    enabled = false,
                 ),
             )
         const val QUERY_PLACEHOLDER = "{query}"
 
         fun default(): WebSearchSettings =
             WebSearchSettings(
-                defaultSiteId = DEFAULT_SITES.first().id,
+                defaultSiteId = "google",
                 sites = DEFAULT_SITES,
                 quicklinks = emptyList(),
             )
@@ -294,6 +300,7 @@ data class WebSearchSite(
     val id: String,
     val displayName: String,
     val urlTemplate: String,
+    val enabled: Boolean = true,
 ) {
     fun buildUrl(query: String): String {
         val template = normalizedTemplate()
@@ -315,6 +322,7 @@ data class WebSearchSite(
             put("id", id)
             put("displayName", displayName)
             put("urlTemplate", urlTemplate)
+            put("enabled", enabled)
         }
 
     companion object {
@@ -323,7 +331,8 @@ data class WebSearchSite(
             val id = json.opt("id") as? String ?: return null
             val name = json.opt("displayName") as? String ?: return null
             val template = json.opt("urlTemplate") as? String ?: return null
-            return WebSearchSite(id = id, displayName = name, urlTemplate = template)
+            val enabled = json.optBoolean("enabled", true)
+            return WebSearchSite(id = id, displayName = name, urlTemplate = template, enabled = enabled)
         }
     }
 }

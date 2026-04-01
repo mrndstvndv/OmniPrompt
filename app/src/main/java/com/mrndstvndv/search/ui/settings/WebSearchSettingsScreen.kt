@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -321,6 +322,9 @@ fun WebSearchSettingsScreen(
                                     saveSettings()
                                 },
                                 onEdit = { editingSite = index to site },
+                                onToggleEnabled = { enabled ->
+                                    updateSite(index) { it.copy(enabled = enabled) }
+                                },
                             )
                             if (index < sites.lastIndex) {
                                 HorizontalDivider(
@@ -924,26 +928,33 @@ private fun WebSearchSiteRow(
     isDefault: Boolean,
     onSetDefault: () -> Unit,
     onEdit: () -> Unit,
+    onToggleEnabled: (Boolean) -> Unit,
 ) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // RadioButton for setting default
+        RadioButton(
+            selected = isDefault,
+            onClick = onSetDefault,
+        )
+
         // Tap area with display name and URL template
         Column(
             modifier =
                 Modifier
                     .weight(1f)
                     .clickable(onClick = onEdit)
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Text(
                 text = site.displayName,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (site.enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -957,20 +968,10 @@ private fun WebSearchSiteRow(
             )
         }
 
-        // Vertical divider
-        VerticalDivider(
-            modifier =
-                Modifier
-                    .fillMaxHeight()
-                    .padding(vertical = 8.dp),
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
-
-        // RadioButton for setting default
-        RadioButton(
-            selected = isDefault,
-            onClick = onSetDefault,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).padding(end = 12.dp),
+        // Toggle switch
+        Switch(
+            checked = site.enabled,
+            onCheckedChange = onToggleEnabled,
         )
     }
 }
