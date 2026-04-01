@@ -854,6 +854,7 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                     }
                                                 }),
+                                            onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
                                         )
 
                                         if (settingsIconPosition == SettingsIconPosition.INSIDE) {
@@ -972,6 +973,7 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 }
                                             }),
+                                        onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
                                     )
 
                                     if (settingsIconPosition == SettingsIconPosition.INSIDE) {
