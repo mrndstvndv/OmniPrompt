@@ -369,7 +369,9 @@ class MainActivity : ComponentActivity() {
             var pendingQueryJob by remember { mutableStateOf<Job?>(null) }
             var refreshTrigger by remember { mutableStateOf(0) }
             var triggerState by remember { mutableStateOf<TriggerState?>(null) }
-            var pendingTriggerEditorEcho by remember { mutableStateOf<String?>(null) }
+            // Some IMEs echo the just-consumed trigger token once after activation.
+            // Ignore that one stale value so the payload stays empty.
+            var pendingActivationEchoToken by remember { mutableStateOf<String?>(null) }
             var suppressedTriggerMatch by remember { mutableStateOf<SuppressedTriggerMatch?>(null) }
 
             val activeProviders = providers.filter { enabledProviders[it.id] ?: true }
@@ -528,7 +530,7 @@ class MainActivity : ComponentActivity() {
                         triggerId = activeTrigger.trigger.id,
                         matchedToken = activeTrigger.matchedToken,
                     )
-                pendingTriggerEditorEcho = null
+                pendingActivationEchoToken = null
                 triggerState = null
                 textState.value = textFieldValueAtEnd(restoredText)
             }
@@ -536,23 +538,23 @@ class MainActivity : ComponentActivity() {
             fun onSearchChange(newValue: TextFieldValue) {
                 val activeTrigger = triggerState
                 if (activeTrigger != null) {
-                    val staleEditorEcho = pendingTriggerEditorEcho
-                    var consumedStaleEditorEcho = false
+                    val activationEchoToken = pendingActivationEchoToken
+                    var consumedActivationEcho = false
                     val normalizedValue =
                         when {
-                            staleEditorEcho == null -> newValue
-                            newValue.text == staleEditorEcho || newValue.text == "$staleEditorEcho " -> {
-                                pendingTriggerEditorEcho = null
-                                consumedStaleEditorEcho = true
+                            activationEchoToken == null -> newValue
+                            newValue.text == activationEchoToken || newValue.text == "$activationEchoToken " -> {
+                                pendingActivationEchoToken = null
+                                consumedActivationEcho = true
                                 newValue.copy(text = "", selection = TextRange.Zero)
                             }
                             else -> {
-                                pendingTriggerEditorEcho = null
+                                pendingActivationEchoToken = null
                                 newValue
                             }
                         }
 
-                    if (normalizedValue.text.isEmpty() && !consumedStaleEditorEcho) {
+                    if (normalizedValue.text.isEmpty() && !consumedActivationEcho) {
                         dismissTrigger()
                         return
                     }
@@ -579,7 +581,7 @@ class MainActivity : ComponentActivity() {
                                 suppressed?.matchedToken?.equals(firstWord, ignoreCase = true) == true
                         if (!isSuppressed) {
                             suppressedTriggerMatch = null
-                            pendingTriggerEditorEcho = firstWord
+                            pendingActivationEchoToken = firstWord
                             triggerState =
                                 TriggerState(
                                     trigger = match.trigger,
@@ -592,7 +594,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                pendingTriggerEditorEcho = null
+                pendingActivationEchoToken = null
                 textState.value = newValue
             }
 
