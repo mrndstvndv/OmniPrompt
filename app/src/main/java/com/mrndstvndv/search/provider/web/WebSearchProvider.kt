@@ -67,7 +67,6 @@ class WebSearchProvider(
                 onSelect = action,
                 aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
                 keepOverlayUntilExit = true,
-                excludeFromFrequencyRanking = true,
                 frequencyKey = "$id:${site.id}",
             )
         )
@@ -240,7 +239,6 @@ class WebSearchProvider(
                 onSelect = action,
                 aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
                 keepOverlayUntilExit = true,
-                excludeFromFrequencyRanking = true,
                 // Highlight trigger token matches in the subtitle (site display name)
                 matchedSubtitleIndices = triggerMatchMap[site.id]?.matchedIndices ?: emptyList(),
                 // Use stable frequency key without query hash so dynamic queries aggregate under site
