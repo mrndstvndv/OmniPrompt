@@ -124,15 +124,12 @@ fun SearchField(
         return selection.start == 0 && selection.end == 0
     }
 
-    val effectiveModifier = if (onBackspaceAtStart != null) {
-        modifier.onPreviewKeyEvent { event ->
-            if (event.key != Key.Backspace) return@onPreviewKeyEvent false
-            if (!isCursorAtStart(value)) return@onPreviewKeyEvent false
-            onBackspaceAtStart()
-            true
-        }
-    } else {
-        modifier
+    val effectiveModifier = modifier.onPreviewKeyEvent { event ->
+        val callback = latestOnBackspaceAtStart.value ?: return@onPreviewKeyEvent false
+        if (event.key != Key.Backspace) return@onPreviewKeyEvent false
+        if (!isCursorAtStart(latestValue.value)) return@onPreviewKeyEvent false
+        callback()
+        true
     }
 
     val textField: @Composable () -> Unit = {
@@ -196,11 +193,8 @@ fun SearchField(
         )
     }
 
-    if (onBackspaceAtStart == null) {
-        textField()
-        return
-    }
-
+    // Keep the platform text input interceptor mounted at all times so the
+    // underlying input connection stays stable when trigger mode toggles.
     val interceptor = remember {
         PlatformTextInputInterceptor { request, nextHandler ->
             val wrappedRequest = PlatformTextInputMethodRequest { outAttributes ->
