@@ -251,6 +251,7 @@ class WebSearchProvider(
                 // Use stable frequency key without query hash so dynamic queries aggregate under site
                 frequencyKey = "$id:${site.id}",
                 frequencyQuery = triggerToken,
+                excludeFromFrequencyRanking = site.id == defaultSite.id,
             )
         }
     }
