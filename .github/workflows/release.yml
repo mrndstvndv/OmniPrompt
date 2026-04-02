@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   build-release:
+    if: ${{ !contains(github.ref_name, '-dev.') }}
     name: Build Signed Release APK
     runs-on: ubuntu-latest
 
