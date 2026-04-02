@@ -1,7 +1,9 @@
 package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,8 +36,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -44,6 +47,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.text.SpanStyle
@@ -55,8 +59,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
+import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
 import com.mrndstvndv.search.ui.theme.motionAwareTween
 
 /**
@@ -111,6 +117,69 @@ fun HighlightedText(
     }
 }
 
+@Composable
+private fun TopResultBadge(
+    modifier: Modifier = Modifier,
+    cueProgress: Float = 0f,
+) {
+    Surface(
+        modifier =
+            modifier.graphicsLayer {
+                val scale = 1f + (cueProgress * 0.05f)
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+    ) {
+        Text(
+            text = stringResource(R.string.result_default_action_badge),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun primaryActionContainerColor(
+    highlightMode: FirstResultHighlightMode,
+    translucentItems: Boolean,
+): Color {
+    val colorScheme = MaterialTheme.colorScheme
+
+    return when (highlightMode) {
+        FirstResultHighlightMode.SUBTLE -> {
+            if (translucentItems) {
+                colorScheme.surfaceContainerHighest.copy(alpha = 0.82f)
+            } else {
+                colorScheme.surfaceContainerHigh
+            }
+        }
+
+        FirstResultHighlightMode.BALANCED -> {
+            if (translucentItems) {
+                lerp(
+                    colorScheme.surfaceContainerHighest,
+                    colorScheme.primaryContainer,
+                    0.4f,
+                ).copy(alpha = 0.72f)
+            } else {
+                lerp(colorScheme.surfaceContainerHigh, colorScheme.primaryContainer, 0.16f)
+            }
+        }
+
+        FirstResultHighlightMode.STRONG -> {
+            if (translucentItems) {
+                colorScheme.primaryContainer.copy(alpha = 0.62f)
+            } else {
+                lerp(colorScheme.surfaceContainerHigh, colorScheme.primaryContainer, 0.3f)
+            }
+        }
+    }
+}
+
 private fun Modifier.verticalEdgeFade(
     showTop: Boolean,
     showBottom: Boolean,
@@ -155,17 +224,42 @@ fun ItemsList(
     translucentItems: Boolean = false,
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(2.dp),
     reverseOrder: Boolean = false,
+    showEnterBadge: Boolean = true,
+    firstResultHighlightEnabled: Boolean = true,
+    firstResultHighlightMode: FirstResultHighlightMode = FirstResultHighlightMode.BALANCED,
+    firstResultBorderThickness: Float = 1f,
+    animateFirstResultChanges: Boolean = true,
+    animateFirstResultColorPulse: Boolean = false,
 ) {
     if (results.isEmpty()) return
 
     val listState = rememberLazyListState()
-    
+    val primaryActionResultId = results.firstOrNull()?.id
+    val primaryActionCue = remember { Animatable(0f) }
+    var previousPrimaryActionResultId by remember { mutableStateOf(primaryActionResultId) }
+    val cueExpandSpec = motionAwareTween<Float>(durationMillis = 120)
+    val cueSettleSpec = motionAwareTween<Float>(durationMillis = 220)
+
     // Scroll to the "first" item (index 0) whenever results change.
     // In reverse layout, index 0 is at the bottom. In normal layout, it's at the top.
-    LaunchedEffect(results.firstOrNull()?.id) {
+    LaunchedEffect(primaryActionResultId) {
         if (results.isNotEmpty()) {
             listState.scrollToItem(0)
         }
+
+        val shouldAnimateCue =
+            animateFirstResultChanges &&
+                primaryActionResultId != null &&
+                previousPrimaryActionResultId != null &&
+                previousPrimaryActionResultId != primaryActionResultId
+
+        previousPrimaryActionResultId = primaryActionResultId
+        primaryActionCue.snapTo(0f)
+
+        if (!shouldAnimateCue) return@LaunchedEffect
+
+        primaryActionCue.animateTo(1f, animationSpec = cueExpandSpec)
+        primaryActionCue.animateTo(0f, animationSpec = cueSettleSpec)
     }
 
     val showTopFade by remember(listState, reverseOrder) {
@@ -192,31 +286,45 @@ fun ItemsList(
                 key = { _, item -> item.id }
             ) { index, item ->
                 val singleItem = results.size == 1
-                val isTopItem = if (reverseOrder) index == results.lastIndex else index == 0
-                val isBottomItem = if (reverseOrder) index == 0 else index == results.lastIndex
+                val isPrimaryActionItem = index == 0
+                val showPrimaryActionHighlight = firstResultHighlightEnabled && isPrimaryActionItem
+                val isVisualTopItem = if (reverseOrder) index == results.lastIndex else index == 0
+                val isVisualBottomItem = if (reverseOrder) index == 0 else index == results.lastIndex
 
                 val targetTopStart = when {
-                    singleItem || isTopItem -> 20.dp
+                    singleItem || isVisualTopItem -> 20.dp
                     else -> 5.dp
                 }
                 val targetTopEnd = when {
-                    singleItem || isTopItem -> 20.dp
+                    singleItem || isVisualTopItem -> 20.dp
                     else -> 5.dp
                 }
                 val targetBottomStart = when {
-                    singleItem || isBottomItem -> 20.dp
+                    singleItem || isVisualBottomItem -> 20.dp
                     else -> 5.dp
                 }
                 val targetBottomEnd = when {
-                    singleItem || isBottomItem -> 20.dp
+                    singleItem || isVisualBottomItem -> 20.dp
                     else -> 5.dp
                 }
 
-                val cornerAnimationSpec = motionAwareTween<Dp>(durationMillis = 250)
-                val animatedTopStart by animateDpAsState(targetTopStart, animationSpec = cornerAnimationSpec, label = "shapeTopStart")
-                val animatedTopEnd by animateDpAsState(targetTopEnd, animationSpec = cornerAnimationSpec, label = "shapeTopEnd")
-                val animatedBottomStart by animateDpAsState(targetBottomStart, animationSpec = cornerAnimationSpec, label = "shapeBottomStart")
-                val animatedBottomEnd by animateDpAsState(targetBottomEnd, animationSpec = cornerAnimationSpec, label = "shapeBottomEnd")
+                val itemAnimationSpec = motionAwareTween<Dp>(durationMillis = 250)
+                val primaryActionCueProgress = if (isPrimaryActionItem && item.id == primaryActionResultId) {
+                    primaryActionCue.value
+                } else {
+                    0f
+                }
+                val colorPulseProgress = if (animateFirstResultColorPulse && showPrimaryActionHighlight) {
+                    primaryActionCueProgress
+                } else {
+                    0f
+                }
+                val itemScaleX = 1f + (primaryActionCueProgress * 0.008f)
+                val itemScaleY = 1f + (primaryActionCueProgress * 0.018f)
+                val animatedTopStart by animateDpAsState(targetTopStart, animationSpec = itemAnimationSpec, label = "shapeTopStart")
+                val animatedTopEnd by animateDpAsState(targetTopEnd, animationSpec = itemAnimationSpec, label = "shapeTopEnd")
+                val animatedBottomStart by animateDpAsState(targetBottomStart, animationSpec = itemAnimationSpec, label = "shapeBottomStart")
+                val animatedBottomEnd by animateDpAsState(targetBottomEnd, animationSpec = itemAnimationSpec, label = "shapeBottomEnd")
 
                 val shape = RoundedCornerShape(
                     topStart = animatedTopStart,
@@ -225,10 +333,50 @@ fun ItemsList(
                     bottomStart = animatedBottomStart,
                 )
 
-                val containerColor = if (translucentItems) {
+                val baseContainerColor = if (translucentItems) {
                     MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                 } else {
                     MaterialTheme.colorScheme.surface
+                }
+                val highlightedContainerColor = if (showPrimaryActionHighlight) {
+                    primaryActionContainerColor(
+                        highlightMode = firstResultHighlightMode,
+                        translucentItems = translucentItems,
+                    )
+                } else {
+                    baseContainerColor
+                }
+                val cueTargetContainerColor = if (showPrimaryActionHighlight) {
+                    if (translucentItems) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f)
+                    } else {
+                        lerp(highlightedContainerColor, MaterialTheme.colorScheme.primaryContainer, 0.35f)
+                    }
+                } else {
+                    baseContainerColor
+                }
+                val containerColor = lerp(highlightedContainerColor, cueTargetContainerColor, colorPulseProgress)
+                val baseBorderColor = if (showPrimaryActionHighlight) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = if (translucentItems) 0.5f else 0.22f)
+                } else {
+                    Color.Transparent
+                }
+                val cueBorderColor = if (showPrimaryActionHighlight) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = if (translucentItems) 0.82f else 0.38f)
+                } else {
+                    Color.Transparent
+                }
+                val borderColor = lerp(baseBorderColor, cueBorderColor, colorPulseProgress)
+                val baseBorderWidth = if (showPrimaryActionHighlight) firstResultBorderThickness.dp else 0.dp
+                val borderWidth = baseBorderWidth + (if (showPrimaryActionHighlight) {
+                    (if (translucentItems) 0.75.dp else 0.5.dp) * primaryActionCueProgress
+                } else {
+                    0.dp
+                })
+                val tonalElevation = when {
+                    translucentItems -> 0.dp
+                    showPrimaryActionHighlight -> 3.dp
+                    else -> 1.dp
                 }
                 val isDarkTheme = isSystemInDarkTheme()
                 val primaryTextColor = if (translucentItems) {
@@ -237,7 +385,12 @@ fun ItemsList(
                     MaterialTheme.colorScheme.onSurface
                 }
                 val subtitleColor = if (translucentItems) {
-                    val alpha = if (isDarkTheme) 0.85f else 0.75f
+                    val alpha = when {
+                        showPrimaryActionHighlight && isDarkTheme -> 0.9f
+                        showPrimaryActionHighlight -> 0.82f
+                        isDarkTheme -> 0.85f
+                        else -> 0.75f
+                    }
                     primaryTextColor.copy(alpha = alpha)
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -254,9 +407,17 @@ fun ItemsList(
                 }
 
                 Surface(
+                    modifier =
+                        Modifier
+                            .zIndex(if (primaryActionCueProgress > 0f) 1f else 0f)
+                            .graphicsLayer {
+                                scaleX = itemScaleX
+                                scaleY = itemScaleY
+                            },
                     shape = shape,
-                    tonalElevation = if (translucentItems) 0.dp else 1.dp,
-                    color = containerColor
+                    tonalElevation = tonalElevation,
+                    color = containerColor,
+                    border = BorderStroke(borderWidth, borderColor),
                 ) {
                     val interactionSource = remember { MutableInteractionSource() }
                     val rippleIndication = LocalIndication.current
@@ -315,7 +476,10 @@ fun ItemsList(
                             HighlightedText(
                                 text = item.title,
                                 matchedIndices = item.matchedTitleIndices,
-                                color = primaryTextColor
+                                color = primaryTextColor,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = if (showPrimaryActionHighlight) FontWeight.SemiBold else FontWeight.Normal,
+                                ),
                             )
                             item.subtitle?.let { subtitle ->
                                 HighlightedText(
@@ -327,20 +491,27 @@ fun ItemsList(
                             }
                         }
 
-                        // Alias indicator - small bookmark icon in top-right corner
-                        // TODO: This implementation is hacky - using id prefix check is fragile.
-                        // The alias feature should be refactored to have a proper "isAlias" flag
-                        // on ProviderResult, and the visual positioning needs rework (currently
-                        // using offset which doesn't properly align with the card boundaries).
-                        if (item.id.startsWith("alias:")) {
-                            Icon(
-                                imageVector = Icons.Filled.Bookmark,
-                                contentDescription = stringResource(R.string.alias_content_description),
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .offset(x = 4.dp, y = (-8).dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                            )
+                        if ((showEnterBadge && isPrimaryActionItem) || item.id.startsWith("alias:")) {
+                            Spacer(Modifier.width(12.dp))
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                // TODO: using the id prefix is still fragile.
+                                // Add an explicit isAlias flag to ProviderResult.
+                                if (item.id.startsWith("alias:")) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Bookmark,
+                                        contentDescription = stringResource(R.string.alias_content_description),
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                                    )
+                                }
+
+                                if (showEnterBadge && isPrimaryActionItem) {
+                                    TopResultBadge(cueProgress = primaryActionCueProgress)
+                                }
+                            }
                         }
                     }
                 }

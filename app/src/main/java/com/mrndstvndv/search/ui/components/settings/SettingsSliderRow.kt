@@ -22,6 +22,7 @@ fun SettingsSliderRow(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
     valueText: String,
+    enabled: Boolean = true,
 ) {
     Column(
         modifier =
@@ -61,6 +62,7 @@ fun SettingsSliderRow(
             onValueChange = onValueChange,
             valueRange = valueRange,
             steps = steps,
+            enabled = enabled,
         )
     }
 }

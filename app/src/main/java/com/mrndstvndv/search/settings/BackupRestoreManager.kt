@@ -65,6 +65,12 @@ class BackupRestoreManager(
         private const val KEY_BACKGROUND_OPACITY = "backgroundOpacity"
         private const val KEY_SEARCH_BAR_POSITION = "searchBarPosition"
         private const val KEY_BACKGROUND_BLUR_STRENGTH = "backgroundBlurStrength"
+        private const val KEY_FIRST_RESULT_HIGHLIGHT_ENABLED = "firstResultHighlightEnabled"
+        private const val KEY_FIRST_RESULT_HIGHLIGHT_MODE = "firstResultHighlightMode"
+        private const val KEY_FIRST_RESULT_BORDER_THICKNESS = "firstResultBorderThickness"
+        private const val KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED = "firstResultChangeAnimationEnabled"
+        private const val KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED = "firstResultColorAnimationEnabled"
+        private const val KEY_ALWAYS_SHOW_ENTER_BADGE = "alwaysShowEnterBadge"
 
         // Behavior Keys
         private const val KEY_ANIMATIONS_ENABLED = "animationsEnabled"
@@ -169,6 +175,12 @@ class BackupRestoreManager(
             appearance.put(KEY_BACKGROUND_OPACITY, settingsRepository.backgroundOpacity.value.toDouble())
             appearance.put(KEY_BACKGROUND_BLUR_STRENGTH, settingsRepository.backgroundBlurStrength.value.toDouble())
             appearance.put(KEY_SEARCH_BAR_POSITION, settingsRepository.searchBarPosition.value.name)
+            appearance.put(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, settingsRepository.firstResultHighlightEnabled.value)
+            appearance.put(KEY_FIRST_RESULT_HIGHLIGHT_MODE, settingsRepository.firstResultHighlightMode.value.name)
+            appearance.put(KEY_FIRST_RESULT_BORDER_THICKNESS, settingsRepository.firstResultBorderThickness.value.toDouble())
+            appearance.put(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, settingsRepository.firstResultChangeAnimationEnabled.value)
+            appearance.put(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, settingsRepository.firstResultColorAnimationEnabled.value)
+            appearance.put(KEY_ALWAYS_SHOW_ENTER_BADGE, settingsRepository.alwaysShowEnterBadge.value)
             providerSettings.put(KEY_APPEARANCE, appearance)
 
             // Behavior settings
@@ -414,6 +426,26 @@ class BackupRestoreManager(
                         )
                         settingsRepository.setBackgroundBlurStrength(
                             appearanceJson.optDouble(KEY_BACKGROUND_BLUR_STRENGTH, 0.5).toFloat(),
+                        )
+                        settingsRepository.setFirstResultHighlightEnabled(
+                            appearanceJson.optBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, true),
+                        )
+                        appearanceJson.optString(KEY_FIRST_RESULT_HIGHLIGHT_MODE)?.takeIf { it.isNotBlank() }?.let { modeName ->
+                            settingsRepository.setFirstResultHighlightMode(
+                                com.mrndstvndv.search.provider.settings.FirstResultHighlightMode.fromStorageValue(modeName),
+                            )
+                        }
+                        settingsRepository.setFirstResultBorderThickness(
+                            appearanceJson.optDouble(KEY_FIRST_RESULT_BORDER_THICKNESS, settingsRepository.firstResultBorderThickness.value.toDouble()).toFloat(),
+                        )
+                        settingsRepository.setFirstResultChangeAnimationEnabled(
+                            appearanceJson.optBoolean(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, true),
+                        )
+                        settingsRepository.setFirstResultColorAnimationEnabled(
+                            appearanceJson.optBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, false),
+                        )
+                        settingsRepository.setAlwaysShowEnterBadge(
+                            appearanceJson.optBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, false),
                         )
                         appearanceJson.optString(KEY_SEARCH_BAR_POSITION)?.let { positionName ->
                             try {

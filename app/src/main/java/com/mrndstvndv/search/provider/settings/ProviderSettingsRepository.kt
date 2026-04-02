@@ -37,11 +37,22 @@ class ProviderSettingsRepository(
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
         private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
         private const val KEY_SEARCH_BAR_POSITION = "search_bar_position"
+        private const val KEY_FIRST_RESULT_HIGHLIGHT_ENABLED = "first_result_highlight_enabled"
+        private const val KEY_FIRST_RESULT_HIGHLIGHT_MODE = "first_result_highlight_mode"
+        private const val KEY_FIRST_RESULT_BORDER_THICKNESS = "first_result_border_thickness"
+        private const val KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED = "first_result_change_animation_enabled"
+        private const val KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED = "first_result_color_animation_enabled"
+        private const val KEY_ALWAYS_SHOW_ENTER_BADGE = "always_show_enter_badge"
+        private const val KEY_HAS_USED_ENTER = "has_used_enter"
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
         private const val MAX_ACTIVITY_INDICATOR_DELAY_MS = 1000
         private const val DEFAULT_ANIMATIONS_ENABLED = true
+        private const val DEFAULT_FIRST_RESULT_BORDER_THICKNESS = 1f
+        private const val DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS = 1.5f
+        private const val MIN_FIRST_RESULT_BORDER_THICKNESS = 0.5f
+        private const val MAX_FIRST_RESULT_BORDER_THICKNESS = 3f
     }
 
     private val appContext: Context = context.applicationContext
@@ -71,6 +82,27 @@ class ProviderSettingsRepository(
     private val _searchBarPosition = MutableStateFlow(SearchBarPosition.BOTTOM)
     val searchBarPosition: StateFlow<SearchBarPosition> = _searchBarPosition
 
+    private val _firstResultHighlightEnabled = MutableStateFlow(loadFirstResultHighlightEnabled())
+    val firstResultHighlightEnabled: StateFlow<Boolean> = _firstResultHighlightEnabled
+
+    private val _firstResultHighlightMode = MutableStateFlow(loadFirstResultHighlightMode())
+    val firstResultHighlightMode: StateFlow<FirstResultHighlightMode> = _firstResultHighlightMode
+
+    private val _firstResultBorderThickness = MutableStateFlow(loadFirstResultBorderThickness())
+    val firstResultBorderThickness: StateFlow<Float> = _firstResultBorderThickness
+
+    private val _firstResultChangeAnimationEnabled = MutableStateFlow(loadFirstResultChangeAnimationEnabled())
+    val firstResultChangeAnimationEnabled: StateFlow<Boolean> = _firstResultChangeAnimationEnabled
+
+    private val _firstResultColorAnimationEnabled = MutableStateFlow(loadFirstResultColorAnimationEnabled())
+    val firstResultColorAnimationEnabled: StateFlow<Boolean> = _firstResultColorAnimationEnabled
+
+    private val _alwaysShowEnterBadge = MutableStateFlow(loadAlwaysShowEnterBadge())
+    val alwaysShowEnterBadge: StateFlow<Boolean> = _alwaysShowEnterBadge
+
+    private val _hasUsedEnter = MutableStateFlow(loadHasUsedEnter())
+    val hasUsedEnter: StateFlow<Boolean> = _hasUsedEnter
+
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
@@ -82,6 +114,13 @@ class ProviderSettingsRepository(
                 _enabledProviders.value = loadEnabledProviders()
                 _settingsIconPosition.value = loadSettingsIconPosition()
                 _searchBarPosition.value = loadSearchBarPosition()
+                _firstResultHighlightEnabled.value = loadFirstResultHighlightEnabled()
+                _firstResultHighlightMode.value = loadFirstResultHighlightMode()
+                _firstResultBorderThickness.value = loadFirstResultBorderThickness()
+                _firstResultChangeAnimationEnabled.value = loadFirstResultChangeAnimationEnabled()
+                _firstResultColorAnimationEnabled.value = loadFirstResultColorAnimationEnabled()
+                _alwaysShowEnterBadge.value = loadAlwaysShowEnterBadge()
+                _hasUsedEnter.value = loadHasUsedEnter()
             }
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
@@ -92,6 +131,13 @@ class ProviderSettingsRepository(
             _enabledProviders.value = loadEnabledProviders()
             _settingsIconPosition.value = loadSettingsIconPosition()
             _searchBarPosition.value = loadSearchBarPosition()
+            _firstResultHighlightEnabled.value = loadFirstResultHighlightEnabled()
+            _firstResultHighlightMode.value = loadFirstResultHighlightMode()
+            _firstResultBorderThickness.value = loadFirstResultBorderThickness()
+            _firstResultChangeAnimationEnabled.value = loadFirstResultChangeAnimationEnabled()
+            _firstResultColorAnimationEnabled.value = loadFirstResultColorAnimationEnabled()
+            _alwaysShowEnterBadge.value = loadAlwaysShowEnterBadge()
+            _hasUsedEnter.value = loadHasUsedEnter()
         }
     }
 
@@ -187,10 +233,75 @@ class ProviderSettingsRepository(
         _searchBarPosition.value = position
     }
 
+    fun setFirstResultHighlightEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, enabled) }
+        _firstResultHighlightEnabled.value = enabled
+    }
+
+    fun setFirstResultHighlightMode(mode: FirstResultHighlightMode) {
+        preferences.edit { putString(KEY_FIRST_RESULT_HIGHLIGHT_MODE, mode.name) }
+        _firstResultHighlightMode.value = mode
+    }
+
+    fun setFirstResultBorderThickness(thickness: Float) {
+        val coercedThickness = thickness.coerceIn(MIN_FIRST_RESULT_BORDER_THICKNESS, MAX_FIRST_RESULT_BORDER_THICKNESS)
+        preferences.edit { putFloat(KEY_FIRST_RESULT_BORDER_THICKNESS, coercedThickness) }
+        _firstResultBorderThickness.value = coercedThickness
+    }
+
+    fun setFirstResultChangeAnimationEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, enabled) }
+        _firstResultChangeAnimationEnabled.value = enabled
+    }
+
+    fun setFirstResultColorAnimationEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, enabled) }
+        _firstResultColorAnimationEnabled.value = enabled
+    }
+
+    fun setAlwaysShowEnterBadge(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, enabled) }
+        _alwaysShowEnterBadge.value = enabled
+    }
+
+    fun markEnterUsed() {
+        if (_hasUsedEnter.value) return
+        preferences.edit { putBoolean(KEY_HAS_USED_ENTER, true) }
+        _hasUsedEnter.value = true
+    }
+
     private fun loadSearchBarPosition(): SearchBarPosition {
         val positionName = preferences.getString(KEY_SEARCH_BAR_POSITION, null)
         return SearchBarPosition.fromStorageValue(positionName)
     }
+
+    private fun loadFirstResultHighlightEnabled(): Boolean =
+        preferences.getBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, true)
+
+    private fun loadFirstResultHighlightMode(): FirstResultHighlightMode {
+        val modeName = preferences.getString(KEY_FIRST_RESULT_HIGHLIGHT_MODE, null)
+        return FirstResultHighlightMode.fromStorageValue(modeName)
+    }
+
+    private fun loadFirstResultBorderThickness(): Float {
+        val defaultThickness = if (loadTranslucentResultsEnabled()) {
+            DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS
+        } else {
+            DEFAULT_FIRST_RESULT_BORDER_THICKNESS
+        }
+        return preferences.getFloat(KEY_FIRST_RESULT_BORDER_THICKNESS, defaultThickness)
+            .coerceIn(MIN_FIRST_RESULT_BORDER_THICKNESS, MAX_FIRST_RESULT_BORDER_THICKNESS)
+    }
+
+    private fun loadFirstResultChangeAnimationEnabled(): Boolean =
+        preferences.getBoolean(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, true)
+
+    private fun loadFirstResultColorAnimationEnabled(): Boolean =
+        preferences.getBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, false)
+
+    private fun loadAlwaysShowEnterBadge(): Boolean = preferences.getBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, false)
+
+    private fun loadHasUsedEnter(): Boolean = preferences.getBoolean(KEY_HAS_USED_ENTER, false)
 }
 
 data class WebSearchSettings(
