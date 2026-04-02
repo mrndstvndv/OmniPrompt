@@ -42,9 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -184,13 +188,24 @@ private fun Modifier.verticalEdgeFade(
     showTop: Boolean,
     showBottom: Boolean,
     fadeHeight: Dp = 10.dp,
+    horizontalOverflowAllowance: Dp = 12.dp,
 ): Modifier =
     if (!showTop && !showBottom) {
         this
     } else {
-        graphicsLayer { alpha = 0.99f }.drawWithContent {
-            drawContent()
+        drawWithContent {
             val fadeHeightPx = fadeHeight.toPx()
+            val horizontalOverflowPx = horizontalOverflowAllowance.toPx()
+            val layerBounds = Rect(
+                left = -horizontalOverflowPx,
+                top = 0f,
+                right = size.width + horizontalOverflowPx,
+                bottom = size.height,
+            )
+
+            drawContext.canvas.saveLayer(layerBounds, Paint())
+            drawContent()
+
             if (showTop) {
                 drawRect(
                     brush = Brush.verticalGradient(
@@ -198,6 +213,8 @@ private fun Modifier.verticalEdgeFade(
                         startY = 0f,
                         endY = fadeHeightPx,
                     ),
+                    topLeft = Offset(-horizontalOverflowPx, 0f),
+                    size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
                     blendMode = BlendMode.DstIn,
                 )
             }
@@ -208,9 +225,13 @@ private fun Modifier.verticalEdgeFade(
                         startY = size.height - fadeHeightPx,
                         endY = size.height,
                     ),
+                    topLeft = Offset(-horizontalOverflowPx, size.height - fadeHeightPx),
+                    size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
                     blendMode = BlendMode.DstIn,
                 )
             }
+
+            drawContext.canvas.restore()
         }
     }
 
