@@ -2,12 +2,14 @@ package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,11 +68,15 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.zIndex
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
+import com.mrndstvndv.search.ui.theme.LocalMotionPreferences
 import com.mrndstvndv.search.ui.theme.motionAwareTween
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Renders text with highlighted characters at specified indices.
@@ -187,6 +194,8 @@ private fun primaryActionContainerColor(
 }
 
 private val primaryActionViewportBreathingRoom = 4.dp
+private val pressedResultCornerRadius = 28.dp
+private const val tappedResultFeedbackDelayMillis = 80L
 
 private fun Modifier.verticalEdgeFade(
     showTop: Boolean,
@@ -259,6 +268,12 @@ fun ItemsList(
     if (results.isEmpty()) return
 
     val listState = rememberLazyListState()
+    val motionPreferences = LocalMotionPreferences.current
+    val tapFeedbackDelayMillis = if (motionPreferences.animationsEnabled) {
+        tappedResultFeedbackDelayMillis
+    } else {
+        0L
+    }
     val primaryActionResultId = results.firstOrNull()?.id
     val primaryActionCue = remember { Animatable(0f) }
     var previousPrimaryActionResultId by remember { mutableStateOf(primaryActionResultId) }
@@ -357,6 +372,11 @@ fun ItemsList(
                     else -> 5.dp
                 }
 
+                val interactionSource = remember { MutableInteractionSource() }
+                val itemCoroutineScope = rememberCoroutineScope()
+                var tapFeedbackActive by remember { mutableStateOf(false) }
+                val isPressed by interactionSource.collectIsPressedAsState()
+                val showTapShapeFeedback = isPressed || tapFeedbackActive
                 val primaryActionCueProgress = if (isPrimaryActionItem && item.id == primaryActionResultId) {
                     primaryActionCue.value
                 } else {
@@ -375,14 +395,21 @@ fun ItemsList(
                     isVisualTopItem -> TransformOrigin(0.5f, 1f)
                     else -> TransformOrigin.Center
                 }
+                val pressedShapeProgress by animateFloatAsState(
+                    targetValue = if (showTapShapeFeedback) 1f else 0f,
+                    animationSpec = motionAwareTween(
+                        durationMillis = if (showTapShapeFeedback) 120 else 180,
+                    ),
+                    label = "resultItemPressedShapeProgress",
+                )
 
-                // Edge corner ownership should snap to the current visual slot.
-                // Animating it per item makes the old top result "carry" rounded corners while moving away.
+                // Edge corner ownership still snaps from the current visual slot.
+                // Only the press progress animates, so slot-derived corners never trail.
                 val shape = RoundedCornerShape(
-                    topStart = targetTopStart,
-                    topEnd = targetTopEnd,
-                    bottomEnd = targetBottomEnd,
-                    bottomStart = targetBottomStart,
+                    topStart = lerp(targetTopStart, maxOf(targetTopStart, pressedResultCornerRadius), pressedShapeProgress),
+                    topEnd = lerp(targetTopEnd, maxOf(targetTopEnd, pressedResultCornerRadius), pressedShapeProgress),
+                    bottomEnd = lerp(targetBottomEnd, maxOf(targetBottomEnd, pressedResultCornerRadius), pressedShapeProgress),
+                    bottomStart = lerp(targetBottomStart, maxOf(targetBottomStart, pressedResultCornerRadius), pressedShapeProgress),
                 )
 
                 val baseContainerColor = if (translucentItems) {
@@ -469,20 +496,35 @@ fun ItemsList(
                     color = containerColor,
                     border = BorderStroke(borderWidth, borderColor),
                 ) {
-                    val interactionSource = remember { MutableInteractionSource() }
                     val rippleIndication = LocalIndication.current
+                    val handleItemClick = click@{
+                        if (tapFeedbackActive) return@click
+
+                        itemCoroutineScope.launch {
+                            tapFeedbackActive = true
+                            if (tapFeedbackDelayMillis > 0L) {
+                                delay(tapFeedbackDelayMillis)
+                            }
+                            onItemClick(item)
+                            tapFeedbackActive = false
+                        }
+                    }
                     val clickModifier = if (onItemLongPress != null) {
                         Modifier.combinedClickable(
                             interactionSource = interactionSource,
                             indication = rippleIndication,
-                            onClick = { onItemClick(item) },
-                            onLongClick = { onItemLongPress(item) }
+                            onClick = handleItemClick,
+                            onLongClick = {
+                                tapFeedbackActive = false
+                                onItemLongPress(item)
+                            }
                         )
                     } else {
                         Modifier.clickable(
                             interactionSource = interactionSource,
-                            indication = rippleIndication
-                        ) { onItemClick(item) }
+                            indication = rippleIndication,
+                            onClick = handleItemClick,
+                        )
                     }
 
                     Row(
