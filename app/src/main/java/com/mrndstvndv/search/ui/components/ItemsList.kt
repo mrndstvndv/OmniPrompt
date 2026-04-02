@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -264,13 +265,18 @@ fun ItemsList(
     val cueExpandSpec = motionAwareTween<Float>(durationMillis = 120)
     val cueSettleSpec = motionAwareTween<Float>(durationMillis = 220)
 
-    // Scroll to the "first" item (index 0) whenever results change.
-    // In reverse layout, index 0 is at the bottom. In normal layout, it's at the top.
-    LaunchedEffect(primaryActionResultId) {
+    // When the first result key changes, LazyColumn tries to preserve the previous
+    // visible item by key for the next remeasure. In reverse layout that can flash
+    // the old bottom slot for a frame before the new primary item fully settles.
+    DisposableEffect(primaryActionResultId) {
         if (results.isNotEmpty()) {
-            listState.scrollToItem(0)
+            listState.requestScrollToItem(0)
         }
 
+        onDispose {}
+    }
+
+    LaunchedEffect(primaryActionResultId) {
         val shouldAnimateCue =
             animateFirstResultChanges &&
                 primaryActionResultId != null &&
@@ -413,12 +419,9 @@ fun ItemsList(
                     Color.Transparent
                 }
                 val borderColor = lerp(baseBorderColor, cueBorderColor, colorPulseProgress)
-                val baseBorderWidth = if (showPrimaryActionHighlight) firstResultBorderThickness.dp else 0.dp
-                val borderWidth = baseBorderWidth + (if (showPrimaryActionHighlight) {
-                    (if (translucentItems) 0.75.dp else 0.5.dp) * primaryActionCueProgress
-                } else {
-                    0.dp
-                })
+                // Keep the pop from scale, but don't pulse stroke width.
+                // The inner/top edge reads as a flashing seam when the first slot flips.
+                val borderWidth = if (showPrimaryActionHighlight) firstResultBorderThickness.dp else 0.dp
                 val tonalElevation = when {
                     translucentItems -> 0.dp
                     showPrimaryActionHighlight -> 3.dp
@@ -455,7 +458,7 @@ fun ItemsList(
                 Surface(
                     modifier =
                         Modifier
-                            .zIndex(if (primaryActionCueProgress > 0f) 1f else 0f)
+                            .zIndex(if (showPrimaryActionHighlight) 1f else 0f)
                             .graphicsLayer {
                                 transformOrigin = itemTransformOrigin
                                 scaleX = itemScaleX
