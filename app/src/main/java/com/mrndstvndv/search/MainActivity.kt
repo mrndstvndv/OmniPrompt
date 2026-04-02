@@ -314,7 +314,15 @@ class MainActivity : ComponentActivity() {
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
             val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
+            val firstResultHighlightEnabled by settingsRepository.firstResultHighlightEnabled.collectAsState()
+            val firstResultHighlightMode by settingsRepository.firstResultHighlightMode.collectAsState()
+            val firstResultBorderThickness by settingsRepository.firstResultBorderThickness.collectAsState()
+            val firstResultChangeAnimationEnabled by settingsRepository.firstResultChangeAnimationEnabled.collectAsState()
+            val firstResultColorAnimationEnabled by settingsRepository.firstResultColorAnimationEnabled.collectAsState()
+            val alwaysShowEnterBadge by settingsRepository.alwaysShowEnterBadge.collectAsState()
+            val hasUsedEnter by settingsRepository.hasUsedEnter.collectAsState()
             val enabledProviders by settingsRepository.enabledProviders.collectAsState()
+            val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
             LaunchedEffect(backgroundBlurStrength) {
                 applyWindowBlur(backgroundBlurStrength)
@@ -732,10 +740,16 @@ class MainActivity : ComponentActivity() {
 
             fun submitSearch() {
                 val primaryResult = providerResults.firstOrNull()
+                val query = textState.value.text.trim()
+                val hasSubmissionTarget = primaryResult != null || query.isNotEmpty()
+
+                if (hasSubmissionTarget) {
+                    settingsRepository.markEnterUsed()
+                }
+
                 val handled = handleResultSelection(primaryResult)
                 if (handled) return
 
-                val query = textState.value.text.trim()
                 if (query.isNotEmpty()) {
                     handleQuerySubmission(query)
                 }
@@ -895,6 +909,12 @@ class MainActivity : ComponentActivity() {
                                     translucentItems = translucentResultsEnabled,
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
                                     reverseOrder = true,
+                                    showEnterBadge = showEnterBadge,
+                                    firstResultHighlightEnabled = firstResultHighlightEnabled,
+                                    firstResultHighlightMode = firstResultHighlightMode,
+                                    firstResultBorderThickness = firstResultBorderThickness,
+                                    animateFirstResultChanges = firstResultChangeAnimationEnabled,
+                                    animateFirstResultColorPulse = firstResultColorAnimationEnabled,
                                 )
                             }
                         }
@@ -1112,6 +1132,12 @@ class MainActivity : ComponentActivity() {
                                             )
                                     },
                                     translucentItems = translucentResultsEnabled,
+                                    showEnterBadge = showEnterBadge,
+                                    firstResultHighlightEnabled = firstResultHighlightEnabled,
+                                    firstResultHighlightMode = firstResultHighlightMode,
+                                    firstResultBorderThickness = firstResultBorderThickness,
+                                    animateFirstResultChanges = firstResultChangeAnimationEnabled,
+                                    animateFirstResultColorPulse = firstResultColorAnimationEnabled,
                                 )
                             }
                         }

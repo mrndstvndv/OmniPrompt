@@ -37,9 +37,6 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -52,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,6 +59,7 @@ import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
@@ -70,6 +69,8 @@ import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
+import com.mrndstvndv.search.ui.components.settings.SettingsSection
+import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import com.mrndstvndv.search.ui.components.settings.SettingsSliderRow
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 import kotlin.math.roundToInt
@@ -382,93 +383,231 @@ fun AppearanceSettingsScreen(
     val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
     val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
     val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
+    val firstResultHighlightEnabled by settingsRepository.firstResultHighlightEnabled.collectAsState()
+    val firstResultHighlightMode by settingsRepository.firstResultHighlightMode.collectAsState()
+    val firstResultBorderThickness by settingsRepository.firstResultBorderThickness.collectAsState()
+    val firstResultChangeAnimationEnabled by settingsRepository.firstResultChangeAnimationEnabled.collectAsState()
+    val firstResultColorAnimationEnabled by settingsRepository.firstResultColorAnimationEnabled.collectAsState()
+    val alwaysShowEnterBadge by settingsRepository.alwaysShowEnterBadge.collectAsState()
 
     SettingsScaffold(
         title = stringResource(R.string.settings_appearance),
         onBack = onBack,
     ) {
         item {
-            SettingsGroup {
-                SettingsSwitch(
-                    title = stringResource(R.string.appearance_translucent_results),
-                    subtitle = stringResource(R.string.appearance_translucent_results_subtitle),
-                    checked = translucentResultsEnabled,
-                    onCheckedChange = { settingsRepository.setTranslucentResultsEnabled(it) },
-                )
-                SettingsDivider()
-                SettingsSliderRow(
-                    title = stringResource(R.string.appearance_background_opacity),
-                    subtitle = stringResource(R.string.appearance_background_opacity_subtitle),
-                    valueText = stringResource(R.string.appearance_opacity_value, (backgroundOpacity * 100).roundToInt()),
-                    value = backgroundOpacity,
-                    onValueChange = { settingsRepository.setBackgroundOpacity(it) },
-                    steps = 19,
-                )
-                SettingsDivider()
-                SettingsSliderRow(
-                    title = stringResource(R.string.appearance_background_blur),
-                    subtitle = stringResource(R.string.appearance_background_blur_subtitle),
-                    valueText = stringResource(R.string.appearance_opacity_value, (backgroundBlurStrength * 100).roundToInt()),
-                    value = backgroundBlurStrength,
-                    onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
-                    steps = 19,
-                )
-                SettingsDivider()
-
-                // Settings Icon Position Chooser
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 18.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.appearance_settings_icon),
-                        style = MaterialTheme.typography.bodyLarge,
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_results),
+                subtitle = stringResource(R.string.appearance_section_results_subtitle),
+            ) {
+                SettingsGroup {
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_translucent_results),
+                        subtitle = stringResource(R.string.appearance_translucent_results_subtitle),
+                        checked = translucentResultsEnabled,
+                        onCheckedChange = { settingsRepository.setTranslucentResultsEnabled(it) },
                     )
-                    Text(
-                        text = stringResource(R.string.appearance_settings_icon_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                    val options = listOf(SettingsIconPosition.BELOW, SettingsIconPosition.INSIDE, SettingsIconPosition.OFF)
-                    SingleChoiceSegmentedButtonRow(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                    ) {
-                        options.forEachIndexed { index, position ->
-                            SegmentedButton(
-                                selected = position == settingsIconPosition,
-                                onClick = {
-                                    if (position != settingsIconPosition) {
-                                        settingsRepository.setSettingsIconPosition(position)
-                                    }
-                                },
-                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                            ) {
-                                Text(text = stringResource(position.labelResId))
-                            }
-                        }
-                    }
                 }
-
-                SettingsDivider()
-                SettingsSwitch(
-                    title = stringResource(R.string.appearance_search_bar_bottom),
-                    subtitle = stringResource(R.string.appearance_search_bar_bottom_subtitle),
-                    checked = searchBarPosition == SearchBarPosition.BOTTOM,
-                    onCheckedChange = { isBottom ->
-                        settingsRepository.setSearchBarPosition(
-                            if (isBottom) SearchBarPosition.BOTTOM else SearchBarPosition.TOP
-                        )
-                    },
-                )
-
-                }
+            }
         }
+
+        item {
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_default_action),
+                subtitle = stringResource(R.string.appearance_section_default_action_subtitle),
+            ) {
+                val highlightControlsAlpha = if (firstResultHighlightEnabled) 1f else 0.38f
+                val colorPulseControlsAlpha = if (firstResultHighlightEnabled && firstResultChangeAnimationEnabled) 1f else 0.38f
+
+                SettingsGroup {
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_highlight_first_result),
+                        subtitle = stringResource(R.string.appearance_highlight_first_result_subtitle),
+                        checked = firstResultHighlightEnabled,
+                        onCheckedChange = { settingsRepository.setFirstResultHighlightEnabled(it) },
+                    )
+                    SettingsDivider()
+                    Box(modifier = Modifier.alpha(highlightControlsAlpha)) {
+                        FirstResultHighlightModeChooser(
+                            selectedMode = firstResultHighlightMode,
+                            enabled = firstResultHighlightEnabled,
+                            onModeSelected = settingsRepository::setFirstResultHighlightMode,
+                        )
+                    }
+                    SettingsDivider()
+                    Box(modifier = Modifier.alpha(highlightControlsAlpha)) {
+                        SettingsSliderRow(
+                            title = stringResource(R.string.appearance_first_result_border_thickness),
+                            subtitle = stringResource(R.string.appearance_first_result_border_thickness_subtitle),
+                            value = firstResultBorderThickness,
+                            onValueChange = settingsRepository::setFirstResultBorderThickness,
+                            valueRange = 0.5f..3f,
+                            steps = 9,
+                            valueText = stringResource(R.string.value_dp, firstResultBorderThickness),
+                            enabled = firstResultHighlightEnabled,
+                        )
+                    }
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_animate_first_result_changes),
+                        subtitle = stringResource(R.string.appearance_animate_first_result_changes_subtitle),
+                        checked = firstResultChangeAnimationEnabled,
+                        onCheckedChange = { settingsRepository.setFirstResultChangeAnimationEnabled(it) },
+                    )
+                    SettingsDivider()
+                    Box(modifier = Modifier.alpha(colorPulseControlsAlpha)) {
+                        SettingsSwitch(
+                            title = stringResource(R.string.appearance_animate_first_result_color),
+                            subtitle = stringResource(R.string.appearance_animate_first_result_color_subtitle),
+                            checked = firstResultColorAnimationEnabled,
+                            enabled = firstResultHighlightEnabled && firstResultChangeAnimationEnabled,
+                            onCheckedChange = { settingsRepository.setFirstResultColorAnimationEnabled(it) },
+                        )
+                    }
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_always_show_enter_badge),
+                        subtitle = stringResource(R.string.appearance_always_show_enter_badge_subtitle),
+                        checked = alwaysShowEnterBadge,
+                        onCheckedChange = { settingsRepository.setAlwaysShowEnterBadge(it) },
+                    )
+                }
+            }
+        }
+
+        item {
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_background),
+                subtitle = stringResource(R.string.appearance_section_background_subtitle),
+            ) {
+                SettingsGroup {
+                    SettingsSliderRow(
+                        title = stringResource(R.string.appearance_background_opacity),
+                        subtitle = stringResource(R.string.appearance_background_opacity_subtitle),
+                        valueText = stringResource(R.string.appearance_opacity_value, (backgroundOpacity * 100).roundToInt()),
+                        value = backgroundOpacity,
+                        onValueChange = { settingsRepository.setBackgroundOpacity(it) },
+                        steps = 19,
+                    )
+                    SettingsDivider()
+                    SettingsSliderRow(
+                        title = stringResource(R.string.appearance_background_blur),
+                        subtitle = stringResource(R.string.appearance_background_blur_subtitle),
+                        valueText = stringResource(R.string.appearance_opacity_value, (backgroundBlurStrength * 100).roundToInt()),
+                        value = backgroundBlurStrength,
+                        onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
+                        steps = 19,
+                    )
+                }
+            }
+        }
+
+        item {
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_layout),
+                subtitle = stringResource(R.string.appearance_section_layout_subtitle),
+            ) {
+                SettingsGroup {
+                    SettingsIconPositionChooser(
+                        selectedPosition = settingsIconPosition,
+                        onPositionSelected = settingsRepository::setSettingsIconPosition,
+                    )
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_search_bar_bottom),
+                        subtitle = stringResource(R.string.appearance_search_bar_bottom_subtitle),
+                        checked = searchBarPosition == SearchBarPosition.BOTTOM,
+                        onCheckedChange = { isBottom ->
+                            settingsRepository.setSearchBarPosition(
+                                if (isBottom) SearchBarPosition.BOTTOM else SearchBarPosition.TOP,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FirstResultHighlightModeChooser(
+    selectedMode: FirstResultHighlightMode,
+    enabled: Boolean,
+    onModeSelected: (FirstResultHighlightMode) -> Unit,
+) {
+    val context = LocalContext.current
+    val options = listOf(
+        FirstResultHighlightMode.SUBTLE,
+        FirstResultHighlightMode.BALANCED,
+        FirstResultHighlightMode.STRONG,
+    )
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.appearance_first_result_highlight),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(
+            text = stringResource(R.string.appearance_first_result_highlight_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        SettingsSingleChoiceSegmentedButtons(
+            options = options,
+            selectedOption = selectedMode,
+            enabled = enabled,
+            label = { mode -> context.getString(mode.labelResId) },
+            onOptionSelected = onModeSelected,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+            showSelectedIcon = false,
+        )
+    }
+}
+
+@Composable
+private fun SettingsIconPositionChooser(
+    selectedPosition: SettingsIconPosition,
+    onPositionSelected: (SettingsIconPosition) -> Unit,
+) {
+    val context = LocalContext.current
+    val options = listOf(SettingsIconPosition.BELOW, SettingsIconPosition.INSIDE, SettingsIconPosition.OFF)
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.appearance_settings_icon),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Text(
+            text = stringResource(R.string.appearance_settings_icon_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        SettingsSingleChoiceSegmentedButtons(
+            options = options,
+            selectedOption = selectedPosition,
+            enabled = true,
+            label = { position -> context.getString(position.labelResId) },
+            onOptionSelected = onPositionSelected,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+            showSelectedIcon = false,
+        )
     }
 }
 

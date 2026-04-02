@@ -21,6 +21,7 @@
     <string name="unknown_error">Unknown error</string>
     <string name="search_apps_placeholder">Search apps…</string>
     <string name="value_decimal">%1$.1f</string>
+    <string name="value_dp">%1$.1f dp</string>
     <string name="value_milliseconds">%d ms</string>
     <string name="value_minutes_short">%dm</string>
     <string name="value_hours_short">%dh</string>
@@ -64,8 +65,31 @@
     <string name="settings_backup_restore_subtitle">Export or import your settings</string>
 
     <!-- Appearance settings -->
+    <string name="appearance_section_results">Results</string>
+    <string name="appearance_section_results_subtitle">Adjust how search results look.</string>
+    <string name="appearance_section_default_action">Default action</string>
+    <string name="appearance_section_default_action_subtitle">Tune the first result and the Enter key hint.</string>
+    <string name="appearance_section_background">Background</string>
+    <string name="appearance_section_background_subtitle">Control the wallpaper behind search.</string>
+    <string name="appearance_section_layout">Layout</string>
+    <string name="appearance_section_layout_subtitle">Choose where search UI elements are placed.</string>
     <string name="appearance_translucent_results">Translucent results</string>
     <string name="appearance_translucent_results_subtitle">Make list items slightly see-through.</string>
+    <string name="appearance_highlight_first_result">Highlight first result</string>
+    <string name="appearance_highlight_first_result_subtitle">Make the Enter target stand out with a different background, border, and text weight.</string>
+    <string name="appearance_always_show_enter_badge">Always show Enter badge</string>
+    <string name="appearance_always_show_enter_badge_subtitle">Keep the ↵ Enter hint visible on the first result. When off, it hides after you use Enter once.</string>
+    <string name="appearance_first_result_highlight">First result highlight</string>
+    <string name="appearance_first_result_highlight_subtitle">Choose how strongly the Enter target stands out.</string>
+    <string name="appearance_first_result_border_thickness">Border thickness</string>
+    <string name="appearance_first_result_border_thickness_subtitle">Adjust the border width for the highlighted first result.</string>
+    <string name="appearance_animate_first_result_changes">Animate first result changes</string>
+    <string name="appearance_animate_first_result_changes_subtitle">Play a subtle size animation when the default action changes.</string>
+    <string name="appearance_animate_first_result_color">Animate first result color</string>
+    <string name="appearance_animate_first_result_color_subtitle">Pulse the highlight color when the default action changes.</string>
+    <string name="appearance_first_result_highlight_subtle">Subtle</string>
+    <string name="appearance_first_result_highlight_balanced">Balanced</string>
+    <string name="appearance_first_result_highlight_strong">Strong</string>
     <string name="appearance_background_opacity">Background opacity</string>
     <string name="appearance_background_opacity_subtitle">Dim the wallpaper behind search.</string>
     <string name="appearance_background_blur">Background blur strength</string>
@@ -450,6 +474,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_payload_required_hint">(type to add payload)</string>
     <string name="intent_result_subtitle_with_payload">%1$s → %2$s</string>
     <string name="web_search_result_title">Search &quot;%1$s&quot;</string>
+    <string name="result_default_action_badge">↵ Enter</string>
     <string name="web_search_default_site">%1$s (default)</string>
     <string name="text_utilities_action_subtitle">%1$s %2$s text</string>
     <string name="text_utilities_action_subtitle_with_suffix">%1$s %2$s text • %3$s</string>
