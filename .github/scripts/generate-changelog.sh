@@ -162,11 +162,6 @@ echo "skip_release=$([ "$HAS_VERSION_BUMP" = true ] && echo 'false' || echo 'tru
 echo "v${NEW_VERSION}" >&2
 
 # Output changelog to stdout
-echo "# Changelog"
-echo ""
-echo "**Release: v${NEW_VERSION}**"
-echo ""
-
 output_section() {
     local title="$1"
     shift
