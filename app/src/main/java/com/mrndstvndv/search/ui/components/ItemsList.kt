@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.asImageBitmap
@@ -319,6 +320,12 @@ fun ItemsList(
                 }
                 val itemScaleX = 1f + (primaryActionCueProgress * 0.008f)
                 val itemScaleY = 1f + (primaryActionCueProgress * 0.018f)
+                val itemTransformOrigin = when {
+                    singleItem -> TransformOrigin.Center
+                    isVisualBottomItem -> TransformOrigin(0.5f, 0f)
+                    isVisualTopItem -> TransformOrigin(0.5f, 1f)
+                    else -> TransformOrigin.Center
+                }
 
                 // Edge corner ownership should snap to the current visual slot.
                 // Animating it per item makes the old top result "carry" rounded corners while moving away.
@@ -407,6 +414,7 @@ fun ItemsList(
                         Modifier
                             .zIndex(if (primaryActionCueProgress > 0f) 1f else 0f)
                             .graphicsLayer {
+                                transformOrigin = itemTransformOrigin
                                 scaleX = itemScaleX
                                 scaleY = itemScaleY
                             },
