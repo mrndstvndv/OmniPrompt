@@ -12,6 +12,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -184,6 +185,8 @@ private fun primaryActionContainerColor(
     }
 }
 
+private val primaryActionViewportBreathingRoom = 4.dp
+
 private fun Modifier.verticalEdgeFade(
     showTop: Boolean,
     showBottom: Boolean,
@@ -290,15 +293,34 @@ fun ItemsList(
     }
     val showBottomFade by remember(listState, reverseOrder) {
         derivedStateOf {
-            if (reverseOrder) listState.canScrollBackward else listState.canScrollForward
+            if (!reverseOrder) return@derivedStateOf listState.canScrollForward
+
+            val anchoredToPrimaryAction =
+                listState.firstVisibleItemIndex == 0 &&
+                    listState.firstVisibleItemScrollOffset == 0
+
+            listState.canScrollBackward && !anchoredToPrimaryAction
         }
     }
     val fadeModifier = Modifier.verticalEdgeFade(showTop = showTopFade, showBottom = showBottomFade)
+    // LazyColumn clips on its scroll axis. Keep a tiny outer buffer so the
+    // first-result cue grows into the viewport instead of into the clip edge.
+    val primaryActionContentPadding = if (animateFirstResultChanges) {
+        primaryActionViewportBreathingRoom
+    } else {
+        0.dp
+    }
+    val contentPadding = when {
+        results.size == 1 -> PaddingValues(vertical = primaryActionContentPadding)
+        reverseOrder -> PaddingValues(bottom = primaryActionContentPadding)
+        else -> PaddingValues(top = primaryActionContentPadding)
+    }
 
     Box(modifier = modifier.then(fadeModifier)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
+            contentPadding = contentPadding,
             verticalArrangement = verticalArrangement,
             reverseLayout = reverseOrder,
         ) {
