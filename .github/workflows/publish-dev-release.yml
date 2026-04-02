@@ -1,18 +1,18 @@
-name: Publish Release
+name: Publish Dev Release
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - dev
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  publish-release:
-    name: Build and Publish Release
+  publish-dev-release:
+    name: Build and Publish Dev Release
     runs-on: ubuntu-latest
 
     permissions:
@@ -33,31 +33,44 @@ jobs:
         run: |
           RELEASES_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")
           PREVIOUS_STABLE_TAG=$(echo "$RELEASES_JSON" | jq -r 'map(select(.draft == false and .prerelease == false)) | .[0].tag_name // ""')
+          PREVIOUS_STABLE_PUBLISHED_AT=$(echo "$RELEASES_JSON" | jq -r 'map(select(.draft == false and .prerelease == false)) | .[0].published_at // ""')
+          DEV_RELEASE_COUNT=$(echo "$RELEASES_JSON" | jq -r --arg published_at "$PREVIOUS_STABLE_PUBLISHED_AT" '
+            [
+              .[]
+              | select(.draft == false and .prerelease == true)
+              | select(.tag_name | test("-dev\\.[0-9]+$"))
+              | select($published_at == "" or .published_at > $published_at)
+            ] | length
+          ')
+          NEXT_DEV_RELEASE_NUMBER=$((DEV_RELEASE_COUNT + 1))
 
           echo "previous_stable_tag=$PREVIOUS_STABLE_TAG" >> $GITHUB_OUTPUT
+          echo "dev_release_count=$DEV_RELEASE_COUNT" >> $GITHUB_OUTPUT
+          echo "next_dev_release_number=$NEXT_DEV_RELEASE_NUMBER" >> $GITHUB_OUTPUT
+
           echo "Previous stable tag: $PREVIOUS_STABLE_TAG"
+          echo "Existing dev releases since stable: $DEV_RELEASE_COUNT"
+          echo "Next dev release number: $NEXT_DEV_RELEASE_NUMBER"
 
       - name: Generate Changelog
         id: changelog
+        env:
+          RELEASE_CHANNEL: dev
+          DEV_RELEASE_NUMBER: ${{ steps.release_context.outputs.next_dev_release_number }}
         run: |
           chmod +x .github/scripts/generate-changelog.sh
-          # Run script with previous tag and capture both stdout (changelog) and stderr
-          # stderr contains: skip_release=true/false and the version
           .github/scripts/generate-changelog.sh "${{ steps.release_context.outputs.previous_stable_tag }}" 2>/tmp/script_output > /tmp/changelog_output
-          
-          # Parse the script output
+
           SKIP_RELEASE=$(grep "skip_release=" /tmp/script_output | cut -d= -f2)
           NEW_VERSION=$(grep "^v" /tmp/script_output)
           CHANGELOG=$(cat /tmp/changelog_output)
 
-          # Output for subsequent steps
           echo "skip_release=$SKIP_RELEASE" >> $GITHUB_OUTPUT
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-          # Display for debugging
           echo "Skip release: $SKIP_RELEASE"
           echo "New version: $NEW_VERSION"
           echo "Changelog:"
@@ -66,25 +79,20 @@ jobs:
       - name: Update Version in gradle.properties
         if: steps.changelog.outputs.skip_release != 'true'
         run: |
-          # Get the new version from changelog step
           NEW_VERSION="${{ steps.changelog.outputs.new_version }}"
-          # Remove 'v' prefix for gradle.properties
           VERSION_NAME="${NEW_VERSION#v}"
 
-          # Get current version code and increment
           CURRENT_VERSION_CODE=$(grep "^appVersionCode=" gradle.properties | cut -d= -f2)
           NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
 
           echo "Updating version: name=$VERSION_NAME, code=$NEW_VERSION_CODE"
 
-          # Update gradle.properties atomically using awk
           awk -v ver="$VERSION_NAME" -v code="$NEW_VERSION_CODE" '
             /^appVersion=/ { $0="appVersion="ver }
             /^appVersionCode=/ { $0="appVersionCode="code }
             { print }
           ' gradle.properties > gradle.properties.tmp && mv gradle.properties.tmp gradle.properties
 
-          # Validate both updates succeeded
           grep -q "^appVersion=$VERSION_NAME$" gradle.properties || { echo "ERROR: Failed to update appVersion"; exit 1; }
           grep -q "^appVersionCode=$NEW_VERSION_CODE$" gradle.properties || { echo "ERROR: Failed to update appVersionCode"; exit 1; }
 
@@ -125,40 +133,25 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.changelog.outputs.new_version }}
-          name: Release ${{ steps.changelog.outputs.new_version }}
+          name: Dev Release ${{ steps.changelog.outputs.new_version }}
           body: ${{ steps.changelog.outputs.changelog }}
           files: app/build/outputs/apk/release/search-*.apk
           draft: false
-          prerelease: false
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit and Push Version Update to Branches
+      - name: Commit and Push Version Update to Dev
         if: steps.changelog.outputs.skip_release != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Get the new version from changelog step
           NEW_VERSION="${{ steps.changelog.outputs.new_version }}"
-
-          # Get the new version code from gradle.properties (already updated in previous step)
           NEW_VERSION_CODE=$(grep "^appVersionCode=" gradle.properties | cut -d= -f2)
 
-          # Stage, commit, and push to master atomically to prevent race condition
           git add gradle.properties
           git commit -m "chore: bump version to $NEW_VERSION (code $NEW_VERSION_CODE) [skip ci]"
-          git push origin master
-
-          # Fetch dev branch
-          git fetch origin dev
-
-          # Checkout dev and rebase onto master (which now has the version commit)
-          git checkout dev
-          git rebase master
-
-          # Push dev (force-with-lease to be safe)
-          git push origin dev --force-with-lease
+          git push origin dev
