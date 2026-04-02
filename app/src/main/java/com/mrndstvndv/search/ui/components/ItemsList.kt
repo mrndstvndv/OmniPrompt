@@ -2,7 +2,6 @@ package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
@@ -308,7 +307,6 @@ fun ItemsList(
                     else -> 5.dp
                 }
 
-                val itemAnimationSpec = motionAwareTween<Dp>(durationMillis = 250)
                 val primaryActionCueProgress = if (isPrimaryActionItem && item.id == primaryActionResultId) {
                     primaryActionCue.value
                 } else {
@@ -321,16 +319,14 @@ fun ItemsList(
                 }
                 val itemScaleX = 1f + (primaryActionCueProgress * 0.008f)
                 val itemScaleY = 1f + (primaryActionCueProgress * 0.018f)
-                val animatedTopStart by animateDpAsState(targetTopStart, animationSpec = itemAnimationSpec, label = "shapeTopStart")
-                val animatedTopEnd by animateDpAsState(targetTopEnd, animationSpec = itemAnimationSpec, label = "shapeTopEnd")
-                val animatedBottomStart by animateDpAsState(targetBottomStart, animationSpec = itemAnimationSpec, label = "shapeBottomStart")
-                val animatedBottomEnd by animateDpAsState(targetBottomEnd, animationSpec = itemAnimationSpec, label = "shapeBottomEnd")
 
+                // Edge corner ownership should snap to the current visual slot.
+                // Animating it per item makes the old top result "carry" rounded corners while moving away.
                 val shape = RoundedCornerShape(
-                    topStart = animatedTopStart,
-                    topEnd = animatedTopEnd,
-                    bottomEnd = animatedBottomEnd,
-                    bottomStart = animatedBottomStart,
+                    topStart = targetTopStart,
+                    topEnd = targetTopEnd,
+                    bottomEnd = targetBottomEnd,
+                    bottomStart = targetBottomStart,
                 )
 
                 val baseContainerColor = if (translucentItems) {
