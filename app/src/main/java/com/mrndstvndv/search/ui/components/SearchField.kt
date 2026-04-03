@@ -29,6 +29,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +66,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.model.SearchTrigger
 import com.mrndstvndv.search.provider.model.TriggerMatch
+import com.mrndstvndv.search.ui.theme.motionAwareTween
 
 /**
  * State representing an active trigger in the search field.
@@ -185,27 +198,63 @@ fun SearchField(
                             innerTextField()
                         }
 
-                        if (value.text.isNotEmpty() && onClear != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Box(
+                        val hasText = value.text.isNotEmpty()
+                        val showClear = hasText && onClear != null
+                        val morphSpec = motionAwareTween<Float>(durationMillis = 180)
+                        val bounceExpandSpec = motionAwareTween<Float>(durationMillis = 100)
+                        val bounceSettleSpec = motionAwareTween<Float>(durationMillis = 180)
+                        val morphCue = remember { Animatable(0f) }
+                        val bounceCue = remember { Animatable(0f) }
+                        var prevShowClear by remember { mutableStateOf(showClear) }
+                        LaunchedEffect(showClear) {
+                            if (showClear != prevShowClear) {
+                                prevShowClear = showClear
+                                morphCue.snapTo(if (showClear) 0f else 1f)
+                                bounceCue.snapTo(0f)
+                                morphCue.animateTo(if (showClear) 1f else 0f, animationSpec = morphSpec)
+                                bounceCue.animateTo(1f, animationSpec = bounceExpandSpec)
+                                bounceCue.animateTo(0f, animationSpec = bounceSettleSpec)
+                            }
+                        }
+                        val p = morphCue.value
+                        val trailingAlpha = 1f - p
+                        val clearAlpha = p
+                        val trailingScale = 0.6f + (trailingAlpha * 0.4f)
+                        val clearScale = 0.6f + (clearAlpha * 0.4f)
+                        val bounceScaleX = 1f + (bounceCue.value * 0.012f)
+                        val bounceScaleY = 1f + (bounceCue.value * 0.024f)
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(50))
+                                .clickable { if (showClear) onClear!!() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            trailingIcon?.let { icon ->
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            scaleX = trailingScale * bounceScaleX
+                                            scaleY = trailingScale * bounceScaleY
+                                            alpha = trailingAlpha
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    icon()
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = null,
                                 modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .clickable { onClear() },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Close,
-                                    contentDescription = "Clear search",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        } else {
-                            trailingIcon?.let {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                it()
-                            }
+                                    .size(18.dp)
+                                    .graphicsLayer {
+                                        scaleX = clearScale * bounceScaleX
+                                        scaleY = clearScale * bounceScaleY
+                                        alpha = clearAlpha
+                                    },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
