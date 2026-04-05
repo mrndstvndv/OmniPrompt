@@ -41,17 +41,19 @@ class TermuxProvider(
     override val triggers: List<SearchTrigger>
         get() {
             if (!isTermuxInstalled) return emptyList()
-            return settingsRepository.value.commands.map { command ->
-                SearchTrigger.create(
-                    id = command.id,
-                    ownerProviderId = id,
-                    label = command.displayName,
-                    aliases = setOf(command.executablePath.substringAfterLast('/')),
-                    vectorIcon = Icons.Outlined.Terminal,
-                    resultPolicy = TriggerResultPolicy.EXCLUSIVE,
-                    execute = { invocation -> executeCommandTrigger(command.id, invocation) },
-                )
-            }
+            return settingsRepository.value.commands
+                .filter { it.hasQuerySlot }
+                .map { command ->
+                    SearchTrigger.create(
+                        id = command.id,
+                        ownerProviderId = id,
+                        label = command.displayName,
+                        aliases = setOf(command.executablePath.substringAfterLast('/')),
+                        vectorIcon = Icons.Outlined.Terminal,
+                        resultPolicy = TriggerResultPolicy.EXCLUSIVE,
+                        execute = { invocation -> executeCommandTrigger(command.id, invocation) },
+                    )
+                }
         }
 
     private suspend fun executeCommandTrigger(
