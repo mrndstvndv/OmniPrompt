@@ -16,6 +16,15 @@ data class TermuxCommand(
     val shellName: String? = null,
     val shellCreateMode: String? = null,
 ) {
+    /**
+     * Whether this command expects query input (contains $1, $2, $*, or $query in arguments).
+     */
+    val hasQuerySlot: Boolean
+        get() {
+            if (arguments == null) return false
+            return arguments.contains("\$")
+        }
+
     companion object {
         // Session action values per Termux RUN_COMMAND spec
         // https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java

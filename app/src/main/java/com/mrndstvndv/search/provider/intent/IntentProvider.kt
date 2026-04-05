@@ -31,16 +31,18 @@ class IntentProvider(
     override val displayName: String = activity.getString(R.string.provider_intent_launcher)
 
     override val triggers: List<SearchTrigger>
-        get() = settingsRepository.value.configs.map { config ->
-            SearchTrigger.create(
-                id = config.id,
-                ownerProviderId = id,
-                label = config.title,
-                vectorIcon = Icons.Outlined.Share,
-                resultPolicy = TriggerResultPolicy.EXCLUSIVE,
-                execute = { invocation -> executeIntentTrigger(config.id, invocation) },
-            )
-        }
+        get() = settingsRepository.value.configs
+            .filter { it.hasQuerySlot }
+            .map { config ->
+                SearchTrigger.create(
+                    id = config.id,
+                    ownerProviderId = id,
+                    label = config.title,
+                    vectorIcon = Icons.Outlined.Share,
+                    resultPolicy = TriggerResultPolicy.EXCLUSIVE,
+                    execute = { invocation -> executeIntentTrigger(config.id, invocation) },
+                )
+            }
 
     private suspend fun executeIntentTrigger(
         configId: String,
@@ -54,7 +56,7 @@ class IntentProvider(
         val targetLabel = config.packageName.ifEmpty { systemLabel }
         val subtitle = if (payload.isNotEmpty()) {
             activity.getString(R.string.intent_result_subtitle_with_payload, payload, targetLabel)
-        } else if (config.requiresPayload) {
+        } else if (config.hasQuerySlot) {
             activity.getString(R.string.intent_payload_required_hint)
         } else {
             targetLabel
@@ -119,13 +121,13 @@ class IntentProvider(
             val displayPayload = if (config == scored.first().first) {
                 if (rawPayload.isNotEmpty()) {
                     rawPayload
-                } else if (config.requiresPayload) {
+                } else if (config.hasQuerySlot) {
                     payloadHint
                 } else {
                     ""
                 }
             } else {
-                if (config.requiresPayload) payloadHint else ""
+                if (config.hasQuerySlot) payloadHint else ""
             }
 
             val targetLabel = config.packageName.ifEmpty { systemLabel }

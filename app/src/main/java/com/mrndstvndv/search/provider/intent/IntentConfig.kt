@@ -48,14 +48,12 @@ data class IntentConfig(
     val extras: List<IntentExtra> = emptyList(),
 ) {
     /**
-     * Whether this intent action typically requires a payload.
+     * Whether this intent expects a query value (contains $query in payloadTemplate or any extra).
      */
-    val requiresPayload: Boolean
-        get() = when (action) {
-            Intent.ACTION_SEND,
-            Intent.ACTION_VIEW,
-            Intent.ACTION_SENDTO -> true
-            else -> false
+    val hasQuerySlot: Boolean
+        get() {
+            if (payloadTemplate?.contains("\$query") == true) return true
+            return extras.any { it.value.contains("\$query") }
         }
 
     companion object {
