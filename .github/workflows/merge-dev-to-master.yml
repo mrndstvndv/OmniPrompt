@@ -1,0 +1,71 @@
+name: Merge Dev to Master
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  merge-dev-to-master:
+    name: Create or Reuse Merge PR
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Create or Reuse PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: master
+          HEAD_BRANCH: dev
+        run: |
+          set -euo pipefail
+
+          existing_pr_url=$(gh pr list \
+            -R "$GITHUB_REPOSITORY" \
+            --state open \
+            --base "$BASE_BRANCH" \
+            --head "$HEAD_BRANCH" \
+            --json url \
+            --jq '.[0].url // empty')
+
+          if [ -n "$existing_pr_url" ]; then
+            echo "PR already open: $existing_pr_url"
+            exit 0
+          fi
+
+          ahead_by=$(gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE_BRANCH}...${HEAD_BRANCH}" --jq '.ahead_by')
+          if [ "$ahead_by" -eq 0 ]; then
+            echo "No changes to merge from $HEAD_BRANCH into $BASE_BRANCH."
+            exit 0
+          fi
+
+          body=$(cat <<'EOF'
+          This PR prepares the next stable release.
+
+          - base: `master`
+          - head: `dev`
+
+          Merge this PR with **Create a merge commit**.
+          Do not rebase.
+
+          After merge, the `Publish Release` workflow will:
+          - build the stable release
+          - publish the GitHub release
+          - sync `master` back into `dev`
+          EOF
+          )
+
+          gh pr create \
+            -R "$GITHUB_REPOSITORY" \
+            --base "$BASE_BRANCH" \
+            --head "$HEAD_BRANCH" \
+            --title "chore: merge dev to master" \
+            --body "$body"
