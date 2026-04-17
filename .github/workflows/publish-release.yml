@@ -133,7 +133,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit Release Version and Sync Dev
+      - name: Commit Release Version and Rebase Dev
         if: steps.changelog.outputs.skip_release != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -152,26 +152,5 @@ jobs:
 
           git fetch origin master dev
           git checkout -B dev origin/dev
-
-          if ! git merge --no-ff origin/master -m "chore: sync master into dev after $NEW_VERSION [skip ci]"; then
-            conflicted_files=$(git diff --name-only --diff-filter=U)
-
-            if [ -z "$conflicted_files" ]; then
-              echo "ERROR: merge failed without unresolved files"
-              exit 1
-            fi
-
-            if printf '%s\n' "$conflicted_files" | grep -qv '^gradle\.properties$'; then
-              echo "ERROR: merge conflict outside gradle.properties:"
-              echo "$conflicted_files"
-              git merge --abort
-              exit 1
-            fi
-
-            # Keep the stable branch version when syncing master back into dev.
-            git checkout --theirs gradle.properties
-            git add gradle.properties
-            git commit --no-edit
-          fi
-
-          git push origin dev
+          git rebase origin/master
+          git push origin dev --force-with-lease
