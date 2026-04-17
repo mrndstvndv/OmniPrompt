@@ -67,5 +67,5 @@ jobs:
             -R "$GITHUB_REPOSITORY" \
             --base "$BASE_BRANCH" \
             --head "$HEAD_BRANCH" \
-            --title "merge dev to master" \
+            --title "chore: merge dev to master" \
             --body "$body"
