@@ -29,6 +29,7 @@ jobs:
           set -euo pipefail
 
           existing_pr_url=$(gh pr list \
+            -R "$GITHUB_REPOSITORY" \
             --state open \
             --base "$BASE_BRANCH" \
             --head "$HEAD_BRANCH" \
@@ -63,6 +64,7 @@ jobs:
           )
 
           gh pr create \
+            -R "$GITHUB_REPOSITORY" \
             --base "$BASE_BRANCH" \
             --head "$HEAD_BRANCH" \
             --title "merge dev to master" \
