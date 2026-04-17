@@ -32,8 +32,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASES_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100")
-          PREVIOUS_STABLE_TAG=$(echo "$RELEASES_JSON" | jq -r 'map(select(.draft == false and .prerelease == false)) | .[0].tag_name // ""')
-          PREVIOUS_STABLE_PUBLISHED_AT=$(echo "$RELEASES_JSON" | jq -r 'map(select(.draft == false and .prerelease == false)) | .[0].published_at // ""')
+          PREVIOUS_STABLE_TAG=$(echo "$RELEASES_JSON" | jq -r 'map(select(.draft == false and .prerelease == false)) | sort_by(.published_at) | .[-1].tag_name // ""')
+          PREVIOUS_STABLE_PUBLISHED_AT=$(echo "$RELEASES_JSON" | jq -r 'map(select(.draft == false and .prerelease == false)) | sort_by(.published_at) | .[-1].published_at // ""')
+          LATEST_DEV_RELEASE_TAG=$(echo "$RELEASES_JSON" | jq -r --arg published_at "$PREVIOUS_STABLE_PUBLISHED_AT" '
+            [
+              .[]
+              | select(.draft == false and .prerelease == true)
+              | select(.tag_name | test("-dev\\.[0-9]+$"))
+              | select($published_at == "" or .published_at > $published_at)
+            ] | sort_by(.published_at) | .[-1].tag_name // ""
+          ')
           DEV_RELEASE_COUNT=$(echo "$RELEASES_JSON" | jq -r --arg published_at "$PREVIOUS_STABLE_PUBLISHED_AT" '
             [
               .[]
@@ -43,12 +51,21 @@ jobs:
             ] | length
           ')
           NEXT_DEV_RELEASE_NUMBER=$((DEV_RELEASE_COUNT + 1))
+          COMPARISON_TAG="$PREVIOUS_STABLE_TAG"
+
+          if [ -n "$LATEST_DEV_RELEASE_TAG" ]; then
+            COMPARISON_TAG="$LATEST_DEV_RELEASE_TAG"
+          fi
 
           echo "previous_stable_tag=$PREVIOUS_STABLE_TAG" >> $GITHUB_OUTPUT
+          echo "latest_dev_release_tag=$LATEST_DEV_RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "comparison_tag=$COMPARISON_TAG" >> $GITHUB_OUTPUT
           echo "dev_release_count=$DEV_RELEASE_COUNT" >> $GITHUB_OUTPUT
           echo "next_dev_release_number=$NEXT_DEV_RELEASE_NUMBER" >> $GITHUB_OUTPUT
 
           echo "Previous stable tag: $PREVIOUS_STABLE_TAG"
+          echo "Latest dev release tag: $LATEST_DEV_RELEASE_TAG"
+          echo "Comparison tag: $COMPARISON_TAG"
           echo "Existing dev releases since stable: $DEV_RELEASE_COUNT"
           echo "Next dev release number: $NEXT_DEV_RELEASE_NUMBER"
 
@@ -57,9 +74,10 @@ jobs:
         env:
           RELEASE_CHANNEL: dev
           DEV_RELEASE_NUMBER: ${{ steps.release_context.outputs.next_dev_release_number }}
+          VERSION_BASE_TAG: ${{ steps.release_context.outputs.previous_stable_tag }}
         run: |
           chmod +x .github/scripts/generate-changelog.sh
-          .github/scripts/generate-changelog.sh "${{ steps.release_context.outputs.previous_stable_tag }}" 2>/tmp/script_output > /tmp/changelog_output
+          .github/scripts/generate-changelog.sh "${{ steps.release_context.outputs.comparison_tag }}" 2>/tmp/script_output > /tmp/changelog_output
 
           SKIP_RELEASE=$(grep "skip_release=" /tmp/script_output | cut -d= -f2)
           NEW_VERSION=$(grep "^v" /tmp/script_output)
