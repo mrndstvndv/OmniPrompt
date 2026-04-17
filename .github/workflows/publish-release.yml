@@ -133,32 +133,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit and Push Version Update to Branches
+      - name: Commit Release Version and Sync Dev
         if: steps.changelog.outputs.skip_release != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Configure git
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Get the new version from changelog step
           NEW_VERSION="${{ steps.changelog.outputs.new_version }}"
-
-          # Get the new version code from gradle.properties (already updated in previous step)
           NEW_VERSION_CODE=$(grep "^appVersionCode=" gradle.properties | cut -d= -f2)
 
-          # Stage, commit, and push to master atomically to prevent race condition
           git add gradle.properties
           git commit -m "chore: bump version to $NEW_VERSION (code $NEW_VERSION_CODE) [skip ci]"
           git push origin master
 
-          # Fetch dev branch
-          git fetch origin dev
+          git fetch origin master dev
+          git checkout -B dev origin/dev
 
-          # Checkout dev and rebase onto master (which now has the version commit)
-          git checkout dev
-          git rebase master
+          if ! git merge --no-ff origin/master -m "chore: sync master into dev after $NEW_VERSION [skip ci]"; then
+            conflicted_files=$(git diff --name-only --diff-filter=U)
 
-          # Push dev (force-with-lease to be safe)
-          git push origin dev --force-with-lease
+            if [ -z "$conflicted_files" ]; then
+              echo "ERROR: merge failed without unresolved files"
+              exit 1
+            fi
+
+            if printf '%s\n' "$conflicted_files" | grep -qv '^gradle\.properties$'; then
+              echo "ERROR: merge conflict outside gradle.properties:"
+              echo "$conflicted_files"
+              git merge --abort
+              exit 1
+            fi
+
+            # Keep the stable branch version when syncing master back into dev.
+            git checkout --theirs gradle.properties
+            git add gradle.properties
+            git commit --no-edit
+          fi
+
+          git push origin dev
