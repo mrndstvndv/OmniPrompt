@@ -1,5 +1,10 @@
 import java.io.FileInputStream
 import java.util.Properties
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
 
 val appVersion =
     project.findProperty("appVersion") as? String
@@ -16,6 +21,30 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    id("com.google.android.gms.oss-licenses-plugin")
+}
+
+abstract class SyncOssLicenseAssetsTask : DefaultTask() {
+    @get:InputDirectory
+    abstract val sourceDir: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun syncAssets() {
+        project.copy {
+            from(sourceDir)
+            include("third_party_license_metadata", "third_party_licenses")
+            into(outputDir)
+        }
+    }
+}
+
+val syncReleaseOssLicensesForAssets by tasks.registering(SyncOssLicenseAssetsTask::class) {
+    dependsOn("releaseOssLicensesTask")
+    sourceDir.set(layout.buildDirectory.dir("generated/res/releaseOssLicensesTask/raw"))
+    outputDir.set(layout.buildDirectory.dir("generated/assets/ossLicenses"))
 }
 
 android {
@@ -75,6 +104,15 @@ android {
         compose = true
         buildConfig = true
         aidl = true
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            syncReleaseOssLicensesForAssets,
+            SyncOssLicenseAssetsTask::outputDir,
+        )
     }
 }
 
