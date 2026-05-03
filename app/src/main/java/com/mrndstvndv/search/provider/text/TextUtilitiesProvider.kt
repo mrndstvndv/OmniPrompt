@@ -183,6 +183,8 @@ class TextUtilitiesProvider(
                 ),
             onSelect = action,
             keepOverlayUntilExit = autoLaunchUri != null,
+            frequencyKey = utilityFrequencyKey(utility.id),
+            frequencyQuery = id,
         )
     }
 
@@ -225,9 +227,12 @@ class TextUtilitiesProvider(
             subtitle = instruction,
             providerId = id,
             extras = extras,
-            excludeFromFrequencyRanking = true,
+            frequencyKey = utilityFrequencyKey(utility.id),
+            frequencyQuery = id,
         )
     }
+
+    private fun utilityFrequencyKey(utilityId: String): String = "$id:$utilityId"
 
     private fun copyToClipboard(
         label: String,

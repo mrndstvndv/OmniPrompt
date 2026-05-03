@@ -422,15 +422,18 @@ class MainActivity : ComponentActivity() {
             var contactActionData by remember { mutableStateOf<ContactActionData?>(null) }
             var currentNormalizedQuery by remember { mutableStateOf("") }
 
+            fun recordResultUsage(result: ProviderResult) {
+                if (result.excludeFromFrequencyRanking) return
+                val freqId = result.frequencyKey
+                val freqQuery = result.frequencyQuery ?: currentNormalizedQuery
+                rankingRepository.incrementResultUsage(freqId, freqQuery)
+            }
+
             fun startPendingAction(result: ProviderResult?) {
                 val action = result?.onSelect ?: return
                 if (isPerformingAction) return
                 isPerformingAction = true
-                if (!result.excludeFromFrequencyRanking) {
-                    val freqId = result.frequencyKey
-                    val freqQuery = result.frequencyQuery ?: currentNormalizedQuery
-                    rankingRepository.incrementResultUsage(freqId, freqQuery)
-                }
+                recordResultUsage(result)
                 pendingAction = PendingAction(action, result.keepOverlayUntilExit)
             }
 
@@ -540,6 +543,7 @@ class MainActivity : ComponentActivity() {
                 val candidate = result ?: return false
                 val prefillQuery = candidate.extras[TextUtilitiesProvider.PREFILL_QUERY_EXTRA] as? String
                 if (prefillQuery != null) {
+                    recordResultUsage(candidate)
                     if (triggerState != null) return true
                     applyPrefillQuery(prefillQuery)
                     shouldShowResults = true
@@ -558,11 +562,7 @@ class MainActivity : ComponentActivity() {
                             phoneNumbers = phoneNumbers,
                             isSimNumber = isSimNumber,
                         )
-                    if (!candidate.excludeFromFrequencyRanking) {
-                        val freqId = candidate.frequencyKey
-                        val freqQuery = candidate.frequencyQuery ?: currentNormalizedQuery
-                        rankingRepository.incrementResultUsage(freqId, freqQuery)
-                    }
+                    recordResultUsage(candidate)
                     return true
                 }
                 if (candidate.onSelect != null) {

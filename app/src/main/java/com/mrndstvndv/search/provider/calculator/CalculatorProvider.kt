@@ -39,7 +39,9 @@ class CalculatorProvider(
                 title = activity.getString(R.string.calculator_result_title, result),
                 subtitle = expression,
                 providerId = id,
-                onSelect = action
+                onSelect = action,
+                frequencyKey = id,
+                frequencyQuery = id,
             )
         )
     }
