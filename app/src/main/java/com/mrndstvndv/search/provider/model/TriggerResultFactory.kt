@@ -22,6 +22,8 @@ fun createTriggerResult(
     matchedTitleIndices: List<Int> = emptyList(),
     matchedSubtitleIndices: List<Int> = emptyList(),
     excludeFromFrequencyRanking: Boolean = false,
+    frequencyKey: String = "$providerId:$triggerId",
+    frequencyQuery: String? = invocation.frequencyQuery,
 ): ProviderResult =
     ProviderResult(
         id = id,
@@ -38,7 +40,7 @@ fun createTriggerResult(
         keepOverlayUntilExit = keepOverlayUntilExit,
         matchedTitleIndices = matchedTitleIndices,
         matchedSubtitleIndices = matchedSubtitleIndices,
-        frequencyKey = "$providerId:$triggerId",
-        frequencyQuery = invocation.frequencyQuery,
+        frequencyKey = frequencyKey,
+        frequencyQuery = frequencyQuery,
         excludeFromFrequencyRanking = excludeFromFrequencyRanking,
     )
