@@ -20,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -153,6 +155,34 @@ private fun FrequencyRankingDialog(
     onDismiss: () -> Unit,
     onReset: () -> Unit,
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val normalizedSearch = searchQuery.trim()
+    val filteredGroups =
+        remember(frequency, normalizedSearch) {
+            frequency.keys.sorted().mapNotNull { query ->
+                val sortedResults =
+                    (frequency[query] ?: emptyMap())
+                        .entries
+                        .sortedByDescending { it.value }
+                        .map { it.key to it.value }
+
+                if (normalizedSearch.isEmpty()) {
+                    return@mapNotNull query to sortedResults
+                }
+
+                val queryMatches = query.contains(normalizedSearch, ignoreCase = true)
+                val visibleResults =
+                    if (queryMatches) {
+                        sortedResults
+                    } else {
+                        sortedResults.filter { (resultId, _) -> resultId.contains(normalizedSearch, ignoreCase = true) }
+                    }
+
+                if (!queryMatches && visibleResults.isEmpty()) return@mapNotNull null
+                query to visibleResults
+            }
+        }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.ranking_frequency_data)) },
@@ -164,48 +194,67 @@ private fun FrequencyRankingDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                if (frequency.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.ranking_no_usage_data),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (frequency.isNotEmpty()) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(text = stringResource(R.string.search_placeholder)) },
+                        singleLine = true,
                     )
-                } else {
-                    val sortedQueries = frequency.keys.sorted()
-                    LazyColumn(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 400.dp),
-                    ) {
-                        sortedQueries.forEach { query ->
-                            item(key = query) {
-                                Text(
-                                    text = if (query.isEmpty()) stringResource(R.string.ranking_general_no_query) else stringResource(R.string.ranking_query_label, query),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                                )
-                            }
-                            val queryCounts = frequency[query] ?: emptyMap()
-                            val sortedResults = queryCounts.entries.sortedByDescending { it.value }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                when {
+                    frequency.isEmpty() -> {
+                        Text(
+                            text = stringResource(R.string.ranking_no_usage_data),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
 
-                            itemsIndexed(sortedResults) { index, (resultId, score) ->
-                                FrequencyItem(resultId = resultId, score = score)
-                                if (index < sortedResults.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(start = 16.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    filteredGroups.isEmpty() -> {
+                        Text(
+                            text = stringResource(R.string.ranking_no_matching_usage_data),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 400.dp),
+                        ) {
+                            filteredGroups.forEach { (query, sortedResults) ->
+                                item(key = query) {
+                                    Text(
+                                        text = if (query.isEmpty()) stringResource(R.string.ranking_general_no_query) else stringResource(R.string.ranking_query_label, query),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                                     )
                                 }
-                            }
 
-                            item {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(top = 8.dp),
-                                    thickness = 2.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                )
+                                itemsIndexed(sortedResults, key = { _, item -> "${query}:${item.first}" }) { index, (resultId, score) ->
+                                    FrequencyItem(resultId = resultId, score = score)
+                                    if (index < sortedResults.lastIndex) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(start = 16.dp),
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        )
+                                    }
+                                }
+
+                                item(key = "divider:$query") {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(top = 8.dp),
+                                        thickness = 2.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
                             }
                         }
                     }

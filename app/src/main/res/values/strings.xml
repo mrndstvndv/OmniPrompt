@@ -359,6 +359,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="ranking_frequency_data">Frequency data</string>
     <string name="ranking_usage_scoped">Usage is now scoped to specific search queries.</string>
     <string name="ranking_no_usage_data">No usage data yet</string>
+    <string name="ranking_no_matching_usage_data">No matching usage data</string>
     <string name="ranking_reset_data">Reset data</string>
     <string name="ranking_general_no_query">General (no query)</string>
     <string name="ranking_query_label">Query: &quot;%s&quot;</string>
