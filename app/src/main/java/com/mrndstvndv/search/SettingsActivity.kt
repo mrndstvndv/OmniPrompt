@@ -47,6 +47,7 @@ import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
 import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
 import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
 import com.mrndstvndv.search.settings.AssistantRoleManager
+import com.mrndstvndv.search.ui.settings.AboutSettingsScreen
 import com.mrndstvndv.search.ui.settings.AliasesSettingsScreen
 import com.mrndstvndv.search.ui.settings.AppSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.AppearanceSettingsScreen
@@ -88,6 +89,7 @@ class SettingsActivity : ComponentActivity() {
         SystemSettings,
         ContactsSettings,
         BackupRestore,
+        About,
         TermuxSettings,
         IntentSettings,
     }
@@ -169,6 +171,7 @@ class SettingsActivity : ComponentActivity() {
                                 onOpenAliases = { currentScreen = Screen.Aliases },
                                 onOpenResultRanking = { currentScreen = Screen.Ranking },
                                 onOpenBackupRestore = { currentScreen = Screen.BackupRestore },
+                                onOpenAbout = { currentScreen = Screen.About },
                                 onClose = { finish() },
                             )
                         }
@@ -332,6 +335,15 @@ class SettingsActivity : ComponentActivity() {
                             )
                         }
 
+                        Screen.About -> {
+                            BackHandler { currentScreen = Screen.Home }
+                            AboutSettingsScreen(
+                                versionName = BuildConfig.VERSION_NAME,
+                                repositoryUrl = GITHUB_REPOSITORY_URL,
+                                onBack = { currentScreen = Screen.Home },
+                            )
+                        }
+
                         Screen.TermuxSettings -> {
                             BackHandler { currentScreen = Screen.Providers }
                             TermuxSettingsScreen(
@@ -356,6 +368,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val GITHUB_REPOSITORY_URL = "https://github.com/mrndstvndv/Search"
         const val EXTRA_SCREEN = "screen"
         const val SCREEN_PROVIDERS = "providers"
     }
