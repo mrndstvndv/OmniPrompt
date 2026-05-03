@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Button
@@ -89,6 +90,7 @@ fun GeneralSettingsScreen(
     onOpenAliases: () -> Unit,
     onOpenResultRanking: () -> Unit,
     onOpenBackupRestore: () -> Unit,
+    onOpenAbout: () -> Unit,
     onClose: () -> Unit,
 ) {
     // Collect once so future tweaks can surface live states on tiles if desired.
@@ -107,6 +109,7 @@ fun GeneralSettingsScreen(
     val behaviorSubtitle = stringResource(R.string.settings_behavior_subtitle)
     val aliasesSubtitle = stringResource(R.string.settings_aliases_subtitle)
     val rankingSubtitle = stringResource(R.string.settings_result_ranking_subtitle)
+    val aboutSubtitle = stringResource(R.string.settings_about_subtitle)
 
     Box(
         modifier =
@@ -183,6 +186,13 @@ fun GeneralSettingsScreen(
                         title = stringResource(R.string.settings_backup_restore),
                         subtitle = stringResource(R.string.settings_backup_restore_subtitle),
                         onClick = onOpenBackupRestore,
+                    )
+                    SettingsDivider()
+                    SettingsNavigationRow(
+                        icon = Icons.Rounded.Info,
+                        title = stringResource(R.string.settings_about),
+                        subtitle = aboutSubtitle,
+                        onClick = onOpenAbout,
                     )
                 }
             }
