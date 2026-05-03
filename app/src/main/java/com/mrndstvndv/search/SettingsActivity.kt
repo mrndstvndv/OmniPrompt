@@ -57,6 +57,7 @@ import com.mrndstvndv.search.ui.settings.ContactsSettingsScreen
 import com.mrndstvndv.search.ui.settings.FileSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.GeneralSettingsScreen
 import com.mrndstvndv.search.ui.settings.IntentSettingsScreen
+import com.mrndstvndv.search.ui.settings.OpenSourceLicensesScreen
 import com.mrndstvndv.search.ui.settings.ProviderListScreen
 import com.mrndstvndv.search.ui.settings.ProvidersSettingsScreen
 import com.mrndstvndv.search.ui.settings.ResultRankingSettingsScreen
@@ -90,6 +91,7 @@ class SettingsActivity : ComponentActivity() {
         ContactsSettings,
         BackupRestore,
         About,
+        Licenses,
         TermuxSettings,
         IntentSettings,
     }
@@ -340,7 +342,15 @@ class SettingsActivity : ComponentActivity() {
                             AboutSettingsScreen(
                                 versionName = BuildConfig.VERSION_NAME,
                                 repositoryUrl = GITHUB_REPOSITORY_URL,
+                                onOpenLicenses = { currentScreen = Screen.Licenses },
                                 onBack = { currentScreen = Screen.Home },
+                            )
+                        }
+
+                        Screen.Licenses -> {
+                            BackHandler { currentScreen = Screen.About }
+                            OpenSourceLicensesScreen(
+                                onBack = { currentScreen = Screen.About },
                             )
                         }
 

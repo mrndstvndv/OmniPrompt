@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +41,7 @@ import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
 fun AboutSettingsScreen(
     versionName: String,
     repositoryUrl: String,
+    onOpenLicenses: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -78,6 +80,13 @@ fun AboutSettingsScreen(
                     onClick = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(repositoryUrl)))
                     },
+                )
+                SettingsDivider()
+                SettingsNavigationRow(
+                    icon = Icons.Rounded.Description,
+                    title = stringResource(R.string.about_open_source_licenses),
+                    subtitle = stringResource(R.string.about_open_source_licenses_subtitle),
+                    onClick = onOpenLicenses,
                 )
             }
         }
