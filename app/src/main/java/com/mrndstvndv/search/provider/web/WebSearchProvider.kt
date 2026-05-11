@@ -18,6 +18,7 @@ import com.mrndstvndv.search.provider.model.TriggerInvocation
 import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
+import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.Quicklink
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
@@ -233,6 +234,11 @@ class WebSearchProvider(
                     activity.finish()
                 }
             }
+            val frequencyQuery = if (site.id != defaultSite.id && parsedTrigger.hasPayloadSeparator) {
+                dynamicTriggerFrequencyQuery(triggerToken)
+            } else {
+                triggerToken
+            }
             ProviderResult(
                 id = "$id:${site.id}:${actualQuery.hashCode()}",
                 title = activity.getString(R.string.web_search_result_title, actualQuery),
@@ -250,7 +256,7 @@ class WebSearchProvider(
                 matchedSubtitleIndices = triggerMatchMap[site.id]?.matchedIndices ?: emptyList(),
                 // Use stable frequency key without query hash so dynamic queries aggregate under site
                 frequencyKey = "$id:${site.id}",
-                frequencyQuery = triggerToken,
+                frequencyQuery = frequencyQuery,
                 excludeFromFrequencyRanking = site.id == defaultSite.id,
             )
         }

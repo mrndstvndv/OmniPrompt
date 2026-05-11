@@ -13,6 +13,7 @@ import com.mrndstvndv.search.provider.model.TriggerInvocation
 import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
+import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -145,7 +146,11 @@ class IntentProvider(
                 onSelect = { executeIntent(config, rawPayload) },
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedIndices,
-                frequencyQuery = searchTerm,
+                frequencyQuery = if (config.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
+                    dynamicTriggerFrequencyQuery(searchTerm)
+                } else {
+                    searchTerm
+                },
             )
         }
     }

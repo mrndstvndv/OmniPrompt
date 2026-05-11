@@ -93,6 +93,7 @@ import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
+import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ContactsSettings
@@ -659,7 +660,7 @@ class MainActivity : ComponentActivity() {
 
                         val activeTrigger = triggerState
                         if (activeTrigger != null) {
-                            val triggerFrequencyQuery = activeTrigger.matchedToken
+                            val triggerFrequencyQuery = dynamicTriggerFrequencyQuery(activeTrigger.matchedToken)
                             currentNormalizedQuery = triggerFrequencyQuery
                             try {
                                 val triggerResults = withContext(Dispatchers.IO) {
