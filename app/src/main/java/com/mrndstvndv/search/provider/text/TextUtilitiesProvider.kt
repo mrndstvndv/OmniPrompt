@@ -184,7 +184,7 @@ class TextUtilitiesProvider(
             onSelect = action,
             keepOverlayUntilExit = autoLaunchUri != null,
             frequencyKey = utilityFrequencyKey(utility.id),
-            frequencyQuery = id,
+            frequencyQuery = invocation.frequencyQuery,
         )
     }
 

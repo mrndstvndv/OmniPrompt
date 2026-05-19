@@ -15,7 +15,13 @@ data class TriggerInvocation(
     val payload: String,
 ) {
     val frequencyQuery: String
-        get() = matchedToken
+        get() = dynamicTriggerFrequencyQuery(matchedToken)
+}
+
+fun dynamicTriggerFrequencyQuery(matchedToken: String): String {
+    val token = matchedToken.trim()
+    if (token.isBlank()) return "<query>"
+    return "$token <query>"
 }
 
 class SearchTrigger private constructor(

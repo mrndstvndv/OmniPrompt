@@ -17,12 +17,12 @@ data class TermuxCommand(
     val shellCreateMode: String? = null,
 ) {
     /**
-     * Whether this command expects query input (contains $1, $2, $*, or $query in arguments).
+     * Whether this command expects query input (contains $1, $2, or $* in arguments).
      */
     val hasQuerySlot: Boolean
         get() {
             if (arguments == null) return false
-            return arguments.contains("\$")
+            return QUERY_PLACEHOLDER_PATTERN.containsMatchIn(arguments)
         }
 
     companion object {
@@ -32,6 +32,8 @@ data class TermuxCommand(
         const val SESSION_ACTION_CURRENT_AND_OPEN = 1 // VALUE_EXTRA_SESSION_ACTION_KEEP_CURRENT_SESSION_AND_OPEN_ACTIVITY
         const val SESSION_ACTION_NEW_NO_OPEN = 2 // VALUE_EXTRA_SESSION_ACTION_SWITCH_TO_NEW_SESSION_AND_DONT_OPEN_ACTIVITY
         const val SESSION_ACTION_CURRENT_NO_OPEN = 3 // VALUE_EXTRA_SESSION_ACTION_KEEP_CURRENT_SESSION_AND_DONT_OPEN_ACTIVITY
+
+        private val QUERY_PLACEHOLDER_PATTERN = Regex("\\$(?:\\*|[1-9][0-9]*)")
 
         fun fromJson(json: JSONObject?): TermuxCommand? {
             if (json == null) return null

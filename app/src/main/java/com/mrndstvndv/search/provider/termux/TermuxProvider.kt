@@ -18,6 +18,7 @@ import com.mrndstvndv.search.provider.model.TriggerInvocation
 import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
+import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -180,7 +181,11 @@ class TermuxProvider(
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedTitleIndices,
                 matchedSubtitleIndices = matchedSubtitleIndices,
-                frequencyQuery = commandPart,
+                frequencyQuery = if (command.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
+                    dynamicTriggerFrequencyQuery(commandPart)
+                } else {
+                    commandPart
+                },
             )
         }
     }
