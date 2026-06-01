@@ -32,7 +32,7 @@ A keyboard-first Android command palette that unifies app launching, device sear
 
 ## Building
 
-See [BUILDING.md](BUILDING.md) for local and CI build instructions.
+See [BUILDING.md](docs/BUILDING.md) for local and CI build instructions.
 
 ## License
 
