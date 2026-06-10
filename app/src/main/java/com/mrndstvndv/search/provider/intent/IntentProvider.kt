@@ -167,9 +167,13 @@ class IntentProvider(
             action = config.action
             type = config.type
 
-            // Set package if specified
+            // Set package or class name if specified
             if (config.packageName.isNotEmpty()) {
-                setPackage(config.packageName)
+                if (!config.className.isNullOrEmpty()) {
+                    setClassName(config.packageName, config.className)
+                } else {
+                    setPackage(config.packageName)
+                }
             }
 
             // Standard intent handling based on action

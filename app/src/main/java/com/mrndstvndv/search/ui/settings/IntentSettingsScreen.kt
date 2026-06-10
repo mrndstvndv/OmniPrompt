@@ -66,6 +66,7 @@ import com.mrndstvndv.search.provider.intent.AppInfo
 import com.mrndstvndv.search.provider.intent.IntentConfig
 import com.mrndstvndv.search.provider.intent.IntentExtra
 import com.mrndstvndv.search.provider.intent.IntentOption
+import com.mrndstvndv.search.provider.intent.ActivityOption
 import com.mrndstvndv.search.provider.intent.IntentSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
@@ -81,6 +82,7 @@ import java.util.UUID
 private enum class AddDialogStep {
     AppSelection,
     IntentSelection,
+    ActivitySelection,
     Configuration
 }
 
@@ -310,10 +312,15 @@ private fun IntentConfigRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
+            val actionOrClassLabel = if (!config.className.isNullOrEmpty()) {
+                config.className.substringAfterLast(".")
+            } else {
+                config.action.substringAfterLast(".")
+            }
             Text(
                 text = stringResource(
                     R.string.intent_action_package,
-                    config.action.substringAfterLast("."),
+                    actionOrClassLabel,
                     config.packageName.ifEmpty { stringResource(R.string.intent_system) },
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -337,6 +344,7 @@ private fun IntentConfigAddDialog(
     
     var selectedApp by remember { mutableStateOf<AppInfo?>(null) }
     var selectedIntent by remember { mutableStateOf<IntentOption?>(null) }
+    var selectedActivity by remember { mutableStateOf<ActivityOption?>(null) }
     
     // Configuration fields
     var title by remember { mutableStateOf("") }
@@ -355,6 +363,7 @@ private fun IntentConfigAddDialog(
                         // Manual entry - skip to config
                         currentStep = AddDialogStep.Configuration
                         selectedIntent = IntentOption("android.intent.action.SEND", context.getString(R.string.intent_share_content))
+                        selectedActivity = null
                         title = ""
                     } else {
                         currentStep = AddDialogStep.IntentSelection
@@ -369,11 +378,30 @@ private fun IntentConfigAddDialog(
                 app = selectedApp!!,
                 onIntentSelected = { intent ->
                     selectedIntent = intent
+                    selectedActivity = null
                     title = selectedApp!!.name
                     mimeType = intent.mimeTypes.firstOrNull()
                     currentStep = AddDialogStep.Configuration
                 },
+                onActivityLauncherSelected = {
+                    currentStep = AddDialogStep.ActivitySelection
+                },
                 onBack = { currentStep = AddDialogStep.AppSelection },
+                onDismiss = onDismiss
+            )
+        }
+        AddDialogStep.ActivitySelection -> {
+            ActivitySelectionStep(
+                discovery = discovery,
+                app = selectedApp!!,
+                onActivitySelected = { activity ->
+                    selectedActivity = activity
+                    selectedIntent = null
+                    title = "${selectedApp!!.name} - ${activity.label}"
+                    mimeType = null
+                    currentStep = AddDialogStep.Configuration
+                },
+                onBack = { currentStep = AddDialogStep.IntentSelection },
                 onDismiss = onDismiss
             )
         }
@@ -387,8 +415,9 @@ private fun IntentConfigAddDialog(
                 onTitleChange = { title = it },
                 packageName = selectedApp!!.packageName.ifEmpty { manualPackageName },
                 onPackageNameChange = { manualPackageName = it },
-                action = selectedIntent?.action ?: manualAction,
+                action = selectedIntent?.action ?: if (selectedActivity != null) "android.intent.action.MAIN" else manualAction,
                 onActionChange = { manualAction = it },
+                className = selectedActivity?.name,
                 type = mimeType ?: "",
                 onTypeChange = { mimeType = it },
                 typeOptions = selectedIntent?.mimeTypes ?: emptyList(),
@@ -400,13 +429,20 @@ private fun IntentConfigAddDialog(
                 canSave = title.isNotBlank(),
                 showRemove = false,
                 onRemove = {},
-                onBack = { currentStep = if (selectedApp!!.packageName.isEmpty()) AddDialogStep.AppSelection else AddDialogStep.IntentSelection },
+                onBack = {
+                    currentStep = when {
+                        selectedApp!!.packageName.isEmpty() -> AddDialogStep.AppSelection
+                        selectedActivity != null -> AddDialogStep.ActivitySelection
+                        else -> AddDialogStep.IntentSelection
+                    }
+                },
                 onDismiss = onDismiss,
                 onSave = {
                     onAdd(IntentConfig(
                         title = title.trim(),
                         packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
-                        action = selectedIntent?.action ?: manualAction,
+                        action = selectedIntent?.action ?: if (selectedActivity != null) "android.intent.action.MAIN" else manualAction,
+                        className = selectedActivity?.name,
                         type = mimeType?.takeIf { it != anyMimeTypeLabel },
                         payloadTemplate = payloadTemplate?.trim(),
                         extras = extras
@@ -544,6 +580,7 @@ private fun IntentSelectionStep(
     discovery: AppDiscovery,
     app: AppInfo,
     onIntentSelected: (IntentOption) -> Unit,
+    onActivityLauncherSelected: () -> Unit,
     onBack: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -596,8 +633,127 @@ private fun IntentSelectionStep(
                     }
                 }
                 
+                Surface(
+                    onClick = onActivityLauncherSelected,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 32.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = MaterialTheme.colorScheme.surface,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(stringResource(R.string.intent_activity_launcher), style = MaterialTheme.typography.titleMedium)
+                        Text("MAIN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
                 if (intents.isEmpty()) {
                     Text(stringResource(R.string.intent_no_compatible_intents), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun ActivitySelectionStep(
+    discovery: AppDiscovery,
+    app: AppInfo,
+    onActivitySelected: (ActivityOption) -> Unit,
+    onBack: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf("") }
+
+    val activitiesState by produceState<List<ActivityOption>?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) {
+            discovery.getActivitiesForApp(app.packageName)
+        }
+    }
+
+    val filteredActivities = remember(searchQuery, activitiesState) {
+        val activities = activitiesState ?: emptyList()
+        if (searchQuery.isBlank()) activities
+        else activities
+            .mapNotNull { activity ->
+                val labelMatch = FuzzyMatcher.match(searchQuery, activity.label)
+                val nameMatch = FuzzyMatcher.match(searchQuery, activity.name)
+                val bestScore = listOfNotNull(labelMatch?.score, nameMatch?.score).maxOrNull()
+                if (bestScore != null) activity to bestScore else null
+            }
+            .sortedByDescending { it.second }
+            .map { it.first }
+    }
+
+    ContentDialog(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxWidth(0.92f),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+                Column {
+                    Text(
+                        text = stringResource(R.string.intent_select_activity),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    Text(
+                        text = app.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        buttons = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        },
+        content = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.search_activities_placeholder)) },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                )
+
+                if (activitiesState == null) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.intent_searching_activities), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else if (filteredActivities.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.intent_no_activities_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                            items(filteredActivities, key = { it.name }) { activity ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onActivitySelected(activity) }
+                                        .padding(vertical = 12.dp)
+                                ) {
+                                    Text(activity.label, style = MaterialTheme.typography.bodyLarge)
+                                    Text(activity.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (filteredActivities.indexOf(activity) < filteredActivities.lastIndex) {
+                                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -626,6 +782,7 @@ private fun IntentConfigEditDialog(
     var title by remember { mutableStateOf(config.title) }
     var action by remember { mutableStateOf(config.action) }
     var mimeType by remember { mutableStateOf(config.type ?: "") }
+    var className by remember { mutableStateOf(config.className ?: "") }
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
@@ -639,6 +796,7 @@ private fun IntentConfigEditDialog(
                 title = title.trim(),
                 action = action,
                 type = mimeType.takeIf { it.isNotBlank() && it != anyMimeTypeLabel },
+                className = className.takeIf { it.isNotBlank() },
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
                 extras = extras
             )
@@ -651,6 +809,7 @@ private fun IntentConfigEditDialog(
         onTitleChange = { title = it },
         packageName = config.packageName,
         action = action,
+        className = className,
         type = mimeType,
         onTypeChange = { mimeType = it },
         typeOptions = currentIntentOption?.mimeTypes ?: emptyList(),
@@ -678,6 +837,7 @@ private fun IntentConfigDialogContent(
     onPackageNameChange: (String) -> Unit = {},
     action: String,
     onActionChange: (String) -> Unit = {},
+    className: String? = null,
     type: String,
     onTypeChange: (String) -> Unit,
     typeOptions: List<String>,
@@ -774,6 +934,17 @@ private fun IntentConfigDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                if (!className.isNullOrEmpty()) {
+                    OutlinedTextField(
+                        value = className,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.intent_label_class_name)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 if (onActionChange == {}) {
                     OutlinedTextField(
