@@ -303,6 +303,13 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_add_extra">Add Extra</string>
     <string name="intent_system">System</string>
 
+    <string name="intent_activity_launcher">Activity Launcher</string>
+    <string name="intent_select_activity">Select Activity</string>
+    <string name="intent_searching_activities">Searching for activities…</string>
+    <string name="intent_no_activities_found">No activities found for this app.</string>
+    <string name="intent_label_class_name">Class Name</string>
+    <string name="search_activities_placeholder">Search activities…</string>
+
     <!-- Text utilities settings -->
     <string name="text_utilities_header_subtitle">Configure text tools.</string>
     <string name="text_utilities_open_decoded_urls">Open decoded URLs</string>

@@ -21,6 +21,11 @@ data class IntentOption(
     val mimeTypes: List<String> = emptyList()
 )
 
+data class ActivityOption(
+    val name: String,
+    val label: String
+)
+
 class AppDiscovery(
     private val context: Context,
     private val appListRepository: AppListRepository
@@ -130,5 +135,29 @@ class AppDiscovery(
         }
 
         return options
+    }
+
+    fun getActivitiesForApp(packageName: String): List<ActivityOption> {
+        val packageInfo = try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_ACTIVITIES.toLong()))
+            } else {
+                packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+            }
+        } catch (e: Exception) {
+            return emptyList()
+        }
+        val activities = packageInfo.activities ?: return emptyList()
+        return activities.map { activityInfo ->
+            val label = try {
+                activityInfo.loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
+            } catch (e: Exception) {
+                null
+            } ?: activityInfo.name.substringAfterLast(".")
+            ActivityOption(
+                name = activityInfo.name,
+                label = label
+            )
+        }.sortedBy { it.label }
     }
 }
