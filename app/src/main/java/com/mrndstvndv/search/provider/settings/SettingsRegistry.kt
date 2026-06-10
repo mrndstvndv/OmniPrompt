@@ -48,17 +48,23 @@ object SettingsRegistry {
     fun importAll(json: JSONObject): Map<String, Boolean> {
         val results = mutableMapOf<String, Boolean>()
         repositories.forEach { (id, repo) ->
-            json.optJSONObject(id)?.let { providerJson ->
-                @Suppress("UNCHECKED_CAST")
-                val typedRepo = repo as SettingsRepository<ProviderSettings>
-                // Each provider handles their own migration in fromJson()
-                // For now, mark as false - providers need to implement import logic
-                results[id] = false
-            } ?: run {
-                results[id] = false
-            }
+            val providerJson = getProviderJson(json, id)
+            results[id] = providerJson?.let { repo.replaceFromJson(it) } ?: false
         }
         return results
+    }
+
+    fun getProviderJson(json: JSONObject, providerId: String): JSONObject? {
+        json.optJSONObject(providerId)?.let { return it }
+        val legacyKey = when (providerId) {
+            "web-search" -> "webSearch"
+            "app-list" -> "appSearch"
+            "text-utilities" -> "textUtilities"
+            "file-search" -> "fileSearch"
+            "system-settings" -> "systemSettings"
+            else -> providerId
+        }
+        return json.optJSONObject(legacyKey)
     }
 
     /**
