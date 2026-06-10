@@ -70,14 +70,17 @@ fun createBadgedIcon(context: android.content.Context, baseIcon: Bitmap?, badgeR
         val badgeDrawable = androidx.core.content.ContextCompat.getDrawable(context, badgeResId)
         if (badgeDrawable != null) {
             val badgeSize = (width * 0.35f).toInt()
-            val left = 0
-            val top = height - badgeSize
-            val right = badgeSize
-            val bottom = height
             
-            // Draw background white circle for the badge to stand out
+            // Offset from bottom and left edges to avoid clipping
+            val offset = (width * 0.05f).toInt()
+            val left = offset
+            val top = height - badgeSize - offset
+            val right = badgeSize + offset
+            val bottom = height - offset
+            
+            // Draw background circle following dynamic Material You theme colorSurface
             val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.WHITE
+                color = resolveThemeColor(context, "colorSurface", android.graphics.Color.WHITE)
                 style = android.graphics.Paint.Style.FILL
             }
             val centerX = left + badgeSize / 2f
