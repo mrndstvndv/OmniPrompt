@@ -1,6 +1,7 @@
 package com.mrndstvndv.search.ui.settings
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,8 +59,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
-import androidx.core.graphics.drawable.toBitmap
+import android.graphics.Bitmap
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.intent.AppDiscovery
 import com.mrndstvndv.search.provider.intent.AppInfo
@@ -120,6 +123,12 @@ fun IntentSettingsScreen(
     }
 
     fun removeConfig(index: Int) {
+        val config = configs[index]
+        config.customIconPath?.let { path ->
+            try {
+                java.io.File(path).delete()
+            } catch (e: Exception) {}
+        }
         configs = configs.toMutableList().apply { removeAt(index) }
         saveSettings()
     }
@@ -192,6 +201,7 @@ fun IntentSettingsScreen(
                         } else {
                             configs.forEachIndexed { index, config ->
                                 IntentConfigRow(
+                                    appListRepository = appListRepository,
                                     config = config,
                                     onClick = { editingConfig = index to config }
                                 )
@@ -274,9 +284,34 @@ fun IntentSettingsScreen(
 
 @Composable
 private fun IntentConfigRow(
+    appListRepository: AppListRepository,
     config: IntentConfig,
     onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val iconBitmap by produceState<Bitmap?>(initialValue = null, key1 = config.customIconPath, key2 = config.packageName) {
+        withContext(Dispatchers.IO) {
+            val baseBitmap = when {
+                !config.customIconPath.isNullOrEmpty() -> {
+                    try {
+                        android.graphics.BitmapFactory.decodeFile(config.customIconPath)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                config.packageName.isNotEmpty() -> {
+                    appListRepository.getIcon(config.packageName)
+                }
+                else -> null
+            }
+            value = if (baseBitmap != null) {
+                com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
+            } else {
+                null
+            }
+        }
+    }
+
     Row(
         modifier =
             Modifier
@@ -285,20 +320,30 @@ private fun IntentConfigRow(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier =
-                Modifier
+        if (iconBitmap != null) {
+            Image(
+                bitmap = iconBitmap!!.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
                     .size(40.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Share,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(24.dp),
             )
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Share,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -351,7 +396,17 @@ private fun IntentConfigAddDialog(
     var mimeType by remember { mutableStateOf<String?>(null) }
     var payloadTemplate by remember { mutableStateOf<String?>(null) }
     var extras by remember { mutableStateOf(listOf<IntentExtra>()) }
+    var customIconPath by remember { mutableStateOf<String?>(null) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
+
+    val handleDismiss = {
+        customIconPath?.let { path ->
+            try {
+                java.io.File(path).delete()
+            } catch (e: Exception) {}
+        }
+        onDismiss()
+    }
 
     when (currentStep) {
         AddDialogStep.AppSelection -> {
@@ -369,7 +424,7 @@ private fun IntentConfigAddDialog(
                         currentStep = AddDialogStep.IntentSelection
                     }
                 },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
             )
         }
         AddDialogStep.IntentSelection -> {
@@ -387,7 +442,7 @@ private fun IntentConfigAddDialog(
                     currentStep = AddDialogStep.ActivitySelection
                 },
                 onBack = { currentStep = AddDialogStep.AppSelection },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
             )
         }
         AddDialogStep.ActivitySelection -> {
@@ -402,7 +457,7 @@ private fun IntentConfigAddDialog(
                     currentStep = AddDialogStep.Configuration
                 },
                 onBack = { currentStep = AddDialogStep.IntentSelection },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
             )
         }
         AddDialogStep.Configuration -> {
@@ -418,6 +473,9 @@ private fun IntentConfigAddDialog(
                 action = selectedIntent?.action ?: if (selectedActivity != null) "android.intent.action.MAIN" else manualAction,
                 onActionChange = { manualAction = it },
                 className = selectedActivity?.name,
+                appListRepository = appListRepository,
+                customIconPath = customIconPath,
+                onCustomIconPathChange = { customIconPath = it },
                 type = mimeType ?: "",
                 onTypeChange = { mimeType = it },
                 typeOptions = selectedIntent?.mimeTypes ?: emptyList(),
@@ -436,13 +494,14 @@ private fun IntentConfigAddDialog(
                         else -> AddDialogStep.IntentSelection
                     }
                 },
-                onDismiss = onDismiss,
+                onDismiss = handleDismiss,
                 onSave = {
                     onAdd(IntentConfig(
                         title = title.trim(),
                         packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
                         action = selectedIntent?.action ?: if (selectedActivity != null) "android.intent.action.MAIN" else manualAction,
                         className = selectedActivity?.name,
+                        customIconPath = customIconPath,
                         type = mimeType?.takeIf { it != anyMimeTypeLabel },
                         payloadTemplate = payloadTemplate?.trim(),
                         extras = extras
@@ -783,9 +842,12 @@ private fun IntentConfigEditDialog(
     var action by remember { mutableStateOf(config.action) }
     var mimeType by remember { mutableStateOf(config.type ?: "") }
     var className by remember { mutableStateOf(config.className ?: "") }
+    var customIconPath by remember { mutableStateOf(config.customIconPath) }
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
+    
+    val initialCustomIconPath = remember { config.customIconPath }
 
     val canSave = title.isNotBlank()
 
@@ -797,10 +859,27 @@ private fun IntentConfigEditDialog(
                 action = action,
                 type = mimeType.takeIf { it.isNotBlank() && it != anyMimeTypeLabel },
                 className = className.takeIf { it.isNotBlank() },
+                customIconPath = customIconPath,
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
                 extras = extras
             )
+        if (initialCustomIconPath != null && initialCustomIconPath != customIconPath) {
+            try {
+                java.io.File(initialCustomIconPath).delete()
+            } catch (e: Exception) {}
+        }
         onSave(updated)
+    }
+
+    val handleDismiss = {
+        if (customIconPath != initialCustomIconPath) {
+            customIconPath?.let { path ->
+                try {
+                    java.io.File(path).delete()
+                } catch (e: Exception) {}
+            }
+        }
+        onDismiss()
     }
 
     IntentConfigDialogContent(
@@ -810,6 +889,9 @@ private fun IntentConfigEditDialog(
         packageName = config.packageName,
         action = action,
         className = className,
+        appListRepository = appListRepository,
+        customIconPath = customIconPath,
+        onCustomIconPathChange = { customIconPath = it },
         type = mimeType,
         onTypeChange = { mimeType = it },
         typeOptions = currentIntentOption?.mimeTypes ?: emptyList(),
@@ -822,7 +904,7 @@ private fun IntentConfigEditDialog(
         showRemove = true,
         onRemove = onRemove,
         onBack = null,
-        onDismiss = onDismiss,
+        onDismiss = handleDismiss,
         onSave = { save() },
     )
 }
@@ -838,6 +920,9 @@ private fun IntentConfigDialogContent(
     action: String,
     onActionChange: (String) -> Unit = {},
     className: String? = null,
+    appListRepository: AppListRepository,
+    customIconPath: String?,
+    onCustomIconPathChange: (String?) -> Unit,
     type: String,
     onTypeChange: (String) -> Unit,
     typeOptions: List<String>,
@@ -914,6 +999,94 @@ private fun IntentConfigDialogContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                val context = LocalContext.current
+                var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+                
+                LaunchedEffect(customIconPath, packageName) {
+                    withContext(Dispatchers.IO) {
+                        val baseBitmap = when {
+                            !customIconPath.isNullOrEmpty() -> {
+                                try {
+                                    android.graphics.BitmapFactory.decodeFile(customIconPath)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                            packageName.isNotEmpty() -> {
+                                appListRepository.getIcon(packageName)
+                            }
+                            else -> null
+                        }
+                        previewBitmap = if (baseBitmap != null) {
+                            com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
+                        } else {
+                            null
+                        }
+                    }
+                }
+                
+                val iconPickerLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri: android.net.Uri? ->
+                    if (uri != null) {
+                        val savedPath = com.mrndstvndv.search.util.saveCustomIcon(context, uri)
+                        if (savedPath != null) {
+                            onCustomIconPathChange(savedPath)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { iconPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (previewBitmap != null) {
+                            Image(
+                                bitmap = previewBitmap!!.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Share,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column {
+                        Text(
+                            text = stringResource(R.string.intent_icon_label),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { iconPickerLauncher.launch("image/*") }) {
+                                Text(stringResource(R.string.intent_select_icon))
+                            }
+                            if (!customIconPath.isNullOrEmpty()) {
+                                TextButton(onClick = { onCustomIconPathChange(null) }) {
+                                    Text(
+                                        text = stringResource(R.string.intent_reset_icon),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = title_,
                     onValueChange = onTitleChange,

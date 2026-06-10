@@ -310,6 +310,10 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_label_class_name">Class Name</string>
     <string name="search_activities_placeholder">Search activities…</string>
 
+    <string name="intent_icon_label">Item Icon</string>
+    <string name="intent_select_icon">Import Image</string>
+    <string name="intent_reset_icon">Reset</string>
+
     <!-- Text utilities settings -->
     <string name="text_utilities_header_subtitle">Configure text tools.</string>
     <string name="text_utilities_open_decoded_urls">Open decoded URLs</string>

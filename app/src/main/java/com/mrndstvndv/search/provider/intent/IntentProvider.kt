@@ -1,6 +1,7 @@
 package com.mrndstvndv.search.provider.intent
 
 import android.content.Intent
+import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
@@ -40,6 +41,7 @@ class IntentProvider(
                     ownerProviderId = id,
                     label = config.title,
                     vectorIcon = Icons.Outlined.Share,
+                    iconLoader = getIconLoader(config),
                     resultPolicy = TriggerResultPolicy.EXCLUSIVE,
                     execute = { invocation -> executeIntentTrigger(config.id, invocation) },
                 )
@@ -70,6 +72,7 @@ class IntentProvider(
                 title = config.title,
                 subtitle = subtitle,
                 vectorIcon = Icons.Outlined.Share,
+                iconLoader = getIconLoader(config),
                 providerId = id,
                 triggerId = config.id,
                 onSelect = { executeIntent(config, payload) },
@@ -142,6 +145,7 @@ class IntentProvider(
                     targetLabel
                 },
                 vectorIcon = Icons.Outlined.Share,
+                iconLoader = getIconLoader(config),
                 providerId = id,
                 onSelect = { executeIntent(config, rawPayload) },
                 keepOverlayUntilExit = true,
@@ -217,6 +221,36 @@ class IntentProvider(
                     activity.startActivity(fallbackIntent)
                 } catch (e2: Exception) {
                     // Both failed
+                }
+            }
+        }
+    }
+
+    private fun getIconLoader(config: IntentConfig): (suspend () -> Bitmap?) {
+        return {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val baseBitmap = when {
+                    !config.customIconPath.isNullOrEmpty() -> {
+                        try {
+                            android.graphics.BitmapFactory.decodeFile(config.customIconPath)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    config.packageName.isNotEmpty() -> {
+                        com.mrndstvndv.search.util.loadAppIconBitmap(
+                            activity.packageManager,
+                            config.packageName,
+                            activity.resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
+                        )
+                    }
+                    else -> null
+                }
+                
+                if (baseBitmap != null) {
+                    com.mrndstvndv.search.util.createBadgedIcon(activity, baseBitmap, R.drawable.ic_share)
+                } else {
+                    null
                 }
             }
         }
