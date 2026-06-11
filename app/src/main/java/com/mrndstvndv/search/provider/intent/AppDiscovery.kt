@@ -148,16 +148,18 @@ class AppDiscovery(
             return emptyList()
         }
         val activities = packageInfo.activities ?: return emptyList()
-        return activities.map { activityInfo ->
-            val label = try {
-                activityInfo.loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
-            } catch (e: Exception) {
-                null
-            } ?: activityInfo.name.substringAfterLast(".")
-            ActivityOption(
-                name = activityInfo.name,
-                label = label
-            )
-        }.sortedBy { it.label }
+        return activities
+            .filter { it.exported }
+            .map { activityInfo ->
+                val label = try {
+                    activityInfo.loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
+                } catch (e: Exception) {
+                    null
+                } ?: activityInfo.name.substringAfterLast(".")
+                ActivityOption(
+                    name = activityInfo.name,
+                    label = label
+                )
+            }.sortedBy { it.label }
     }
 }
