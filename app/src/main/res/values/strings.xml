@@ -631,4 +631,23 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="cd_remove_extra">Remove extra</string>
     <string name="cd_has_permission">Has permission</string>
     <string name="cd_needs_permission">Needs permission</string>
+
+    <!-- Updates -->
+    <string name="settings_updates">Updates</string>
+    <string name="settings_updates_subtitle">Configure and check for application updates</string>
+    <string name="updates_check_now">Check for updates</string>
+    <string name="updates_check_interval">Check interval</string>
+    <string name="updates_interval_daily">Daily</string>
+    <string name="updates_interval_weekly">Weekly</string>
+    <string name="updates_interval_monthly">Monthly</string>
+    <string name="updates_interval_custom">Custom</string>
+    <string name="updates_custom_days">Custom interval (days)</string>
+    <string name="updates_custom_days_val">%d days</string>
+    <string name="updates_checking">Checking for updates…</string>
+    <string name="updates_up_to_date">App is up to date</string>
+    <string name="updates_up_to_date_desc">You are running the latest version (%s).</string>
+    <string name="updates_new_version_available">New update available</string>
+    <string name="updates_error">Check failed</string>
+    <string name="updates_error_desc">Could not connect to GitHub to check for updates.</string>
 </resources>
+

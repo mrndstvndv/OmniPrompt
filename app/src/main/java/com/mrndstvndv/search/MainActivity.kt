@@ -67,6 +67,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import com.mrndstvndv.search.util.GitHubUpdateChecker
+import com.mrndstvndv.search.util.VersionComparator
 import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.alias.AliasCreationCandidate
 import com.mrndstvndv.search.alias.AliasEntry
@@ -323,6 +330,10 @@ class MainActivity : ComponentActivity() {
             val alwaysShowEnterBadge by settingsRepository.alwaysShowEnterBadge.collectAsState()
             val hasUsedEnter by settingsRepository.hasUsedEnter.collectAsState()
             val enabledProviders by settingsRepository.enabledProviders.collectAsState()
+            val updateCheckInterval by settingsRepository.updateCheckInterval.collectAsState()
+            val customUpdateIntervalDays by settingsRepository.customUpdateIntervalDays.collectAsState()
+            val lastUpdateCheckTime by settingsRepository.lastUpdateCheckTime.collectAsState()
+            val dismissedVersion by settingsRepository.dismissedVersion.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
             LaunchedEffect(backgroundBlurStrength) {
@@ -390,6 +401,33 @@ class MainActivity : ComponentActivity() {
                     // Also ensure periodic sync is scheduled based on current settings
                     if (settings.syncIntervalMinutes > 0 && settings.hasEnabledRoots()) {
                         fileSearchRepository.schedulePeriodicSync(settings.syncIntervalMinutes)
+                    }
+                }
+            }
+
+            var activeUpdateResult by remember { mutableStateOf<GitHubUpdateChecker.UpdateResult?>(null) }
+            var showUpdateBanner by remember { mutableStateOf(false) }
+
+            LaunchedEffect(Unit) {
+                val now = System.currentTimeMillis()
+                val intervalMillis = when (updateCheckInterval) {
+                    "daily" -> 24 * 60 * 60 * 1000L
+                    "weekly" -> 7 * 24 * 60 * 60 * 1000L
+                    "monthly" -> 30 * 24 * 60 * 60 * 1000L
+                    "custom" -> customUpdateIntervalDays * 24 * 60 * 60 * 1000L
+                    else -> 7 * 24 * 60 * 60 * 1000L
+                }
+
+                if (now - lastUpdateCheckTime >= intervalMillis) {
+                    val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, BuildConfig.DEBUG)
+                    if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
+                        settingsRepository.setLastUpdateCheckTime(now)
+                        if (result.update.version != dismissedVersion) {
+                            activeUpdateResult = result.update
+                            showUpdateBanner = true
+                        }
+                    } else if (result is GitHubUpdateChecker.CheckResult.UpToDate) {
+                        settingsRepository.setLastUpdateCheckTime(now)
                     }
                 }
             }
@@ -757,6 +795,104 @@ class MainActivity : ComponentActivity() {
             }
 
             @Composable
+            fun UpdateBanner(
+                result: GitHubUpdateChecker.UpdateResult,
+                onDismiss: () -> Unit,
+                onDownload: () -> Unit,
+                modifier: Modifier = Modifier
+            ) {
+                var isExpanded by remember { mutableStateOf(false) }
+                Card(
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Update available: ${result.version}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+
+                        if (result.changelog.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val displayChangelog = if (isExpanded) {
+                                result.changelog
+                            } else {
+                                result.changelog.lines().take(3).joinToString("\n") + if (result.changelog.lines().size > 3) "\n..." else ""
+                            }
+
+                            Text(
+                                text = displayChangelog,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+
+                            if (result.changelog.lines().size > 3) {
+                                TextButton(
+                                    onClick = { isExpanded = !isExpanded },
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text(
+                                        text = if (isExpanded) "Show Less" else "Show More",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = onDownload,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Download Update")
+                        }
+                    }
+                }
+            }
+
+            @Composable
             fun SearchBar() {
                 Box {
                     SearchField(
@@ -980,6 +1116,22 @@ class MainActivity : ComponentActivity() {
                                             .padding(bottom = animatedBottomPadding),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
+                                    if (showUpdateBanner && !hasVisibleResults) {
+                                        activeUpdateResult?.let { update ->
+                                            UpdateBanner(
+                                                result = update,
+                                                onDismiss = {
+                                                    showUpdateBanner = false
+                                                    settingsRepository.setDismissedVersion(update.version)
+                                                },
+                                                onDownload = {
+                                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                                                    browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                    startActivity(browserIntent)
+                                                }
+                                            )
+                                        }
+                                    }
                                     SearchBar()
 
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -1036,6 +1188,22 @@ class MainActivity : ComponentActivity() {
                             }
                         } else {
                             Column(Modifier.fillMaxWidth()) {
+                                if (showUpdateBanner && !hasVisibleResults) {
+                                    activeUpdateResult?.let { update ->
+                                        UpdateBanner(
+                                            result = update,
+                                            onDismiss = {
+                                                showUpdateBanner = false
+                                                settingsRepository.setDismissedVersion(update.version)
+                                            },
+                                            onDownload = {
+                                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                                                browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                startActivity(browserIntent)
+                                            }
+                                        )
+                                    }
+                                }
                                 SearchBar()
 
                                 Spacer(modifier = Modifier.height(4.dp))
