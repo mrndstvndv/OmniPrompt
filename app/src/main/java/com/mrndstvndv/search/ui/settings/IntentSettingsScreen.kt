@@ -461,7 +461,13 @@ private fun IntentConfigAddDialog(
         }
         AddDialogStep.Configuration -> {
             var manualPackageName by remember { mutableStateOf("") }
-            var manualAction by remember { mutableStateOf("android.intent.action.SEND") }
+            var actionState by remember {
+                mutableStateOf(
+                    selectedIntent?.action
+                        ?: if (selectedActivity != null) "android.intent.action.MAIN"
+                        else "android.intent.action.SEND"
+                )
+            }
 
             IntentConfigDialogContent(
                 title = if (selectedApp!!.packageName.isEmpty()) stringResource(R.string.intent_manual_intent) else stringResource(R.string.intent_configure),
@@ -469,8 +475,8 @@ private fun IntentConfigAddDialog(
                 onTitleChange = { title = it },
                 packageName = selectedApp!!.packageName.ifEmpty { manualPackageName },
                 onPackageNameChange = { manualPackageName = it },
-                action = selectedIntent?.action ?: if (selectedActivity != null) "android.intent.action.MAIN" else manualAction,
-                onActionChange = { manualAction = it },
+                action = actionState,
+                onActionChange = { actionState = it },
                 className = selectedActivity?.name,
                 appListRepository = appListRepository,
                 customIconPath = customIconPath,
@@ -498,7 +504,7 @@ private fun IntentConfigAddDialog(
                     onAdd(IntentConfig(
                         title = title.trim(),
                         packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
-                        action = selectedIntent?.action ?: if (selectedActivity != null) "android.intent.action.MAIN" else manualAction,
+                        action = actionState,
                         className = selectedActivity?.name,
                         customIconPath = customIconPath,
                         type = mimeType?.takeIf { it != anyMimeTypeLabel },
@@ -887,6 +893,7 @@ private fun IntentConfigEditDialog(
         onTitleChange = { title = it },
         packageName = config.packageName,
         action = action,
+        onActionChange = { action = it },
         className = className,
         appListRepository = appListRepository,
         customIconPath = customIconPath,
@@ -941,6 +948,7 @@ private fun IntentConfigDialogContent(
     var actionExpanded by remember { mutableStateOf(false) }
     
     val standardActions = listOf(
+        "android.intent.action.MAIN",
         "android.intent.action.SEND",
         "android.intent.action.VIEW",
         "android.intent.action.SENDTO",
