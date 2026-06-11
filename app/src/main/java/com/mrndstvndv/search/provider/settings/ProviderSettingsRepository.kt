@@ -53,6 +53,7 @@ class ProviderSettingsRepository(
         private const val KEY_LATEST_UPDATE_CHANGELOG = "latest_update_changelog"
         private const val KEY_LATEST_UPDATE_DOWNLOAD_URL = "latest_update_download_url"
         private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
+        private const val KEY_CHECK_PRERELEASE_BUILDS = "check_prerelease_builds"
 
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
@@ -66,6 +67,7 @@ class ProviderSettingsRepository(
 
         private const val DEFAULT_UPDATE_CHECK_INTERVAL = "weekly"
         private const val DEFAULT_CUSTOM_UPDATE_INTERVAL_DAYS = 3
+        private const val DEFAULT_CHECK_PRERELEASE_BUILDS = false
     }
 
     private val appContext: Context = context.applicationContext
@@ -131,6 +133,9 @@ class ProviderSettingsRepository(
     private val _latestUpdate = MutableStateFlow<GitHubUpdateChecker.UpdateResult?>(null)
     val latestUpdate: StateFlow<GitHubUpdateChecker.UpdateResult?> = _latestUpdate
 
+    private val _checkPrereleaseBuilds = MutableStateFlow(loadCheckPrereleaseBuilds())
+    val checkPrereleaseBuilds: StateFlow<Boolean> = _checkPrereleaseBuilds
+
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
@@ -154,6 +159,7 @@ class ProviderSettingsRepository(
                 _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
                 _dismissedVersion.value = loadDismissedVersion()
                 _latestUpdate.value = loadLatestUpdate()
+                _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
             }
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
@@ -176,6 +182,7 @@ class ProviderSettingsRepository(
             _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
             _dismissedVersion.value = loadDismissedVersion()
             _latestUpdate.value = loadLatestUpdate()
+            _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
         }
     }
 
@@ -399,6 +406,18 @@ class ProviderSettingsRepository(
         val isPrerelease = preferences.getBoolean(KEY_LATEST_UPDATE_PRERELEASE, false)
         return GitHubUpdateChecker.UpdateResult(version, changelog, downloadUrl, isPrerelease)
     }
+
+    fun setCheckPrereleaseBuilds(enabled: Boolean) {
+        preferences.edit {
+            putBoolean(KEY_CHECK_PRERELEASE_BUILDS, enabled)
+            putLong(KEY_LAST_UPDATE_CHECK_TIME, 0L)
+        }
+        _checkPrereleaseBuilds.value = enabled
+        _lastUpdateCheckTime.value = 0L
+    }
+
+    private fun loadCheckPrereleaseBuilds(): Boolean =
+        preferences.getBoolean(KEY_CHECK_PRERELEASE_BUILDS, DEFAULT_CHECK_PRERELEASE_BUILDS)
 }
 
 

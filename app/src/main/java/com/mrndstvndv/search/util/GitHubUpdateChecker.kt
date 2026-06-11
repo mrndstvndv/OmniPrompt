@@ -24,7 +24,7 @@ object GitHubUpdateChecker {
         data class Error(val errorMsg: String) : CheckResult()
     }
 
-    suspend fun checkForUpdates(currentVersion: String, isDebug: Boolean): CheckResult = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdates(currentVersion: String, checkPrerelease: Boolean): CheckResult = withContext(Dispatchers.IO) {
         try {
             val url = URL(RELEASES_URL)
             val connection = url.openConnection() as HttpURLConnection
@@ -48,10 +48,8 @@ object GitHubUpdateChecker {
                 val body = releaseObj.optString("body", "")
                 val htmlUrl = releaseObj.optString("html_url", "")
 
-                // Filter based on build type:
-                // Release builds only check for stable releases (prerelease == false).
-                // Debug builds can show pre-releases as well.
-                if (!isDebug && isPrerelease) {
+                // Filter based on pre-release preference:
+                if (!checkPrerelease && isPrerelease) {
                     continue
                 }
 

@@ -649,5 +649,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="updates_new_version_available">New update available</string>
     <string name="updates_error">Check failed</string>
     <string name="updates_error_desc">Could not connect to GitHub to check for updates.</string>
+    <string name="updates_check_prerelease">Check pre-release builds</string>
+    <string name="updates_check_prerelease_desc">Include beta and dev versions when checking for updates</string>
 </resources>
 
