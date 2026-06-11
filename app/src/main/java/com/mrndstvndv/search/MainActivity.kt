@@ -35,15 +35,22 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +74,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
@@ -334,6 +342,7 @@ class MainActivity : ComponentActivity() {
             val customUpdateIntervalDays by settingsRepository.customUpdateIntervalDays.collectAsState()
             val lastUpdateCheckTime by settingsRepository.lastUpdateCheckTime.collectAsState()
             val dismissedVersion by settingsRepository.dismissedVersion.collectAsState()
+            val latestUpdate by settingsRepository.latestUpdate.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
             LaunchedEffect(backgroundBlurStrength) {
@@ -408,6 +417,16 @@ class MainActivity : ComponentActivity() {
             var activeUpdateResult by remember { mutableStateOf<GitHubUpdateChecker.UpdateResult?>(null) }
             var showUpdateBanner by remember { mutableStateOf(false) }
 
+            LaunchedEffect(latestUpdate, dismissedVersion) {
+                val update = latestUpdate
+                if (update != null && update.version != dismissedVersion) {
+                    activeUpdateResult = update
+                    showUpdateBanner = true
+                } else {
+                    showUpdateBanner = false
+                }
+            }
+
             LaunchedEffect(Unit) {
                 val now = System.currentTimeMillis()
                 val intervalMillis = when (updateCheckInterval) {
@@ -422,12 +441,10 @@ class MainActivity : ComponentActivity() {
                     val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, BuildConfig.DEBUG)
                     if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
                         settingsRepository.setLastUpdateCheckTime(now)
-                        if (result.update.version != dismissedVersion) {
-                            activeUpdateResult = result.update
-                            showUpdateBanner = true
-                        }
+                        settingsRepository.setLatestUpdate(result.update)
                     } else if (result is GitHubUpdateChecker.CheckResult.UpToDate) {
                         settingsRepository.setLastUpdateCheckTime(now)
+                        settingsRepository.setLatestUpdate(null)
                     }
                 }
             }
@@ -794,6 +811,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            @OptIn(ExperimentalMaterial3Api::class)
             @Composable
             fun UpdateBanner(
                 result: GitHubUpdateChecker.UpdateResult,
@@ -801,24 +819,59 @@ class MainActivity : ComponentActivity() {
                 onDownload: () -> Unit,
                 modifier: Modifier = Modifier
             ) {
-                var isExpanded by remember { mutableStateOf(false) }
-                Card(
+                val dismissState = rememberSwipeToDismissBoxState(
+                    positionalThreshold = { totalDistance -> totalDistance * 0.6f },
+                    confirmValueChange = { value ->
+                        value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart
+                    }
+                )
+
+                LaunchedEffect(dismissState.currentValue) {
+                    if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
+                        dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+                    ) {
+                        onDismiss()
+                    }
+                }
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    backgroundContent = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color.Transparent)
+                        )
+                    },
                     modifier = modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp)
+                    val borderStroke = if (firstResultHighlightEnabled) {
+                        val borderColor = MaterialTheme.colorScheme.primary.copy(
+                            alpha = if (translucentResultsEnabled) 0.5f else 0.22f
+                        )
+                        BorderStroke(firstResultBorderThickness.dp, borderColor)
+                    } else {
+                        null
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clickable(
+                                onClick = onDownload
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = borderStroke
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -837,56 +890,12 @@ class MainActivity : ComponentActivity() {
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
-
-                            IconButton(
-                                onClick = onDismiss,
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                contentDescription = "Download Update",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                                 modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Dismiss",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-
-                        if (result.changelog.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val displayChangelog = if (isExpanded) {
-                                result.changelog
-                            } else {
-                                result.changelog.lines().take(3).joinToString("\n") + if (result.changelog.lines().size > 3) "\n..." else ""
-                            }
-
-                            Text(
-                                text = displayChangelog,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                                modifier = Modifier.padding(horizontal = 4.dp)
                             )
-
-                            if (result.changelog.lines().size > 3) {
-                                TextButton(
-                                    onClick = { isExpanded = !isExpanded },
-                                    contentPadding = PaddingValues(0.dp),
-                                    modifier = Modifier.height(32.dp)
-                                ) {
-                                    Text(
-                                        text = if (isExpanded) "Show Less" else "Show More",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = onDownload,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("Download Update")
                         }
                     }
                 }

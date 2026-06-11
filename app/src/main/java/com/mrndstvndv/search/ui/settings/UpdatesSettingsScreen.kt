@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,8 +17,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,6 +62,7 @@ fun UpdatesSettingsScreen(
 
     val updateCheckInterval by settingsRepository.updateCheckInterval.collectAsState()
     val customUpdateIntervalDays by settingsRepository.customUpdateIntervalDays.collectAsState()
+    val latestUpdate by settingsRepository.latestUpdate.collectAsState()
 
     var isChecking by remember { mutableStateOf(false) }
     var updateResult by remember { mutableStateOf<GitHubUpdateChecker.UpdateResult?>(null) }
@@ -71,9 +78,11 @@ fun UpdatesSettingsScreen(
             when (result) {
                 is GitHubUpdateChecker.CheckResult.NewUpdate -> {
                     updateResult = result.update
+                    settingsRepository.setLatestUpdate(result.update)
                 }
                 is GitHubUpdateChecker.CheckResult.UpToDate -> {
                     showUpToDateDialog = true
+                    settingsRepository.setLatestUpdate(null)
                 }
                 is GitHubUpdateChecker.CheckResult.Error -> {
                     showFailedDialog = true
@@ -98,6 +107,60 @@ fun UpdatesSettingsScreen(
                 subtitle = stringResource(R.string.settings_updates_subtitle),
                 onBack = onBack,
             )
+        }
+
+        if (latestUpdate != null) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.SystemUpdate,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "New Update: ${latestUpdate!!.version}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        if (latestUpdate!!.changelog.isNotBlank()) {
+                            Text(
+                                text = latestUpdate!!.changelog,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(latestUpdate!!.downloadUrl))
+                                browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(browserIntent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Download Update")
+                        }
+                    }
+                }
+            }
         }
 
         item {

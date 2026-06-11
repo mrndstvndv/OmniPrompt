@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -58,8 +59,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
+import com.mrndstvndv.search.util.GitHubUpdateChecker
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
@@ -112,6 +115,18 @@ fun GeneralSettingsScreen(
     val aliasesSubtitle = stringResource(R.string.settings_aliases_subtitle)
     val rankingSubtitle = stringResource(R.string.settings_result_ranking_subtitle)
     val aboutSubtitle = stringResource(R.string.settings_about_subtitle)
+
+    val latestUpdate by settingsRepository.latestUpdate.collectAsState()
+    val showBadge = latestUpdate != null
+
+    LaunchedEffect(Unit) {
+        val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, BuildConfig.DEBUG)
+        if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
+            settingsRepository.setLatestUpdate(result.update)
+        } else if (result is GitHubUpdateChecker.CheckResult.UpToDate) {
+            settingsRepository.setLatestUpdate(null)
+        }
+    }
 
     Box(
         modifier =
@@ -195,6 +210,7 @@ fun GeneralSettingsScreen(
                         title = stringResource(R.string.settings_updates),
                         subtitle = stringResource(R.string.settings_updates_subtitle),
                         onClick = onOpenUpdates,
+                        showBadge = showBadge,
                     )
                     SettingsDivider()
                     SettingsNavigationRow(

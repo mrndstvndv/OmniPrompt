@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import com.mrndstvndv.search.util.GitHubUpdateChecker
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -48,6 +49,10 @@ class ProviderSettingsRepository(
         private const val KEY_CUSTOM_UPDATE_INTERVAL_DAYS = "custom_update_interval_days"
         private const val KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time"
         private const val KEY_DISMISSED_VERSION = "dismissed_version"
+        private const val KEY_LATEST_UPDATE_VERSION = "latest_update_version"
+        private const val KEY_LATEST_UPDATE_CHANGELOG = "latest_update_changelog"
+        private const val KEY_LATEST_UPDATE_DOWNLOAD_URL = "latest_update_download_url"
+        private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
 
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
@@ -123,6 +128,9 @@ class ProviderSettingsRepository(
     private val _dismissedVersion = MutableStateFlow(loadDismissedVersion())
     val dismissedVersion: StateFlow<String> = _dismissedVersion
 
+    private val _latestUpdate = MutableStateFlow<GitHubUpdateChecker.UpdateResult?>(null)
+    val latestUpdate: StateFlow<GitHubUpdateChecker.UpdateResult?> = _latestUpdate
+
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
@@ -145,6 +153,7 @@ class ProviderSettingsRepository(
                 _customUpdateIntervalDays.value = loadCustomUpdateIntervalDays()
                 _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
                 _dismissedVersion.value = loadDismissedVersion()
+                _latestUpdate.value = loadLatestUpdate()
             }
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
@@ -166,6 +175,7 @@ class ProviderSettingsRepository(
             _customUpdateIntervalDays.value = loadCustomUpdateIntervalDays()
             _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
             _dismissedVersion.value = loadDismissedVersion()
+            _latestUpdate.value = loadLatestUpdate()
         }
     }
 
@@ -364,6 +374,31 @@ class ProviderSettingsRepository(
 
     private fun loadDismissedVersion(): String =
         preferences.getString(KEY_DISMISSED_VERSION, "") ?: ""
+
+    fun setLatestUpdate(update: GitHubUpdateChecker.UpdateResult?) {
+        preferences.edit {
+            if (update == null) {
+                remove(KEY_LATEST_UPDATE_VERSION)
+                remove(KEY_LATEST_UPDATE_CHANGELOG)
+                remove(KEY_LATEST_UPDATE_DOWNLOAD_URL)
+                remove(KEY_LATEST_UPDATE_PRERELEASE)
+            } else {
+                putString(KEY_LATEST_UPDATE_VERSION, update.version)
+                putString(KEY_LATEST_UPDATE_CHANGELOG, update.changelog)
+                putString(KEY_LATEST_UPDATE_DOWNLOAD_URL, update.downloadUrl)
+                putBoolean(KEY_LATEST_UPDATE_PRERELEASE, update.isPrerelease)
+            }
+        }
+        _latestUpdate.value = update
+    }
+
+    private fun loadLatestUpdate(): GitHubUpdateChecker.UpdateResult? {
+        val version = preferences.getString(KEY_LATEST_UPDATE_VERSION, null) ?: return null
+        val changelog = preferences.getString(KEY_LATEST_UPDATE_CHANGELOG, "") ?: ""
+        val downloadUrl = preferences.getString(KEY_LATEST_UPDATE_DOWNLOAD_URL, "") ?: ""
+        val isPrerelease = preferences.getBoolean(KEY_LATEST_UPDATE_PRERELEASE, false)
+        return GitHubUpdateChecker.UpdateResult(version, changelog, downloadUrl, isPrerelease)
+    }
 }
 
 
