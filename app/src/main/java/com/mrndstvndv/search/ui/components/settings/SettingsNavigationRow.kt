@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Badge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ fun SettingsNavigationRow(
     icon: ImageVector? = null,
     onClick: () -> Unit,
     showChevron: Boolean = true,
+    showBadge: Boolean = false,
 ) {
     Row(
         modifier =
@@ -76,12 +78,20 @@ fun SettingsNavigationRow(
                 }
             }
         }
-        if (showChevron) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (showBadge) {
+                Badge(
+                    modifier = Modifier.padding(end = if (showChevron) 8.dp else 0.dp),
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            }
+            if (showChevron) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                )
+            }
         }
     }
 }
