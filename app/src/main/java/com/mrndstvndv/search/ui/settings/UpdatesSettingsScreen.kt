@@ -109,45 +109,50 @@ fun UpdatesSettingsScreen(
                     onClick = { runUpdateCheck() },
                     showChevron = false,
                 )
-            }
-        }
 
-        item {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.updates_check_interval),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                SettingsDivider()
 
-                val intervalOptions = listOf("daily", "weekly", "monthly", "custom")
-                val intervalLabels = mapOf(
-                    "daily" to stringResource(R.string.updates_interval_daily),
-                    "weekly" to stringResource(R.string.updates_interval_weekly),
-                    "monthly" to stringResource(R.string.updates_interval_monthly),
-                    "custom" to stringResource(R.string.updates_interval_custom)
-                )
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.updates_check_interval),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.settings_updates_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
 
-                SettingsSingleChoiceSegmentedButtons(
-                    options = intervalOptions,
-                    selectedOption = updateCheckInterval,
-                    enabled = true,
-                    label = { option -> intervalLabels[option] ?: option },
-                    onOptionSelected = { settingsRepository.setUpdateCheckInterval(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    showSelectedIcon = false,
-                )
-            }
-        }
+                    val intervalOptions = listOf("daily", "weekly", "monthly", "custom")
+                    val intervalLabels = mapOf(
+                        "daily" to stringResource(R.string.updates_interval_daily),
+                        "weekly" to stringResource(R.string.updates_interval_weekly),
+                        "monthly" to stringResource(R.string.updates_interval_monthly),
+                        "custom" to stringResource(R.string.updates_interval_custom)
+                    )
 
-        if (updateCheckInterval == "custom") {
-            item {
-                SettingsGroup {
+                    SettingsSingleChoiceSegmentedButtons(
+                        options = intervalOptions,
+                        selectedOption = updateCheckInterval,
+                        enabled = true,
+                        label = { option -> intervalLabels[option] ?: option },
+                        onOptionSelected = { settingsRepository.setUpdateCheckInterval(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        showSelectedIcon = false,
+                    )
+                }
+
+                if (updateCheckInterval == "custom") {
+                    SettingsDivider()
+
                     SettingsSliderRow(
                         title = stringResource(R.string.updates_custom_days),
                         subtitle = null,
