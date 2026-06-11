@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -291,7 +292,7 @@ private fun IntentConfigRow(
     val context = LocalContext.current
     val iconBitmap by produceState<Bitmap?>(initialValue = null, key1 = config.customIconPath, key2 = config.packageName) {
         withContext(Dispatchers.IO) {
-            val baseBitmap = when {
+            value = when {
                 !config.customIconPath.isNullOrEmpty() -> {
                     try {
                         android.graphics.BitmapFactory.decodeFile(config.customIconPath)
@@ -304,11 +305,6 @@ private fun IntentConfigRow(
                 }
                 else -> null
             }
-            value = if (baseBitmap != null) {
-                com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
-            } else {
-                null
-            }
         }
     }
 
@@ -320,28 +316,50 @@ private fun IntentConfigRow(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (iconBitmap != null) {
-            Image(
-                bitmap = iconBitmap!!.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(MaterialTheme.shapes.small)
-            )
-        } else {
-            Box(
-                modifier =
-                    Modifier
-                        .size(40.dp)
+        Box(modifier = Modifier.size(40.dp)) {
+            if (iconBitmap != null) {
+                Image(
+                    bitmap = iconBitmap!!.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
                         .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
+                )
+            } else {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-3).dp, y = 3.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(1.5.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Share,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(9.dp)
                 )
             }
         }
@@ -1004,7 +1022,7 @@ private fun IntentConfigDialogContent(
                 
                 LaunchedEffect(customIconPath, packageName) {
                     withContext(Dispatchers.IO) {
-                        val baseBitmap = when {
+                        previewBitmap = when {
                             !customIconPath.isNullOrEmpty() -> {
                                 try {
                                     android.graphics.BitmapFactory.decodeFile(customIconPath)
@@ -1016,11 +1034,6 @@ private fun IntentConfigDialogContent(
                                 appListRepository.getIcon(packageName)
                             }
                             else -> null
-                        }
-                        previewBitmap = if (baseBitmap != null) {
-                            com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
-                        } else {
-                            null
                         }
                     }
                 }
@@ -1060,6 +1073,26 @@ private fun IntentConfigDialogContent(
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .align(Alignment.BottomStart)
+                                .offset(x = (-4).dp, y = 4.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(2.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Share,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(12.dp)
                             )
                         }
                     }

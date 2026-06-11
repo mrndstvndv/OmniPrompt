@@ -27,6 +27,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material3.Icon
@@ -535,35 +540,58 @@ fun ItemsList(
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        when {
-                            iconBitmap != null -> {
-                                val painter = remember(iconBitmap) { BitmapPainter(iconBitmap!!.asImageBitmap()) }
-                                androidx.compose.foundation.Image(
-                                    painter = painter,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(Modifier.width(12.dp))
+                        val isIntent = item.providerId == "intent"
+                        Box(modifier = Modifier.size(28.dp)) {
+                            when {
+                                iconBitmap != null -> {
+                                    val painter = remember(iconBitmap) { BitmapPainter(iconBitmap!!.asImageBitmap()) }
+                                    androidx.compose.foundation.Image(
+                                        painter = painter,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                item.vectorIcon != null -> {
+                                    Icon(
+                                        imageVector = item.vectorIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        tint = primaryTextColor
+                                    )
+                                }
+                                item.defaultVectorIcon != null -> {
+                                    Icon(
+                                        imageVector = item.defaultVectorIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        tint = primaryTextColor
+                                    )
+                                }
                             }
-                            item.vectorIcon != null -> {
-                                Icon(
-                                    imageVector = item.vectorIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = primaryTextColor
-                                )
-                                Spacer(Modifier.width(12.dp))
-                            }
-                            item.defaultVectorIcon != null -> {
-                                Icon(
-                                    imageVector = item.defaultVectorIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = primaryTextColor
-                                )
-                                Spacer(Modifier.width(12.dp))
+
+                            if (isIntent) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .align(Alignment.BottomStart)
+                                        .offset(x = (-3).dp, y = 3.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .padding(1.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Share,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(7.dp)
+                                    )
+                                }
                             }
                         }
+                        Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             HighlightedText(
                                 text = item.title,
