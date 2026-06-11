@@ -229,7 +229,7 @@ class IntentProvider(
     private fun getIconLoader(config: IntentConfig): (suspend () -> Bitmap?) {
         return {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                when {
+                val baseBitmap = when {
                     !config.customIconPath.isNullOrEmpty() -> {
                         try {
                             android.graphics.BitmapFactory.decodeFile(config.customIconPath)
@@ -245,6 +245,11 @@ class IntentProvider(
                         )
                     }
                     else -> null
+                }
+                if (baseBitmap != null) {
+                    com.mrndstvndv.search.util.createBadgedIcon(activity, baseBitmap, R.drawable.ic_share)
+                } else {
+                    null
                 }
             }
         }
