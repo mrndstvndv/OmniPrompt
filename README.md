@@ -10,6 +10,7 @@ A keyboard-first Android command palette that unifies app launching, device sear
 </p>
 <p float="left">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="45%" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/search.png" width="45%" />
 </p>
 
 ## Providers
