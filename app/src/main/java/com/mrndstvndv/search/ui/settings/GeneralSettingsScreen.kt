@@ -118,9 +118,10 @@ fun GeneralSettingsScreen(
 
     val latestUpdate by settingsRepository.latestUpdate.collectAsState()
     val showBadge = latestUpdate != null
+    val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
 
     LaunchedEffect(Unit) {
-        val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, BuildConfig.DEBUG)
+        val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
         if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
             settingsRepository.setLatestUpdate(result.update)
         } else if (result is GitHubUpdateChecker.CheckResult.UpToDate) {

@@ -48,6 +48,7 @@ import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
 import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import com.mrndstvndv.search.ui.components.settings.SettingsSliderRow
+import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 import com.mrndstvndv.search.util.GitHubUpdateChecker
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -63,6 +64,7 @@ fun UpdatesSettingsScreen(
     val updateCheckInterval by settingsRepository.updateCheckInterval.collectAsState()
     val customUpdateIntervalDays by settingsRepository.customUpdateIntervalDays.collectAsState()
     val latestUpdate by settingsRepository.latestUpdate.collectAsState()
+    val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
 
     var isChecking by remember { mutableStateOf(false) }
     var updateResult by remember { mutableStateOf<GitHubUpdateChecker.UpdateResult?>(null) }
@@ -73,7 +75,7 @@ fun UpdatesSettingsScreen(
         if (isChecking) return
         isChecking = true
         coroutineScope.launch {
-            val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, BuildConfig.DEBUG)
+            val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
             isChecking = false
             when (result) {
                 is GitHubUpdateChecker.CheckResult.NewUpdate -> {
@@ -226,6 +228,15 @@ fun UpdatesSettingsScreen(
                         steps = 88,
                     )
                 }
+
+                SettingsDivider()
+
+                SettingsSwitch(
+                    title = stringResource(R.string.updates_check_prerelease),
+                    subtitle = stringResource(R.string.updates_check_prerelease_desc),
+                    checked = checkPrereleaseBuilds,
+                    onCheckedChange = { settingsRepository.setCheckPrereleaseBuilds(it) }
+                )
             }
         }
     }

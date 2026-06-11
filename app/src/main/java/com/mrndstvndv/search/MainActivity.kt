@@ -343,6 +343,7 @@ class MainActivity : ComponentActivity() {
             val lastUpdateCheckTime by settingsRepository.lastUpdateCheckTime.collectAsState()
             val dismissedVersion by settingsRepository.dismissedVersion.collectAsState()
             val latestUpdate by settingsRepository.latestUpdate.collectAsState()
+            val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
             LaunchedEffect(backgroundBlurStrength) {
@@ -438,7 +439,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (now - lastUpdateCheckTime >= intervalMillis) {
-                    val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, BuildConfig.DEBUG)
+                    val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
                     if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
                         settingsRepository.setLastUpdateCheckTime(now)
                         settingsRepository.setLatestUpdate(result.update)
