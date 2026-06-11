@@ -40,6 +40,7 @@ import com.mrndstvndv.search.ui.settings.ResultRankingSettingsScreen
 import com.mrndstvndv.search.ui.settings.SystemSettingsScreen
 import com.mrndstvndv.search.ui.settings.TermuxSettingsScreen
 import com.mrndstvndv.search.ui.settings.TextUtilitiesSettingsScreen
+import com.mrndstvndv.search.ui.settings.UpdatesSettingsScreen
 import com.mrndstvndv.search.ui.settings.WebSearchSettingsScreen
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,7 @@ class SettingsActivity : ComponentActivity() {
         SystemSettings,
         ContactsSettings,
         BackupRestore,
+        Updates,
         About,
         Licenses,
         TermuxSettings,
@@ -146,6 +148,7 @@ class SettingsActivity : ComponentActivity() {
                                 onOpenAliases = { currentScreen = Screen.Aliases },
                                 onOpenResultRanking = { currentScreen = Screen.Ranking },
                                 onOpenBackupRestore = { currentScreen = Screen.BackupRestore },
+                                onOpenUpdates = { currentScreen = Screen.Updates },
                                 onOpenAbout = { currentScreen = Screen.About },
                                 onClose = { finish() },
                             )
@@ -299,6 +302,14 @@ class SettingsActivity : ComponentActivity() {
                                 fileSearchSettingsRepo = fileSearchSettingsRepo,
                                 rankingRepository = rankingRepository,
                                 aliasRepository = aliasRepository,
+                                onBack = { currentScreen = Screen.Home },
+                            )
+                        }
+
+                        Screen.Updates -> {
+                            BackHandler { currentScreen = Screen.Home }
+                            UpdatesSettingsScreen(
+                                settingsRepository = settingsRepository,
                                 onBack = { currentScreen = Screen.Home },
                             )
                         }

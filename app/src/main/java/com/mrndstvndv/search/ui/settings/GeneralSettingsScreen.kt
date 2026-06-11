@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +91,7 @@ fun GeneralSettingsScreen(
     onOpenAliases: () -> Unit,
     onOpenResultRanking: () -> Unit,
     onOpenBackupRestore: () -> Unit,
+    onOpenUpdates: () -> Unit,
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -186,6 +188,13 @@ fun GeneralSettingsScreen(
                         title = stringResource(R.string.settings_backup_restore),
                         subtitle = stringResource(R.string.settings_backup_restore_subtitle),
                         onClick = onOpenBackupRestore,
+                    )
+                    SettingsDivider()
+                    SettingsNavigationRow(
+                        icon = Icons.Rounded.SystemUpdate,
+                        title = stringResource(R.string.settings_updates),
+                        subtitle = stringResource(R.string.settings_updates_subtitle),
+                        onClick = onOpenUpdates,
                     )
                     SettingsDivider()
                     SettingsNavigationRow(
