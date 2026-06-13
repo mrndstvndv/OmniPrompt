@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ splash screen render-path workaround.
+
+  The platform draws a non-AnimatedVectorDrawable splash icon via
+  ImmobileIconDrawable, which pre-renders at 108 dp and upscales to the
+  splash target (160 / 192 dp on XHDPI+ devices), producing a blurry icon.
+
+  This wrapper is an empty <animated-vector> — no animators required.
+  Being an AVD is enough to switch to the SurfaceView-backed render path,
+  which draws at native resolution.
+
+  The inner vector reference must name a separately-defined <vector> so the
+  wrapper does not re-resolve to itself on API 31+.
+-->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_launcher_foreground" />

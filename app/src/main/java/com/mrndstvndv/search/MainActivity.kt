@@ -15,7 +15,6 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -61,6 +60,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -299,7 +299,7 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
-            val textState = remember { mutableStateOf(TextFieldValue("")) }
+            val textState = rememberSaveable { mutableStateOf(TextFieldValue("")) }
             val focusRequester = remember { FocusRequester() }
             val coroutineScope = rememberCoroutineScope()
             val settingsRepository = remember(this@MainActivity) { ProviderSettingsRepository(this@MainActivity, coroutineScope) }
@@ -957,33 +957,12 @@ class MainActivity : ComponentActivity() {
             SearchTheme(motionPreferences = motionPreferences) {
                 val hasVisibleResults = shouldShowResults && providerResults.isNotEmpty()
 
-                // Single unit animation: search bar + app list animate together
-                val spacerAnimatable = remember { Animatable(if (hasVisibleResults) 0.01f else 1f) }
-                var prevHasVisibleResults by remember { mutableStateOf(hasVisibleResults) }
-
-                LaunchedEffect(hasVisibleResults) {
-                    val targetValue = if (hasVisibleResults) 0.01f else 1f
-                    // Going up (showing results): fast (300ms)
-                    // Going down (hiding results): slow (500ms)
-                    // But when app list will appear (going down), snap spacer immediately
-                    val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                    val shouldSnap =
-                        isGoingDown && appSearchSettings.appListEnabled &&
-                            (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                    val durationMillis = if (hasVisibleResults) 300 else 500
-                    if (motionPreferences.animationsEnabled && !shouldSnap) {
-                        spacerAnimatable.animateTo(
-                            targetValue = targetValue,
-                            animationSpec = tween(durationMillis = durationMillis),
-                        )
-                    } else {
-                        spacerAnimatable.snapTo(targetValue)
-                    }
-                    prevHasVisibleResults = hasVisibleResults
-                }
-
-                val spacerWeight = spacerAnimatable.value
-                val bottomSpacerWeight = if (hasVisibleResults) 0.01f else 1f
+                // No spacer-weight animation — per-frame Animatable.value reads in composition
+                // would force recomposition on every animation frame under SSM.
+                // Instead we use constant weight distribution + AnimatedVisibility on ItemsList
+                // for smooth enter/exit of results; the search bar snaps between centered and bottom.
+                // The visual transition is masked by ItemsList's fade+expand animation.
+                val spacerWeight = if (hasVisibleResults) 0.01f else 1f
 
                 val tintedPrimaryBackground =
                     lerp(
@@ -1012,7 +991,7 @@ class MainActivity : ComponentActivity() {
                         if (searchBarPosition == SearchBarPosition.TOP) {
                             Spacer(Modifier.weight(spacerWeight))
                         } else if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
-                            Spacer(Modifier.weight(bottomSpacerWeight))
+                            Spacer(Modifier.weight(0.01f))
                         }
 
                         if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
@@ -1151,13 +1130,12 @@ class MainActivity : ComponentActivity() {
                                     val showAppList =
                                         appSearchSettings.appListEnabled &&
                                             (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                    // Single unit animation: match spacer animation durations
-                                    val isGoingDown = prevHasVisibleResults && !hasVisibleResults
+                                    // App list enter duration (not tied to spacer animation anymore)
                                     val appListEnterDuration =
                                         when {
-                                            !isGoingDown -> 300
+                                            !appSearchSettings.hideAppListWhenResultsVisible -> 300
                                             appSearchSettings.appListType == AppListType.BOTH -> 300
-                                            else -> 500
+                                            else -> 300
                                         }
                                     val appListExitDuration = 200
                                     AppListContainer(
@@ -1223,14 +1201,8 @@ class MainActivity : ComponentActivity() {
                                 val showAppList =
                                     appSearchSettings.appListEnabled &&
                                         (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                // Single unit animation: match spacer animation durations
-                                val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                                val appListEnterDuration =
-                                    when {
-                                        !isGoingDown -> 300
-                                        appSearchSettings.appListType == AppListType.BOTH -> 300
-                                        else -> 500
-                                    }
+                                // App list enter duration (not tied to spacer animation anymore)
+                                val appListEnterDuration = 300
                                 val appListExitDuration = 200
                                 AppListContainer(
                                     visible = showAppList,
