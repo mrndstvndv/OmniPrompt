@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -67,5 +68,28 @@ fun SettingsHeader(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
+@Composable
+private fun SettingsHeaderPreview() {
+    MaterialTheme {
+        SettingsHeader(
+            title = "Appearance",
+            subtitle = "Customize the look and feel",
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
+@Composable
+private fun SettingsHeaderWithBackPreview() {
+    MaterialTheme {
+        SettingsHeader(
+            title = "Appearance",
+            subtitle = "Customize the look and feel",
+            onBack = {},
+        )
     }
 }
