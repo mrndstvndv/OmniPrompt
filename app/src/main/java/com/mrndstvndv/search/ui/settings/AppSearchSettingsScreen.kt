@@ -598,25 +598,22 @@ private fun AddPinnedAppDialog(
         appListRepository.initialize()
     }
 
-    // Filter apps based on search query and exclude already pinned apps
-    val filteredApps by remember(searchQuery, existingPinnedApps, allApps) {
-        derivedStateOf {
-            val query = searchQuery.trim()
-            allApps
-                .filter { it.packageName !in existingPinnedApps }
-                .let { apps ->
-                    if (query.isBlank()) {
-                        apps
-                    } else {
-                        apps
-                            .mapNotNull { app ->
-                                val match = FuzzyMatcher.match(query, app.label)
-                                if (match != null) app to match.score else null
-                            }.sortedByDescending { it.second }
-                            .map { it.first }
-                    }
-                }.take(20)
-        }
+    val filteredApps = remember(searchQuery, existingPinnedApps, allApps) {
+        val query = searchQuery.trim()
+        allApps
+            .filter { it.packageName !in existingPinnedApps }
+            .let { apps ->
+                if (query.isBlank()) {
+                    apps
+                } else {
+                    apps
+                        .mapNotNull { app ->
+                            val match = FuzzyMatcher.match(query, app.label)
+                            if (match != null) app to match.score else null
+                        }.sortedByDescending { it.second }
+                        .map { it.first }
+                }
+            }.take(20)
     }
 
     ContentDialog(
