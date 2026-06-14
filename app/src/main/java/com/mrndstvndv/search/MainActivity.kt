@@ -186,6 +186,7 @@ private fun buildTriggerText(
 class MainActivity : ComponentActivity() {
     companion object {
         private const val MAX_BACKGROUND_BLUR_RADIUS = 80
+        private val SLOW_PROVIDER_IDS = setOf("contacts", "file-search", "termux")
     }
 
     private val defaultAppIconSize by lazy { resources.getDimensionPixelSize(android.R.dimen.app_icon_size) }
@@ -748,14 +749,46 @@ class MainActivity : ComponentActivity() {
                                 shouldShowResults = triggerResults.isNotEmpty()
 
                                 val supplementalMap = mutableMapOf<String, List<ProviderResult>>()
-                                queryProvidersFlow(payloadQuery, supplementalProviders).collect { (providerId, batch) ->
-                                    supplementalMap[providerId] = batch
-                                    val sorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
-                                    val merged = deduplicateResults(triggerResults + sorted)
-                                    if (providerResults != merged) {
-                                        providerResults = merged
+                                val (slowSupplemental, fastSupplemental) = supplementalProviders.partition { it.id in SLOW_PROVIDER_IDS }
+
+                                // 1. Query fast supplemental providers concurrently
+                                if (fastSupplemental.isNotEmpty()) {
+                                    val fastResults = supervisorScope {
+                                        fastSupplemental.map { provider ->
+                                            async {
+                                                try {
+                                                    withContext(Dispatchers.IO) { provider.query(payloadQuery) }
+                                                } catch (e: CancellationException) {
+                                                    throw e
+                                                } catch (_: Exception) {
+                                                    emptyList()
+                                                }
+                                            }
+                                        }.awaitAll()
                                     }
-                                    shouldShowResults = merged.isNotEmpty()
+                                    fastSupplemental.forEachIndexed { index, provider ->
+                                        supplementalMap[provider.id] = fastResults[index]
+                                    }
+                                }
+
+                                val initialSorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
+                                val initialMerged = deduplicateResults(triggerResults + initialSorted)
+                                if (providerResults != initialMerged) {
+                                    providerResults = initialMerged
+                                }
+                                shouldShowResults = initialMerged.isNotEmpty()
+
+                                // 2. Query slow supplemental providers incrementally
+                                if (slowSupplemental.isNotEmpty()) {
+                                    queryProvidersFlow(payloadQuery, slowSupplemental).collect { (providerId, batch) ->
+                                        supplementalMap[providerId] = batch
+                                        val sorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
+                                        val merged = deduplicateResults(triggerResults + sorted)
+                                        if (providerResults != merged) {
+                                            providerResults = merged
+                                        }
+                                        shouldShowResults = merged.isNotEmpty()
+                                    }
                                 }
                             } catch (_: Exception) {
                                 providerResults = emptyList()
@@ -775,20 +808,58 @@ class MainActivity : ComponentActivity() {
                         shouldShowResults = normalizedText.isNotBlank() || match != null
 
                         val resultsMap = mutableMapOf<String, List<ProviderResult>>()
-                        queryProvidersFlow(query, matchingProviders).collect { (providerId, batch) ->
-                            resultsMap[providerId] = batch
-                            val filtered =
-                                match?.entry?.target?.let { aliasTarget ->
-                                    resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
-                                } ?: resultsMap.values.flatten()
-                            val sortedResults = sortResults(filtered, normalizedText)
-                            val newResults =
-                                buildList {
-                                    aliasResult?.let { add(it) }
-                                    addAll(sortedResults)
+                        val (slowProviders, fastProviders) = matchingProviders.partition { it.id in SLOW_PROVIDER_IDS }
+
+                        // 1. Query fast providers concurrently
+                        if (fastProviders.isNotEmpty()) {
+                            val fastResults = supervisorScope {
+                                fastProviders.map { provider ->
+                                    async {
+                                        try {
+                                            withContext(Dispatchers.IO) { provider.query(query) }
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (_: Exception) {
+                                            emptyList()
+                                        }
+                                    }
+                                }.awaitAll()
+                            }
+                            fastProviders.forEachIndexed { index, provider ->
+                                resultsMap[provider.id] = fastResults[index]
+                            }
+                        }
+
+                        val initialFiltered =
+                            match?.entry?.target?.let { aliasTarget ->
+                                resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
+                            } ?: resultsMap.values.flatten()
+                        val initialSorted = sortResults(initialFiltered, normalizedText)
+                        val initialResults = buildList {
+                            aliasResult?.let { add(it) }
+                            addAll(initialSorted)
+                        }
+                        if (providerResults != initialResults) {
+                            providerResults = initialResults
+                        }
+
+                        // 2. Query slow providers incrementally
+                        if (slowProviders.isNotEmpty()) {
+                            queryProvidersFlow(query, slowProviders).collect { (providerId, batch) ->
+                                resultsMap[providerId] = batch
+                                val filtered =
+                                    match?.entry?.target?.let { aliasTarget ->
+                                        resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
+                                    } ?: resultsMap.values.flatten()
+                                val sortedResults = sortResults(filtered, normalizedText)
+                                val newResults =
+                                    buildList {
+                                        aliasResult?.let { add(it) }
+                                        addAll(sortedResults)
+                                    }
+                                if (providerResults != newResults) {
+                                    providerResults = newResults
                                 }
-                            if (providerResults != newResults) {
-                                providerResults = newResults
                             }
                         }
                     }
