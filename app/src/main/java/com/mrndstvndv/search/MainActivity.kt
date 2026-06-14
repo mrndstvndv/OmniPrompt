@@ -151,6 +151,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -537,27 +539,26 @@ class MainActivity : ComponentActivity() {
                 return results.filter { seenIds.add(it.id) }
             }
 
-            suspend fun queryProviders(
+            fun queryProvidersFlow(
                 query: Query,
                 providersToQuery: List<Provider>,
-            ): List<ProviderResult> {
-                if (providersToQuery.isEmpty()) return emptyList()
-                val allResults =
-                    supervisorScope {
-                        providersToQuery
-                            .map { provider ->
-                                async {
-                                    try {
-                                        withContext(Dispatchers.IO) { provider.query(query) }
-                                    } catch (e: CancellationException) {
-                                        throw e
-                                    } catch (_: Exception) {
-                                        emptyList()
-                                    }
+            ): kotlinx.coroutines.flow.Flow<List<ProviderResult>> {
+                if (providersToQuery.isEmpty()) return flowOf(emptyList())
+                val providerFlows =
+                    providersToQuery.map { provider ->
+                        flow {
+                            val results =
+                                try {
+                                    withContext(Dispatchers.IO) { provider.query(query) }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                    emptyList()
                                 }
-                            }.awaitAll()
+                            emit(results)
+                        }
                     }
-                return deduplicateResults(allResults.flatten())
+                return merge(*providerFlows.toTypedArray())
             }
 
             fun sortResults(
@@ -742,12 +743,21 @@ class MainActivity : ComponentActivity() {
                                             activeProviders.filter { provider -> provider.canHandle(payloadQuery) }
                                         }
                                     }
-                                val supplementalResults = sortResults(queryProviders(payloadQuery, supplementalProviders), triggerFrequencyQuery)
-                                val mergedResults = deduplicateResults(triggerResults + supplementalResults)
-                                if (providerResults != mergedResults) {
-                                    providerResults = mergedResults
+
+                                // Reset to just trigger results immediately, then append supplemental incrementally
+                                providerResults = triggerResults
+                                shouldShowResults = triggerResults.isNotEmpty()
+
+                                var accumulatedSupplemental = emptyList<ProviderResult>()
+                                queryProvidersFlow(payloadQuery, supplementalProviders).collect { batch ->
+                                    accumulatedSupplemental = deduplicateResults(accumulatedSupplemental + batch)
+                                    val sorted = sortResults(accumulatedSupplemental, triggerFrequencyQuery)
+                                    val merged = deduplicateResults(triggerResults + sorted)
+                                    if (providerResults != merged) {
+                                        providerResults = merged
+                                    }
+                                    shouldShowResults = merged.isNotEmpty()
                                 }
-                                shouldShowResults = mergedResults.isNotEmpty()
                             } catch (_: Exception) {
                                 providerResults = emptyList()
                                 shouldShowResults = false
@@ -762,20 +772,26 @@ class MainActivity : ComponentActivity() {
                         val query = Query(normalizedText, originalText = currentText)
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
                         val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
-                        val aggregated = queryProviders(query, matchingProviders)
-                        val filtered =
-                            match?.entry?.target?.let { aliasTarget ->
-                                aggregated.filterNot { it.aliasTarget == aliasTarget }
-                            } ?: aggregated
-                        val sortedResults = sortResults(filtered, normalizedText)
-                        val newResults =
-                            buildList {
-                                aliasResult?.let { add(it) }
-                                addAll(sortedResults)
-                            }
 
-                        if (providerResults != newResults) {
-                            providerResults = newResults
+                        // Reset results immediately after debounce so stale results don't linger
+                        providerResults = aliasResult?.let { listOf(it) } ?: emptyList()
+
+                        var accumulated = emptyList<ProviderResult>()
+                        queryProvidersFlow(query, matchingProviders).collect { batch ->
+                            accumulated = deduplicateResults(accumulated + batch)
+                            val filtered =
+                                match?.entry?.target?.let { aliasTarget ->
+                                    accumulated.filterNot { it.aliasTarget == aliasTarget }
+                                } ?: accumulated
+                            val sortedResults = sortResults(filtered, normalizedText)
+                            val newResults =
+                                buildList {
+                                    aliasResult?.let { add(it) }
+                                    addAll(sortedResults)
+                                }
+                            if (providerResults != newResults) {
+                                providerResults = newResults
+                            }
                         }
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
@@ -822,9 +838,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 val dismissState = rememberSwipeToDismissBoxState(
                     positionalThreshold = { totalDistance -> totalDistance * 0.6f },
-                    confirmValueChange = { value ->
-                        value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart
-                    }
                 )
 
                 LaunchedEffect(dismissState.currentValue) {
