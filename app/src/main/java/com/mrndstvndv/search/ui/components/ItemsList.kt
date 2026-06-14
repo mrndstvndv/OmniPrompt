@@ -348,7 +348,8 @@ fun ItemsList(
         ) {
             itemsIndexed(
                 items = results,
-                key = { _, item -> item.id }
+                key = { _, item -> item.id },
+                contentType = { _, item -> item.providerId }
             ) { index, item ->
                 val singleItem = results.size == 1
                 val isPrimaryActionItem = index == 0

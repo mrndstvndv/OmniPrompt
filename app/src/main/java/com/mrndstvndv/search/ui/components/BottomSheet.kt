@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,7 @@ import kotlin.math.roundToInt
 @Composable
 fun BottomSheet(
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
     // Capture motion preferences from parent composition before entering Dialog
@@ -96,7 +98,9 @@ fun BottomSheet(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = scrimAlpha))
+                    .drawBehind {
+                        drawRect(Color.Black.copy(alpha = scrimAlpha))
+                    }
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
@@ -105,7 +109,7 @@ fun BottomSheet(
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Surface(
-                    modifier = Modifier
+                    modifier = modifier
                         .fillMaxWidth()
                         .onSizeChanged { size ->
                             sheetHeight = size.height.toFloat()

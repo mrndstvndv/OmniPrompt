@@ -56,11 +56,12 @@ data class ContactActionData(
 fun ContactActionSheet(
     contact: ContactActionData,
     onDismiss: () -> Unit,
-    onActionComplete: () -> Unit
+    onActionComplete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
-    BottomSheet(onDismiss = onDismiss) {
+    BottomSheet(onDismiss = onDismiss, modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

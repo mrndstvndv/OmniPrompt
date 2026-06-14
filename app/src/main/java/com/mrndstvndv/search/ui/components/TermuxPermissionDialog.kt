@@ -16,9 +16,11 @@ import com.mrndstvndv.search.R
 fun TermuxPermissionDialog(
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ContentDialog(
         onDismiss = onDismiss,
+        modifier = modifier,
         title = {
             Text(
                 text = stringResource(R.string.permission_required),
