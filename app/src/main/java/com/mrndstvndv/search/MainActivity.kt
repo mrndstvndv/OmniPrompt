@@ -300,7 +300,7 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
-            val textState = rememberSaveable { mutableStateOf(TextFieldValue("")) }
+            val textState = rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
             val focusRequester = remember { FocusRequester() }
             val coroutineScope = rememberCoroutineScope()
             val settingsRepository = remember(this@MainActivity) { ProviderSettingsRepository(this@MainActivity, coroutineScope) }
