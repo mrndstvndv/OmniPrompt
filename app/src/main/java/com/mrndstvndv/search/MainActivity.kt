@@ -541,8 +541,8 @@ class MainActivity : ComponentActivity() {
             fun queryProvidersFlow(
                 query: Query,
                 providersToQuery: List<Provider>,
-            ): kotlinx.coroutines.flow.Flow<List<ProviderResult>> {
-                if (providersToQuery.isEmpty()) return flowOf(emptyList())
+            ): kotlinx.coroutines.flow.Flow<Pair<String, List<ProviderResult>>> {
+                if (providersToQuery.isEmpty()) return flowOf()
                 val providerFlows =
                     providersToQuery.map { provider ->
                         flow {
@@ -554,7 +554,7 @@ class MainActivity : ComponentActivity() {
                                 } catch (_: Exception) {
                                     emptyList()
                                 }
-                            emit(results)
+                            emit(provider.id to results)
                         }
                     }
                 return merge(*providerFlows.toTypedArray())
@@ -743,25 +743,14 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
 
-                                // Show trigger results immediately, keep existing supplemental visible
+                                // Show trigger results immediately
                                 providerResults = triggerResults
                                 shouldShowResults = triggerResults.isNotEmpty()
 
-                                // Seed with existing supplemental results so slower providers
-                                // don't flash out while we wait for them to re-emit
-                                val triggerResultIds = triggerResults.map { it.id }.toSet()
-                                val supplementalProviderIds = supplementalProviders.map { it.id }.toSet()
-                                var accumulatedSupplemental = providerResults
-                                    .filterNot { it.id in triggerResultIds }
-                                    .filter { it.providerId in supplementalProviderIds }
-                                queryProvidersFlow(payloadQuery, supplementalProviders).collect { batch ->
-                                    if (batch.isNotEmpty()) {
-                                        val arrivedProviderIds = batch.map { it.providerId }.toSet()
-                                        accumulatedSupplemental = deduplicateResults(
-                                            accumulatedSupplemental.filterNot { it.providerId in arrivedProviderIds } + batch
-                                        )
-                                    }
-                                    val sorted = sortResults(accumulatedSupplemental, triggerFrequencyQuery)
+                                val supplementalMap = mutableMapOf<String, List<ProviderResult>>()
+                                queryProvidersFlow(payloadQuery, supplementalProviders).collect { (providerId, batch) ->
+                                    supplementalMap[providerId] = batch
+                                    val sorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
                                     val merged = deduplicateResults(triggerResults + sorted)
                                     if (providerResults != merged) {
                                         providerResults = merged
@@ -783,22 +772,15 @@ class MainActivity : ComponentActivity() {
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
                         val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
 
-                        // Seed accumulated with current results from providers we're about
-                        // to re-query so their items stay visible until that provider re-emits.
-                        // Results from providers no longer matching are excluded immediately.
-                        val matchingProviderIds = matchingProviders.map { it.id }.toSet()
-                        var accumulated = providerResults.filter { it.providerId in matchingProviderIds }
-                        queryProvidersFlow(query, matchingProviders).collect { batch ->
-                            if (batch.isNotEmpty()) {
-                                val arrivedProviderIds = batch.map { it.providerId }.toSet()
-                                accumulated = deduplicateResults(
-                                    accumulated.filterNot { it.providerId in arrivedProviderIds } + batch
-                                )
-                            }
+                        shouldShowResults = normalizedText.isNotBlank() || match != null
+
+                        val resultsMap = mutableMapOf<String, List<ProviderResult>>()
+                        queryProvidersFlow(query, matchingProviders).collect { (providerId, batch) ->
+                            resultsMap[providerId] = batch
                             val filtered =
                                 match?.entry?.target?.let { aliasTarget ->
-                                    accumulated.filterNot { it.aliasTarget == aliasTarget }
-                                } ?: accumulated
+                                    resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
+                                } ?: resultsMap.values.flatten()
                             val sortedResults = sortResults(filtered, normalizedText)
                             val newResults =
                                 buildList {
@@ -809,8 +791,6 @@ class MainActivity : ComponentActivity() {
                                 providerResults = newResults
                             }
                         }
-
-                        shouldShowResults = normalizedText.isNotBlank() || match != null
                     }
             }
 
