@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.ui.components.MarkdownText
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -142,10 +145,10 @@ fun UpdatesSettingsScreen(
                         }
 
                         if (latestUpdate!!.changelog.isNotBlank()) {
-                            Text(
-                                text = latestUpdate!!.changelog,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            MarkdownText(
+                                markdown = latestUpdate!!.changelog,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                                linkColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
 
@@ -264,18 +267,19 @@ fun UpdatesSettingsScreen(
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                 ) {
                     Text(
                         text = stringResource(R.string.about_version) + ": " + update.version,
                         style = MaterialTheme.typography.titleMedium
                     )
                     if (update.changelog.isNotBlank()) {
-                        Text(
-                            text = update.changelog,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 10,
-                            modifier = Modifier.padding(top = 4.dp)
+                        MarkdownText(
+                            markdown = update.changelog,
+                            modifier = Modifier.padding(top = 4.dp),
+                            linkColor = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
