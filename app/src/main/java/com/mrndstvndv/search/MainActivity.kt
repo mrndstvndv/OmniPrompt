@@ -773,9 +773,6 @@ class MainActivity : ComponentActivity() {
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
                         val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
 
-                        // Reset results immediately after debounce so stale results don't linger
-                        providerResults = aliasResult?.let { listOf(it) } ?: emptyList()
-
                         var accumulated = emptyList<ProviderResult>()
                         queryProvidersFlow(query, matchingProviders).collect { batch ->
                             accumulated = deduplicateResults(accumulated + batch)
