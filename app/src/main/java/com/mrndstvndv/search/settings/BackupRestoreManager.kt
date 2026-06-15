@@ -7,8 +7,8 @@ import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
-import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRegistry
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -140,26 +140,62 @@ class BackupRestoreManager(
 
             // Appearance settings
             val appearance = JSONObject()
-            appearance.put(KEY_TRANSLUCENT_RESULTS, settingsRepository.translucentResultsEnabled.value)
-            appearance.put(KEY_BACKGROUND_OPACITY, settingsRepository.backgroundOpacity.value.toDouble())
-            appearance.put(KEY_BACKGROUND_BLUR_STRENGTH, settingsRepository.backgroundBlurStrength.value.toDouble())
+            appearance.put(
+                KEY_TRANSLUCENT_RESULTS,
+                settingsRepository.translucentResultsEnabled.value,
+            )
+            appearance.put(
+                KEY_BACKGROUND_OPACITY,
+                settingsRepository.backgroundOpacity.value.toDouble(),
+            )
+            appearance.put(
+                KEY_BACKGROUND_BLUR_STRENGTH,
+                settingsRepository.backgroundBlurStrength.value.toDouble(),
+            )
             appearance.put(KEY_SEARCH_BAR_POSITION, settingsRepository.searchBarPosition.value.name)
-            appearance.put(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, settingsRepository.firstResultHighlightEnabled.value)
-            appearance.put(KEY_FIRST_RESULT_HIGHLIGHT_MODE, settingsRepository.firstResultHighlightMode.value.name)
-            appearance.put(KEY_FIRST_RESULT_BORDER_THICKNESS, settingsRepository.firstResultBorderThickness.value.toDouble())
-            appearance.put(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, settingsRepository.firstResultChangeAnimationEnabled.value)
-            appearance.put(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, settingsRepository.firstResultColorAnimationEnabled.value)
-            appearance.put(KEY_ALWAYS_SHOW_ENTER_BADGE, settingsRepository.alwaysShowEnterBadge.value)
+            appearance.put(
+                KEY_FIRST_RESULT_HIGHLIGHT_ENABLED,
+                settingsRepository.firstResultHighlightEnabled.value,
+            )
+            appearance.put(
+                KEY_FIRST_RESULT_HIGHLIGHT_MODE,
+                settingsRepository.firstResultHighlightMode.value.name,
+            )
+            appearance.put(
+                KEY_FIRST_RESULT_BORDER_THICKNESS,
+                settingsRepository.firstResultBorderThickness.value.toDouble(),
+            )
+            appearance.put(
+                KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED,
+                settingsRepository.firstResultChangeAnimationEnabled.value,
+            )
+            appearance.put(
+                KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED,
+                settingsRepository.firstResultColorAnimationEnabled.value,
+            )
+            appearance.put(
+                KEY_ALWAYS_SHOW_ENTER_BADGE,
+                settingsRepository.alwaysShowEnterBadge.value,
+            )
             providerSettings.put(KEY_APPEARANCE, appearance)
 
             // Behavior settings
             val behavior = JSONObject()
-            behavior.put(KEY_ANIMATIONS_ENABLED, settingsRepository.motionPreferences.value.animationsEnabled)
-            behavior.put(KEY_ACTIVITY_INDICATOR_DELAY_MS, settingsRepository.activityIndicatorDelayMs.value)
+            behavior.put(
+                KEY_ANIMATIONS_ENABLED,
+                settingsRepository.motionPreferences.value.animationsEnabled,
+            )
+            behavior.put(
+                KEY_ACTIVITY_INDICATOR_DELAY_MS,
+                settingsRepository.activityIndicatorDelayMs.value,
+            )
             providerSettings.put(KEY_BEHAVIOR, behavior)
 
             // Enabled providers
-            providerSettings.put(KEY_ENABLED_PROVIDERS, JSONObject(settingsRepository.enabledProviders.value))
+            providerSettings.put(
+                KEY_ENABLED_PROVIDERS,
+                JSONObject(settingsRepository.enabledProviders.value),
+            )
 
             backup.put(KEY_PROVIDER_SETTINGS, providerSettings)
 
@@ -217,12 +253,16 @@ class BackupRestoreManager(
 
                 // Basic validation
                 if (!json.has(KEY_VERSION)) {
-                    return@withContext Result.failure(IllegalArgumentException("Invalid backup file: missing version"))
+                    return@withContext Result.failure(
+                        IllegalArgumentException("Invalid backup file: missing version"),
+                    )
                 }
 
                 val version = json.optInt(KEY_VERSION, -1)
                 if (version < 1) {
-                    return@withContext Result.failure(IllegalArgumentException("Invalid backup file: invalid version"))
+                    return@withContext Result.failure(
+                        IllegalArgumentException("Invalid backup file: invalid version"),
+                    )
                 }
 
                 if (version > CURRENT_VERSION) {
@@ -254,12 +294,24 @@ class BackupRestoreManager(
             val providerSettings = backupJson.optJSONObject(KEY_PROVIDER_SETTINGS)
 
             // Web search
-            val webSearch = providerSettings?.let { SettingsRegistry.getProviderJson(it, "web-search") }
+            val webSearch =
+                providerSettings?.let {
+                    SettingsRegistry.getProviderJson(
+                        it,
+                        "web-search",
+                    )
+                }
             val sitesCount = webSearch?.optJSONArray("sites")?.length() ?: 0
             val quicklinksCount = webSearch?.optJSONArray("quicklinks")?.length() ?: 0
 
             // File search
-            val fileSearch = providerSettings?.let { SettingsRegistry.getProviderJson(it, "file-search") }
+            val fileSearch =
+                providerSettings?.let {
+                    SettingsRegistry.getProviderJson(
+                        it,
+                        "file-search",
+                    )
+                }
             val rootsCount = fileSearch?.optJSONArray("roots")?.length() ?: 0
 
             // Enabled providers
@@ -318,9 +370,15 @@ class BackupRestoreManager(
                         if (success) {
                             settingsRestored++
                             if (id == "file-search") {
-                                val fileSearchRepo = SettingsRegistry.get("file-search") as? SettingsRepository<FileSearchSettings>
-                                fileSearchRepo?.value?.roots?.takeIf { it.isNotEmpty() }?.let { roots ->
-                                    warnings.add("${roots.size} file search folder(s) may need permission")
+                                val fileSearchRepo =
+                                    SettingsRegistry.get(
+                                        "file-search",
+                                    ) as? SettingsRepository<FileSearchSettings>
+                                fileSearchRepo?.value?.roots?.takeIf { it.isNotEmpty() }?.let {
+                                        roots ->
+                                    warnings.add(
+                                        "${roots.size} file search folder(s) may need permission",
+                                    )
                                 }
                             }
                         } else {
@@ -346,26 +404,43 @@ class BackupRestoreManager(
                         settingsRepository.setFirstResultHighlightEnabled(
                             appearanceJson.optBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, true),
                         )
-                        appearanceJson.optString(KEY_FIRST_RESULT_HIGHLIGHT_MODE)?.takeIf { it.isNotBlank() }?.let { modeName ->
+                        appearanceJson.optString(
+                            KEY_FIRST_RESULT_HIGHLIGHT_MODE,
+                        )?.takeIf { it.isNotBlank() }?.let {
+                                modeName ->
                             settingsRepository.setFirstResultHighlightMode(
-                                com.mrndstvndv.search.provider.settings.FirstResultHighlightMode.fromStorageValue(modeName),
+                                com.mrndstvndv.search.provider.settings.FirstResultHighlightMode.fromStorageValue(
+                                    modeName,
+                                ),
                             )
                         }
                         settingsRepository.setFirstResultBorderThickness(
-                            appearanceJson.optDouble(KEY_FIRST_RESULT_BORDER_THICKNESS, settingsRepository.firstResultBorderThickness.value.toDouble()).toFloat(),
+                            appearanceJson.optDouble(
+                                KEY_FIRST_RESULT_BORDER_THICKNESS,
+                                settingsRepository.firstResultBorderThickness.value.toDouble(),
+                            ).toFloat(),
                         )
                         settingsRepository.setFirstResultChangeAnimationEnabled(
-                            appearanceJson.optBoolean(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, true),
+                            appearanceJson.optBoolean(
+                                KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED,
+                                true,
+                            ),
                         )
                         settingsRepository.setFirstResultColorAnimationEnabled(
-                            appearanceJson.optBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, false),
+                            appearanceJson.optBoolean(
+                                KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED,
+                                false,
+                            ),
                         )
                         settingsRepository.setAlwaysShowEnterBadge(
                             appearanceJson.optBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, false),
                         )
                         appearanceJson.optString(KEY_SEARCH_BAR_POSITION)?.let { positionName ->
                             try {
-                                val position = com.mrndstvndv.search.provider.settings.SearchBarPosition.valueOf(positionName)
+                                val position =
+                                    com.mrndstvndv.search.provider.settings.SearchBarPosition.valueOf(
+                                        positionName,
+                                    )
                                 settingsRepository.setSearchBarPosition(position)
                             } catch (e: IllegalArgumentException) {
                                 warnings.add("Invalid search bar position in backup")
@@ -411,7 +486,12 @@ class BackupRestoreManager(
                     try {
                         // Provider order
                         rankingsJson.optJSONArray(KEY_PROVIDER_ORDER)?.let { orderArray ->
-                            val order = (0 until orderArray.length()).map { orderArray.getString(it) }
+                            val order =
+                                (0 until orderArray.length()).map {
+                                    orderArray.getString(
+                                        it,
+                                    )
+                                }
                             rankingRepository.setProviderOrder(order)
                         }
 
@@ -468,7 +548,6 @@ class BackupRestoreManager(
                 RestoreResult.Error("Failed to restore backup: ${e.message}")
             }
         }
-
 
     /**
      * Generates a suggested filename for the backup.

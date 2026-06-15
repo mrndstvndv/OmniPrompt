@@ -7,7 +7,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,9 +25,7 @@ import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,10 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.mrndstvndv.search.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
@@ -139,7 +136,11 @@ fun BackupRestoreSettingsScreen(
                                 pendingRestoreJson = json
                                 showRestorePreviewDialog = true
                             } else {
-                                Toast.makeText(context, context.getString(R.string.backup_invalid_file), Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.backup_invalid_file),
+                                    Toast.LENGTH_LONG,
+                                ).show()
                             }
                         },
                         onFailure = { error ->
@@ -163,15 +164,30 @@ fun BackupRestoreSettingsScreen(
 
                     // Update the root with the new URI
                     fileSearchSettingsRepo.update { currentSettings ->
-                        val updatedRoots = currentSettings.roots.map { root ->
-                            if (root.id == pendingPermissionRootId) root.copy(uri = uri) else root
-                        }
+                        val updatedRoots =
+                            currentSettings.roots.map { root ->
+                                if (root.id == pendingPermissionRootId) {
+                                    root.copy(
+                                        uri = uri,
+                                    )
+                                } else {
+                                    root
+                                }
+                            }
                         currentSettings.copy(roots = updatedRoots)
                     }
 
-                    Toast.makeText(context, context.getString(R.string.permission_granted), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.permission_granted),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 } catch (e: Exception) {
-                    Toast.makeText(context, context.getString(R.string.backup_permission_failed), Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.backup_permission_failed),
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
             pendingPermissionRootId = null
@@ -216,7 +232,11 @@ fun BackupRestoreSettingsScreen(
                                     restoreWarnings = result.warnings
                                     showWarningsDialog = true
                                 } else {
-                                    Toast.makeText(context, restoreSuccessMessage, Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        restoreSuccessMessage,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
                                 }
                             }
 
@@ -258,7 +278,10 @@ fun BackupRestoreSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
-            SettingsHeader(title = stringResource(R.string.settings_backup_restore), onBack = onBack)
+            SettingsHeader(
+                title = stringResource(R.string.settings_backup_restore),
+                onBack = onBack,
+            )
         }
 
         // Backup Section
@@ -287,7 +310,9 @@ fun BackupRestoreSettingsScreen(
                     TextButton(
                         onClick = {
                             if (!isExporting) {
-                                createDocumentLauncher.launch(backupManager.generateBackupFilename())
+                                createDocumentLauncher.launch(
+                                    backupManager.generateBackupFilename(),
+                                )
                             }
                         },
                         enabled = !isExporting,
@@ -329,7 +354,13 @@ fun BackupRestoreSettingsScreen(
                     TextButton(
                         onClick = {
                             if (!isRestoring) {
-                                openDocumentLauncher.launch(arrayOf(BackupRestoreManager.MIME_TYPE_JSON, "application/octet-stream", "*/*"))
+                                openDocumentLauncher.launch(
+                                    arrayOf(
+                                        BackupRestoreManager.MIME_TYPE_JSON,
+                                        "application/octet-stream",
+                                        "*/*",
+                                    ),
+                                )
                             }
                         },
                         enabled = !isRestoring,
@@ -445,7 +476,14 @@ private fun FileSearchRootRow(
         }
         Icon(
             imageVector = if (hasPermission) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
-            contentDescription = if (hasPermission) stringResource(R.string.cd_has_permission) else stringResource(R.string.cd_needs_permission),
+            contentDescription =
+                if (hasPermission) {
+                    stringResource(
+                        R.string.cd_has_permission,
+                    )
+                } else {
+                    stringResource(R.string.cd_needs_permission)
+                },
             tint = if (hasPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(24.dp),
         )
@@ -471,7 +509,11 @@ private fun RestorePreviewDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.backup_from_timestamp, preview.formattedTimestamp()),
+                    text =
+                        stringResource(
+                            R.string.backup_from_timestamp,
+                            preview.formattedTimestamp(),
+                        ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -489,19 +531,41 @@ private fun RestorePreviewDialog(
                     modifier = Modifier.padding(start = 8.dp),
                 ) {
                     if (preview.webSearchSitesCount > 0) {
-                        BulletPoint(stringResource(R.string.backup_preview_search_engines, preview.webSearchSitesCount))
+                        BulletPoint(
+                            stringResource(
+                                R.string.backup_preview_search_engines,
+                                preview.webSearchSitesCount,
+                            ),
+                        )
                     }
                     if (preview.quicklinksCount > 0) {
-                        BulletPoint(stringResource(R.string.backup_preview_quicklinks, preview.quicklinksCount))
+                        BulletPoint(
+                            stringResource(
+                                R.string.backup_preview_quicklinks,
+                                preview.quicklinksCount,
+                            ),
+                        )
                     }
                     if (preview.aliasesCount > 0) {
-                        BulletPoint(stringResource(R.string.backup_preview_aliases, preview.aliasesCount))
+                        BulletPoint(
+                            stringResource(R.string.backup_preview_aliases, preview.aliasesCount),
+                        )
                     }
                     if (preview.fileSearchRootsCount > 0) {
-                        BulletPoint(stringResource(R.string.backup_preview_file_folders, preview.fileSearchRootsCount))
+                        BulletPoint(
+                            stringResource(
+                                R.string.backup_preview_file_folders,
+                                preview.fileSearchRootsCount,
+                            ),
+                        )
                     }
                     if (preview.enabledProvidersCount > 0) {
-                        BulletPoint(stringResource(R.string.backup_preview_provider_toggles, preview.enabledProvidersCount))
+                        BulletPoint(
+                            stringResource(
+                                R.string.backup_preview_provider_toggles,
+                                preview.enabledProvidersCount,
+                            ),
+                        )
                     }
                     if (preview.hasAppearanceSettings) {
                         BulletPoint(stringResource(R.string.backup_preview_appearance_settings))

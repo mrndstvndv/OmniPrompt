@@ -28,11 +28,12 @@ fun <T> SettingsSingleChoiceSegmentedButtons(
                 },
                 enabled = enabled,
                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                icon = if (showSelectedIcon) {
-                    { SegmentedButtonDefaults.Icon(active = option == selectedOption) }
-                } else {
-                    {}
-                },
+                icon =
+                    if (showSelectedIcon) {
+                        { SegmentedButtonDefaults.Icon(active = option == selectedOption) }
+                    } else {
+                        {}
+                    },
                 label = { Text(text = label(option)) },
             )
         }

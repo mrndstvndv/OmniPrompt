@@ -28,10 +28,11 @@ class SettingsRepository<S : ProviderSettings>(
     /**
      * SharedPreferences file name: "{providerId}_settings"
      */
-    private val prefs: SharedPreferences = context.getSharedPreferences(
-        "${providerId}_settings",
-        Context.MODE_PRIVATE
-    )
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(
+            "${providerId}_settings",
+            Context.MODE_PRIVATE,
+        )
 
     /**
      * Internal MutableStateFlow for reactive updates.

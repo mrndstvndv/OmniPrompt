@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -78,7 +78,11 @@ fun UpdatesSettingsScreen(
         if (isChecking) return
         isChecking = true
         coroutineScope.launch {
-            val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
+            val result =
+                GitHubUpdateChecker.checkForUpdates(
+                    BuildConfig.VERSION_NAME,
+                    checkPrereleaseBuilds,
+                )
             isChecking = false
             when (result) {
                 is GitHubUpdateChecker.CheckResult.NewUpdate -> {
@@ -118,48 +122,59 @@ fun UpdatesSettingsScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-                    ),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor =
+                                MaterialTheme.colorScheme.primaryContainer.copy(
+                                    alpha = 0.9f,
+                                ),
+                        ),
                     shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.SystemUpdate,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                             Text(
                                 text = "New Update: ${latestUpdate!!.version}",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
 
                         if (latestUpdate!!.changelog.isNotBlank()) {
                             MarkdownText(
                                 markdown = latestUpdate!!.changelog,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
-                                linkColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                color =
+                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                        alpha = 0.8f,
+                                    ),
+                                linkColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
 
                         Button(
                             onClick = {
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(latestUpdate!!.downloadUrl))
+                                val browserIntent =
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse(latestUpdate!!.downloadUrl),
+                                    )
                                 browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                 context.startActivity(browserIntent)
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
                         ) {
                             Text("Download Update")
                         }
@@ -198,12 +213,13 @@ fun UpdatesSettingsScreen(
                     )
 
                     val intervalOptions = listOf("daily", "weekly", "monthly", "custom")
-                    val intervalLabels = mapOf(
-                        "daily" to stringResource(R.string.updates_interval_daily),
-                        "weekly" to stringResource(R.string.updates_interval_weekly),
-                        "monthly" to stringResource(R.string.updates_interval_monthly),
-                        "custom" to stringResource(R.string.updates_interval_custom)
-                    )
+                    val intervalLabels =
+                        mapOf(
+                            "daily" to stringResource(R.string.updates_interval_daily),
+                            "weekly" to stringResource(R.string.updates_interval_weekly),
+                            "monthly" to stringResource(R.string.updates_interval_monthly),
+                            "custom" to stringResource(R.string.updates_interval_custom),
+                        )
 
                     SettingsSingleChoiceSegmentedButtons(
                         options = intervalOptions,
@@ -211,9 +227,10 @@ fun UpdatesSettingsScreen(
                         enabled = true,
                         label = { option -> intervalLabels[option] ?: option },
                         onOptionSelected = { settingsRepository.setUpdateCheckInterval(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
                         showSelectedIcon = false,
                     )
                 }
@@ -224,9 +241,17 @@ fun UpdatesSettingsScreen(
                     SettingsSliderRow(
                         title = stringResource(R.string.updates_custom_days),
                         subtitle = null,
-                        valueText = stringResource(R.string.updates_custom_days_val, customUpdateIntervalDays),
+                        valueText =
+                            stringResource(
+                                R.string.updates_custom_days_val,
+                                customUpdateIntervalDays,
+                            ),
                         value = customUpdateIntervalDays.toFloat(),
-                        onValueChange = { settingsRepository.setCustomUpdateIntervalDays(it.roundToInt()) },
+                        onValueChange = {
+                            settingsRepository.setCustomUpdateIntervalDays(
+                                it.roundToInt(),
+                            )
+                        },
                         valueRange = 1f..90f,
                         steps = 88,
                     )
@@ -238,7 +263,7 @@ fun UpdatesSettingsScreen(
                     title = stringResource(R.string.updates_check_prerelease),
                     subtitle = stringResource(R.string.updates_check_prerelease_desc),
                     checked = checkPrereleaseBuilds,
-                    onCheckedChange = { settingsRepository.setCheckPrereleaseBuilds(it) }
+                    onCheckedChange = { settingsRepository.setCheckPrereleaseBuilds(it) },
                 )
             }
         }
@@ -251,12 +276,12 @@ fun UpdatesSettingsScreen(
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     CircularProgressIndicator()
                 }
             },
-            confirmButton = {}
+            confirmButton = {},
         )
     }
 
@@ -267,19 +292,20 @@ fun UpdatesSettingsScreen(
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
                 ) {
                     Text(
                         text = stringResource(R.string.about_version) + ": " + update.version,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
                     )
                     if (update.changelog.isNotBlank()) {
                         MarkdownText(
                             markdown = update.changelog,
                             modifier = Modifier.padding(top = 4.dp),
-                            linkColor = MaterialTheme.colorScheme.primary
+                            linkColor = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -287,11 +313,12 @@ fun UpdatesSettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                        val browserIntent =
+                            Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
                         browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         context.startActivity(browserIntent)
                         updateResult = null
-                    }
+                    },
                 ) {
                     Text("Download")
                 }
@@ -300,7 +327,7 @@ fun UpdatesSettingsScreen(
                 TextButton(onClick = { updateResult = null }) {
                     Text(stringResource(R.string.cancel))
                 }
-            }
+            },
         )
     }
 
@@ -308,12 +335,16 @@ fun UpdatesSettingsScreen(
         AlertDialog(
             onDismissRequest = { showUpToDateDialog = false },
             title = { Text(stringResource(R.string.updates_up_to_date)) },
-            text = { Text(stringResource(R.string.updates_up_to_date_desc, BuildConfig.VERSION_NAME)) },
+            text = {
+                Text(
+                    stringResource(R.string.updates_up_to_date_desc, BuildConfig.VERSION_NAME),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { showUpToDateDialog = false }) {
                     Text(stringResource(R.string.ok))
                 }
-            }
+            },
         )
     }
 
@@ -326,7 +357,7 @@ fun UpdatesSettingsScreen(
                 TextButton(onClick = { showFailedDialog = false }) {
                     Text(stringResource(R.string.ok))
                 }
-            }
+            },
         )
     }
 }

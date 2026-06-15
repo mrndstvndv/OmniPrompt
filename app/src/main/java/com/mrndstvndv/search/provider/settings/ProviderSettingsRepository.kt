@@ -7,12 +7,12 @@ import android.os.Environment
 import androidx.annotation.StringRes
 import androidx.core.content.edit
 import com.mrndstvndv.search.R
+import com.mrndstvndv.search.util.GitHubUpdateChecker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.mrndstvndv.search.util.GitHubUpdateChecker
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -71,7 +71,11 @@ class ProviderSettingsRepository(
     }
 
     private val appContext: Context = context.applicationContext
-    private val preferences: SharedPreferences = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences =
+        appContext.getSharedPreferences(
+            PREF_NAME,
+            Context.MODE_PRIVATE,
+        )
 
     private val _translucentResultsEnabled = MutableStateFlow(true)
     val translucentResultsEnabled: StateFlow<Boolean> = _translucentResultsEnabled
@@ -85,7 +89,8 @@ class ProviderSettingsRepository(
     private val _activityIndicatorDelayMs = MutableStateFlow(DEFAULT_ACTIVITY_INDICATOR_DELAY_MS)
     val activityIndicatorDelayMs: StateFlow<Int> = _activityIndicatorDelayMs
 
-    private val _motionPreferences = MutableStateFlow(MotionPreferences(animationsEnabled = DEFAULT_ANIMATIONS_ENABLED))
+    private val _motionPreferences =
+        MutableStateFlow(MotionPreferences(animationsEnabled = DEFAULT_ANIMATIONS_ENABLED))
     val motionPreferences: StateFlow<MotionPreferences> = _motionPreferences
 
     private val _enabledProviders = MutableStateFlow(emptyMap<String, Boolean>())
@@ -106,10 +111,12 @@ class ProviderSettingsRepository(
     private val _firstResultBorderThickness = MutableStateFlow(loadFirstResultBorderThickness())
     val firstResultBorderThickness: StateFlow<Float> = _firstResultBorderThickness
 
-    private val _firstResultChangeAnimationEnabled = MutableStateFlow(loadFirstResultChangeAnimationEnabled())
+    private val _firstResultChangeAnimationEnabled =
+        MutableStateFlow(loadFirstResultChangeAnimationEnabled())
     val firstResultChangeAnimationEnabled: StateFlow<Boolean> = _firstResultChangeAnimationEnabled
 
-    private val _firstResultColorAnimationEnabled = MutableStateFlow(loadFirstResultColorAnimationEnabled())
+    private val _firstResultColorAnimationEnabled =
+        MutableStateFlow(loadFirstResultColorAnimationEnabled())
     val firstResultColorAnimationEnabled: StateFlow<Boolean> = _firstResultColorAnimationEnabled
 
     private val _alwaysShowEnterBadge = MutableStateFlow(loadAlwaysShowEnterBadge())
@@ -186,7 +193,6 @@ class ProviderSettingsRepository(
         }
     }
 
-
     fun setTranslucentResultsEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_TRANSLUCENT_RESULTS, enabled) }
         _translucentResultsEnabled.value = enabled
@@ -224,20 +230,43 @@ class ProviderSettingsRepository(
         saveEnabledProviders(current)
     }
 
-    private fun loadTranslucentResultsEnabled(): Boolean = preferences.getBoolean(KEY_TRANSLUCENT_RESULTS, true)
+    private fun loadTranslucentResultsEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_TRANSLUCENT_RESULTS,
+            true,
+        )
 
-    private fun loadBackgroundOpacity(): Float = preferences.getFloat(KEY_BACKGROUND_OPACITY, DEFAULT_BACKGROUND_OPACITY)
+    private fun loadBackgroundOpacity(): Float =
+        preferences.getFloat(
+            KEY_BACKGROUND_OPACITY,
+            DEFAULT_BACKGROUND_OPACITY,
+        )
 
-    private fun loadBackgroundBlurStrength(): Float = preferences.getFloat(KEY_BACKGROUND_BLUR_STRENGTH, DEFAULT_BACKGROUND_BLUR_STRENGTH)
+    private fun loadBackgroundBlurStrength(): Float =
+        preferences.getFloat(
+            KEY_BACKGROUND_BLUR_STRENGTH,
+            DEFAULT_BACKGROUND_BLUR_STRENGTH,
+        )
 
     private fun loadActivityIndicatorDelayMs(): Int {
-        val stored = preferences.getInt(KEY_ACTIVITY_INDICATOR_DELAY_MS, DEFAULT_ACTIVITY_INDICATOR_DELAY_MS)
+        val stored =
+            preferences.getInt(
+                KEY_ACTIVITY_INDICATOR_DELAY_MS,
+                DEFAULT_ACTIVITY_INDICATOR_DELAY_MS,
+            )
         return stored.coerceIn(0, MAX_ACTIVITY_INDICATOR_DELAY_MS)
     }
 
-    private fun loadAnimationsEnabled(): Boolean = preferences.getBoolean(KEY_ANIMATIONS_ENABLED, DEFAULT_ANIMATIONS_ENABLED)
+    private fun loadAnimationsEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_ANIMATIONS_ENABLED,
+            DEFAULT_ANIMATIONS_ENABLED,
+        )
 
-    private fun loadMotionPreferences(): MotionPreferences = MotionPreferences(animationsEnabled = loadAnimationsEnabled())
+    private fun loadMotionPreferences(): MotionPreferences =
+        MotionPreferences(
+            animationsEnabled = loadAnimationsEnabled(),
+        )
 
     private fun loadEnabledProviders(): Map<String, Boolean> {
         val json = preferences.getString(KEY_ENABLED_PROVIDERS, null) ?: return emptyMap()
@@ -290,7 +319,11 @@ class ProviderSettingsRepository(
     }
 
     fun setFirstResultBorderThickness(thickness: Float) {
-        val coercedThickness = thickness.coerceIn(MIN_FIRST_RESULT_BORDER_THICKNESS, MAX_FIRST_RESULT_BORDER_THICKNESS)
+        val coercedThickness =
+            thickness.coerceIn(
+                MIN_FIRST_RESULT_BORDER_THICKNESS,
+                MAX_FIRST_RESULT_BORDER_THICKNESS,
+            )
         preferences.edit { putFloat(KEY_FIRST_RESULT_BORDER_THICKNESS, coercedThickness) }
         _firstResultBorderThickness.value = coercedThickness
     }
@@ -330,11 +363,12 @@ class ProviderSettingsRepository(
     }
 
     private fun loadFirstResultBorderThickness(): Float {
-        val defaultThickness = if (loadTranslucentResultsEnabled()) {
-            DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS
-        } else {
-            DEFAULT_FIRST_RESULT_BORDER_THICKNESS
-        }
+        val defaultThickness =
+            if (loadTranslucentResultsEnabled()) {
+                DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS
+            } else {
+                DEFAULT_FIRST_RESULT_BORDER_THICKNESS
+            }
         return preferences.getFloat(KEY_FIRST_RESULT_BORDER_THICKNESS, defaultThickness)
             .coerceIn(MIN_FIRST_RESULT_BORDER_THICKNESS, MAX_FIRST_RESULT_BORDER_THICKNESS)
     }
@@ -345,7 +379,11 @@ class ProviderSettingsRepository(
     private fun loadFirstResultColorAnimationEnabled(): Boolean =
         preferences.getBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, false)
 
-    private fun loadAlwaysShowEnterBadge(): Boolean = preferences.getBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, false)
+    private fun loadAlwaysShowEnterBadge(): Boolean =
+        preferences.getBoolean(
+            KEY_ALWAYS_SHOW_ENTER_BADGE,
+            false,
+        )
 
     private fun loadHasUsedEnter(): Boolean = preferences.getBoolean(KEY_HAS_USED_ENTER, false)
 
@@ -419,7 +457,6 @@ class ProviderSettingsRepository(
     private fun loadCheckPrereleaseBuilds(): Boolean =
         preferences.getBoolean(KEY_CHECK_PRERELEASE_BUILDS, DEFAULT_CHECK_PRERELEASE_BUILDS)
 }
-
 
 data class WebSearchSettings(
     val defaultSiteId: String,
@@ -500,7 +537,11 @@ data class WebSearchSettings(
                 Quicklink.fromJson(quicklinksArray.optJSONObject(i))?.let { quicklinks.add(it) }
             }
 
-            return WebSearchSettings(defaultSiteId = defaultId, sites = sites, quicklinks = quicklinks).normalized()
+            return WebSearchSettings(
+                defaultSiteId = defaultId,
+                sites = sites,
+                quicklinks = quicklinks,
+            ).normalized()
         }
     }
 
@@ -510,7 +551,10 @@ data class WebSearchSettings(
         if (sites.isEmpty()) return this
 
         val existingDefault = sites.firstOrNull { it.id == defaultSiteId }
-        val resolvedDefaultId = existingDefault?.id ?: sites.firstOrNull { it.enabled }?.id ?: sites.first().id
+        val resolvedDefaultId =
+            existingDefault?.id ?: sites.firstOrNull {
+                it.enabled
+            }?.id ?: sites.first().id
         val normalizedSites =
             sites.map { site ->
                 if (site.id == resolvedDefaultId) {
@@ -583,7 +627,12 @@ data class WebSearchSite(
             val name = json.opt("displayName") as? String ?: return null
             val template = json.opt("urlTemplate") as? String ?: return null
             val enabled = json.optBoolean("enabled", true)
-            return WebSearchSite(id = id, displayName = name, urlTemplate = template, enabled = enabled)
+            return WebSearchSite(
+                id = id,
+                displayName = name,
+                urlTemplate = template,
+                enabled = enabled,
+            )
         }
     }
 }
@@ -660,7 +709,9 @@ data class TextUtilitiesSettings(
                 buildSet {
                     if (disabledUtilitiesArray != null) {
                         for (i in 0 until disabledUtilitiesArray.length()) {
-                            disabledUtilitiesArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                            disabledUtilitiesArray.optString(
+                                i,
+                            )?.takeIf { it.isNotBlank() }?.let { add(it) }
                         }
                     }
                 }
@@ -677,7 +728,9 @@ data class TextUtilitiesSettings(
                                 val keywords =
                                     buildSet {
                                         for (i in 0 until keywordsArray.length()) {
-                                            keywordsArray.optString(i)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                                            keywordsArray.optString(
+                                                i,
+                                            )?.takeIf { it.isNotBlank() }?.let { add(it) }
                                         }
                                     }
                                 if (keywords.isNotEmpty()) put(utilityId, keywords)
@@ -846,7 +899,11 @@ data class FileSearchSettings(
             val sortRaw = json.optString("sortMode", FileSearchSortMode.NAME.name)
             val sortMode = FileSearchSortMode.fromStorageValue(sortRaw)
             val sortAscending = json.optBoolean("sortAscending", true)
-            val syncIntervalMinutes = json.optInt("syncIntervalMinutes", DEFAULT_SYNC_INTERVAL_MINUTES)
+            val syncIntervalMinutes =
+                json.optInt(
+                    "syncIntervalMinutes",
+                    DEFAULT_SYNC_INTERVAL_MINUTES,
+                )
             val syncOnAppOpen = json.optBoolean("syncOnAppOpen", DEFAULT_SYNC_ON_APP_OPEN)
             val lastSyncTimestamp = json.optLong("lastSyncTimestamp", 0L)
             return FileSearchSettings(
@@ -906,7 +963,10 @@ data class FileSearchRoot(
         }
 
         fun downloadsRoot(context: Context): FileSearchRoot? {
-            val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val directory =
+                Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS,
+                )
             val uri = directory?.let { Uri.fromFile(it) } ?: return null
             val parentName = directory.parentFile?.name
             return FileSearchRoot(
@@ -1024,6 +1084,7 @@ data class AppSearchSettings(
 
     companion object {
         const val PROVIDER_ID = "app-list"
+
         fun default(): AppSearchSettings =
             AppSearchSettings(
                 includePackageName = false,
@@ -1051,15 +1112,27 @@ data class AppSearchSettings(
             return AppSearchSettings(
                 includePackageName = json.optBoolean("includePackageName", false),
                 aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true),
-                appListEnabled = json.optBoolean("appListEnabled", json.optBoolean("showRecentApps", false)),
+                appListEnabled =
+                    json.optBoolean(
+                        "appListEnabled",
+                        json.optBoolean("showRecentApps", false),
+                    ),
                 appListType = AppListType.fromStorageValue(json.optString("appListType")),
                 reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
                 reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
                 bothLayoutPinnedOnLeft = json.optBoolean("bothLayoutPinnedOnLeft", false),
-                filterPinnedFromRecentsInBoth = json.optBoolean("filterPinnedFromRecentsInBoth", true),
+                filterPinnedFromRecentsInBoth =
+                    json.optBoolean(
+                        "filterPinnedFromRecentsInBoth",
+                        true,
+                    ),
                 centerAppList = json.optBoolean("centerAppList", false),
                 pinnedApps = pinnedApps,
-                hideAppListWhenResultsVisible = json.optBoolean("hideAppListWhenResultsVisible", true),
+                hideAppListWhenResultsVisible =
+                    json.optBoolean(
+                        "hideAppListWhenResultsVisible",
+                        true,
+                    ),
             )
         }
     }
@@ -1090,7 +1163,10 @@ data class SystemSettingsSettings(
     companion object {
         const val PROVIDER_ID = "system-settings"
 
-        fun default(): SystemSettingsSettings = SystemSettingsSettings(developerToggleEnabled = false)
+        fun default(): SystemSettingsSettings =
+            SystemSettingsSettings(
+                developerToggleEnabled = false,
+            )
 
         fun fromJson(json: JSONObject?): SystemSettingsSettings? {
             if (json == null) return null

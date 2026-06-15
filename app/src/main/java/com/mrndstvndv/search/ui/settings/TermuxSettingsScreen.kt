@@ -48,9 +48,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.SettingsRepository
@@ -333,7 +333,14 @@ private fun TermuxPermissionStatusCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (hasPermission) stringResource(R.string.permission_granted) else stringResource(R.string.permission_required),
+                    text =
+                        if (hasPermission) {
+                            stringResource(
+                                R.string.permission_granted,
+                            )
+                        } else {
+                            stringResource(R.string.permission_required)
+                        },
                     style = MaterialTheme.typography.titleSmall,
                     color =
                         if (hasPermission) {
@@ -746,7 +753,16 @@ private fun TermuxCommandDialogContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Text(
-        text = if (previewArgs.isBlank()) executablePath else stringResource(R.string.termux_command_preview, executablePath, previewArgs),
+        text =
+            if (previewArgs.isBlank()) {
+                executablePath
+            } else {
+                stringResource(
+                    R.string.termux_command_preview,
+                    executablePath,
+                    previewArgs,
+                )
+            },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 2,

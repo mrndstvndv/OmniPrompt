@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class MotionPreferencesTest {
-
     @Test
     fun `default preferences enable animations`() {
         val preferences = MotionPreferences.Default

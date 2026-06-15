@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,8 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.dp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
@@ -91,7 +90,11 @@ fun ProviderListScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.settings_providers), subtitle = stringResource(R.string.settings_providers_subtitle), onBack = onBack)
+                SettingsHeader(
+                    title = stringResource(R.string.settings_providers),
+                    subtitle = stringResource(R.string.settings_providers_subtitle),
+                    onBack = onBack,
+                )
             }
 
             item {

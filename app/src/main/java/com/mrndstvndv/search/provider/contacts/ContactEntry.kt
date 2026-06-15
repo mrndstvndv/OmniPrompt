@@ -12,7 +12,7 @@ data class ContactEntry(
     val displayName: String,
     val phoneNumbers: List<PhoneNumber>,
     val photoUri: String?,
-    val isStarred: Boolean
+    val isStarred: Boolean,
 )
 
 /**
@@ -21,7 +21,7 @@ data class ContactEntry(
 data class PhoneNumber(
     val number: String,
     val type: Int,
-    val label: String?
+    val label: String?,
 ) {
     /**
      * Returns the platform-localized label for this phone number type.
@@ -42,5 +42,5 @@ data class SimNumber(
     val number: String,
     val displayName: String,
     val slotIndex: Int,
-    val subscriptionId: Int
+    val subscriptionId: Int,
 )

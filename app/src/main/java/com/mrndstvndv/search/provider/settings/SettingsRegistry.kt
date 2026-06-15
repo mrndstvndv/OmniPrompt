@@ -54,16 +54,20 @@ object SettingsRegistry {
         return results
     }
 
-    fun getProviderJson(json: JSONObject, providerId: String): JSONObject? {
+    fun getProviderJson(
+        json: JSONObject,
+        providerId: String,
+    ): JSONObject? {
         json.optJSONObject(providerId)?.let { return it }
-        val legacyKey = when (providerId) {
-            "web-search" -> "webSearch"
-            "app-list" -> "appSearch"
-            "text-utilities" -> "textUtilities"
-            "file-search" -> "fileSearch"
-            "system-settings" -> "systemSettings"
-            else -> providerId
-        }
+        val legacyKey =
+            when (providerId) {
+                "web-search" -> "webSearch"
+                "app-list" -> "appSearch"
+                "text-utilities" -> "textUtilities"
+                "file-search" -> "fileSearch"
+                "system-settings" -> "systemSettings"
+                else -> providerId
+            }
         return json.optJSONObject(legacyKey)
     }
 

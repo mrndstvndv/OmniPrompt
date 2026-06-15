@@ -7,21 +7,20 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mrndstvndv.search.R
-import com.mrndstvndv.search.provider.settings.FileSearchRoot
-import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
-import com.mrndstvndv.search.provider.settings.FileSearchScanState
-import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.files.index.FileSearchDatabase
 import com.mrndstvndv.search.provider.files.index.IndexedDocumentDao
 import com.mrndstvndv.search.provider.files.index.IndexedDocumentEntity
+import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
+import com.mrndstvndv.search.provider.settings.FileSearchScanState
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
  * A worker that performs incremental file synchronization.
- * 
+ *
  * Instead of re-indexing everything, this worker:
  * 1. Loads all indexed entries for each enabled root from Room
  * 2. Traverses the SAF document tree
@@ -30,60 +29,68 @@ import java.io.File
  */
 class IncrementalFileSyncWorker(
     appContext: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
+    override suspend fun doWork(): Result =
+        withContext(Dispatchers.IO) {
+            val dao = FileSearchDatabase.get(applicationContext).indexedDocumentDao()
+            val settingsRepository = createFileSearchSettingsRepository(applicationContext)
+            val settings = settingsRepository.value
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val dao = FileSearchDatabase.get(applicationContext).indexedDocumentDao()
-        val settingsRepository = createFileSearchSettingsRepository(applicationContext)
-        val settings = settingsRepository.value
+            // Get all enabled roots (including Downloads if enabled)
+            val roots = getEnabledRoots(settings)
 
-        // Get all enabled roots (including Downloads if enabled)
-        val roots = getEnabledRoots(settings)
-
-        if (roots.isEmpty()) {
-            return@withContext Result.success()
-        }
-
-        try {
-            roots.forEach { root ->
-                if (isStopped) return@withContext Result.retry()
-                val itemCount = syncRoot(root, dao)
-
-                // Update scan metadata for this root to refresh "Updated xx ago"
-                val currentMetadata = settingsRepository.value.scanMetadata.toMutableMap()
-                currentMetadata[root.id] = FileSearchScanMetadata(
-                    state = FileSearchScanState.SUCCESS,
-                    indexedItemCount = itemCount,
-                    updatedAtMillis = System.currentTimeMillis(),
-                    errorMessage = null
-                )
-                settingsRepository.update { it.copy(scanMetadata = currentMetadata) }
+            if (roots.isEmpty()) {
+                return@withContext Result.success()
             }
 
-            // Update last sync timestamp
-            settingsRepository.update { it.copy(lastSyncTimestamp = System.currentTimeMillis()) }
+            try {
+                roots.forEach { root ->
+                    if (isStopped) return@withContext Result.retry()
+                    val itemCount = syncRoot(root, dao)
 
-            Result.success()
-        } catch (e: Exception) {
-            Result.failure()
+                    // Update scan metadata for this root to refresh "Updated xx ago"
+                    val currentMetadata = settingsRepository.value.scanMetadata.toMutableMap()
+                    currentMetadata[root.id] =
+                        FileSearchScanMetadata(
+                            state = FileSearchScanState.SUCCESS,
+                            indexedItemCount = itemCount,
+                            updatedAtMillis = System.currentTimeMillis(),
+                            errorMessage = null,
+                        )
+                    settingsRepository.update { it.copy(scanMetadata = currentMetadata) }
+                }
+
+                // Update last sync timestamp
+                settingsRepository.update {
+                    it.copy(
+                        lastSyncTimestamp = System.currentTimeMillis(),
+                    )
+                }
+
+                Result.success()
+            } catch (e: Exception) {
+                Result.failure()
+            }
         }
-    }
 
     private fun getEnabledRoots(settings: FileSearchSettings): List<SyncableRoot> {
         val roots = mutableListOf<SyncableRoot>()
 
         // Add Downloads folder if enabled
         if (settings.includeDownloads) {
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val downloadsDir =
+                Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS,
+                )
             if (downloadsDir != null && downloadsDir.exists()) {
                 roots.add(
                     SyncableRoot(
                         id = FileSearchSettings.DOWNLOADS_ROOT_ID,
                         displayName = applicationContext.getString(R.string.file_search_downloads),
                         uri = Uri.fromFile(downloadsDir),
-                        isFileUri = true
-                    )
+                        isFileUri = true,
+                    ),
                 )
             }
         }
@@ -95,15 +102,18 @@ class IncrementalFileSyncWorker(
                     id = root.id,
                     displayName = root.displayName,
                     uri = root.uri,
-                    isFileUri = root.uri.scheme == "file"
-                )
+                    isFileUri = root.uri.scheme == "file",
+                ),
             )
         }
 
         return roots
     }
 
-    private suspend fun syncRoot(root: SyncableRoot, dao: IndexedDocumentDao): Int {
+    private suspend fun syncRoot(
+        root: SyncableRoot,
+        dao: IndexedDocumentDao,
+    ): Int {
         val docFile = resolveDocumentFile(root) ?: return 0
 
         // Get current indexed state
@@ -137,7 +147,9 @@ class IncrementalFileSyncWorker(
             val file = root.uri.path?.let { File(it) }
             if (file != null && file.exists()) {
                 DocumentFile.fromFile(file)
-            } else null
+            } else {
+                null
+            }
         } else {
             DocumentFile.fromTreeUri(applicationContext, root.uri)
         }
@@ -150,7 +162,7 @@ class IncrementalFileSyncWorker(
         indexed: Map<String, IndexedDocumentEntity>,
         seenUris: MutableSet<String>,
         batch: MutableList<IndexedDocumentEntity>,
-        dao: IndexedDocumentDao
+        dao: IndexedDocumentDao,
     ) {
         if (isStopped) return
 
@@ -166,18 +178,19 @@ class IncrementalFileSyncWorker(
 
             // Check if new or modified
             if (existing == null || existing.lastModified != child.lastModified()) {
-                batch += IndexedDocumentEntity(
-                    id = existing?.id ?: 0, // Use existing ID for updates
-                    rootId = root.id,
-                    rootDisplayName = root.displayName,
-                    documentUri = uri,
-                    relativePath = relativePath,
-                    displayName = name,
-                    mimeType = child.type,
-                    sizeBytes = child.length(),
-                    lastModified = child.lastModified(),
-                    isDirectory = child.isDirectory
-                )
+                batch +=
+                    IndexedDocumentEntity(
+                        id = existing?.id ?: 0, // Use existing ID for updates
+                        rootId = root.id,
+                        rootDisplayName = root.displayName,
+                        documentUri = uri,
+                        relativePath = relativePath,
+                        displayName = name,
+                        mimeType = child.type,
+                        sizeBytes = child.length(),
+                        lastModified = child.lastModified(),
+                        isDirectory = child.isDirectory,
+                    )
 
                 if (batch.size >= BATCH_SIZE) {
                     dao.upsertAll(batch.toList())
@@ -195,7 +208,7 @@ class IncrementalFileSyncWorker(
         val id: String,
         val displayName: String,
         val uri: Uri,
-        val isFileUri: Boolean
+        val isFileUri: Boolean,
     )
 
     companion object {

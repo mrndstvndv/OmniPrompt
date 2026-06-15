@@ -1,7 +1,6 @@
 package com.mrndstvndv.search.provider.web
 
 import android.content.Context
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 
@@ -21,6 +20,6 @@ fun createWebSearchSettingsRepository(context: Context): SettingsRepository<WebS
                 null
             }
         },
-        serializer = { settings -> settings.toJson().toString() }
+        serializer = { settings -> settings.toJson().toString() },
     )
 }

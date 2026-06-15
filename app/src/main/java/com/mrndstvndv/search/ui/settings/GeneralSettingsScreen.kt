@@ -13,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,25 +42,24 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
-import com.mrndstvndv.search.util.GitHubUpdateChecker
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
@@ -78,6 +75,7 @@ import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import com.mrndstvndv.search.ui.components.settings.SettingsSliderRow
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
+import com.mrndstvndv.search.util.GitHubUpdateChecker
 import kotlin.math.roundToInt
 
 @Composable
@@ -121,7 +119,11 @@ fun GeneralSettingsScreen(
     val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
 
     LaunchedEffect(Unit) {
-        val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
+        val result =
+            GitHubUpdateChecker.checkForUpdates(
+                BuildConfig.VERSION_NAME,
+                checkPrereleaseBuilds,
+            )
         if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
             settingsRepository.setLatestUpdate(result.update)
         } else if (result is GitHubUpdateChecker.CheckResult.UpToDate) {
@@ -150,7 +152,10 @@ fun GeneralSettingsScreen(
 
             if (!isDefaultAssistant) {
                 item {
-                    CompactAssistantCard(appName = appName, onRequestSetDefaultAssistant = onRequestSetDefaultAssistant)
+                    CompactAssistantCard(
+                        appName = appName,
+                        onRequestSetDefaultAssistant = onRequestSetDefaultAssistant,
+                    )
                 }
             }
 
@@ -273,7 +278,11 @@ fun ProvidersSettingsScreen(
             if (isGranted) {
                 settingsRepository.setProviderEnabled("contacts", true)
             } else {
-                Toast.makeText(context, context.getString(R.string.permission_contacts_required), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.permission_contacts_required),
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
 
@@ -298,7 +307,10 @@ fun ProvidersSettingsScreen(
     ) {
         if (!isDefaultAssistant) {
             item {
-                DefaultAssistantCard(appName = appName, onRequestSetDefaultAssistant = onRequestSetDefaultAssistant)
+                DefaultAssistantCard(
+                    appName = appName,
+                    onRequestSetDefaultAssistant = onRequestSetDefaultAssistant,
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -380,7 +392,14 @@ fun ProvidersSettingsScreen(
                 ProviderRow(
                     id = "termux",
                     name = stringResource(R.string.provider_termux),
-                    description = if (isTermuxInstalled) stringResource(R.string.provider_desc_termux_installed) else stringResource(R.string.provider_desc_termux_not_installed),
+                    description =
+                        if (isTermuxInstalled) {
+                            stringResource(
+                                R.string.provider_desc_termux_installed,
+                            )
+                        } else {
+                            stringResource(R.string.provider_desc_termux_not_installed)
+                        },
                     enabled = if (isTermuxInstalled) enabledProviders["termux"] ?: true else false,
                     onToggle = { enabled ->
                         if (isTermuxInstalled) {
@@ -457,7 +476,10 @@ fun AppearanceSettingsScreen(
                 SettingsGroup {
                     SettingsSwitch(
                         title = stringResource(R.string.appearance_highlight_first_result),
-                        subtitle = stringResource(R.string.appearance_highlight_first_result_subtitle),
+                        subtitle =
+                            stringResource(
+                                R.string.appearance_highlight_first_result_subtitle,
+                            ),
                         checked = firstResultHighlightEnabled,
                         onCheckedChange = { settingsRepository.setFirstResultHighlightEnabled(it) },
                     )
@@ -472,37 +494,64 @@ fun AppearanceSettingsScreen(
                     SettingsDivider()
                     Box(modifier = Modifier.alpha(highlightControlsAlpha)) {
                         SettingsSliderRow(
-                            title = stringResource(R.string.appearance_first_result_border_thickness),
-                            subtitle = stringResource(R.string.appearance_first_result_border_thickness_subtitle),
+                            title =
+                                stringResource(
+                                    R.string.appearance_first_result_border_thickness,
+                                ),
+                            subtitle =
+                                stringResource(
+                                    R.string.appearance_first_result_border_thickness_subtitle,
+                                ),
                             value = firstResultBorderThickness,
                             onValueChange = settingsRepository::setFirstResultBorderThickness,
                             valueRange = 0.5f..3f,
                             steps = 9,
-                            valueText = stringResource(R.string.value_dp, firstResultBorderThickness),
+                            valueText =
+                                stringResource(
+                                    R.string.value_dp,
+                                    firstResultBorderThickness,
+                                ),
                             enabled = firstResultHighlightEnabled,
                         )
                     }
                     SettingsDivider()
                     SettingsSwitch(
                         title = stringResource(R.string.appearance_animate_first_result_changes),
-                        subtitle = stringResource(R.string.appearance_animate_first_result_changes_subtitle),
+                        subtitle =
+                            stringResource(
+                                R.string.appearance_animate_first_result_changes_subtitle,
+                            ),
                         checked = firstResultChangeAnimationEnabled,
-                        onCheckedChange = { settingsRepository.setFirstResultChangeAnimationEnabled(it) },
+                        onCheckedChange = {
+                            settingsRepository.setFirstResultChangeAnimationEnabled(
+                                it,
+                            )
+                        },
                     )
                     SettingsDivider()
                     Box(modifier = Modifier.alpha(colorPulseControlsAlpha)) {
                         SettingsSwitch(
                             title = stringResource(R.string.appearance_animate_first_result_color),
-                            subtitle = stringResource(R.string.appearance_animate_first_result_color_subtitle),
+                            subtitle =
+                                stringResource(
+                                    R.string.appearance_animate_first_result_color_subtitle,
+                                ),
                             checked = firstResultColorAnimationEnabled,
                             enabled = firstResultHighlightEnabled && firstResultChangeAnimationEnabled,
-                            onCheckedChange = { settingsRepository.setFirstResultColorAnimationEnabled(it) },
+                            onCheckedChange = {
+                                settingsRepository.setFirstResultColorAnimationEnabled(
+                                    it,
+                                )
+                            },
                         )
                     }
                     SettingsDivider()
                     SettingsSwitch(
                         title = stringResource(R.string.appearance_always_show_enter_badge),
-                        subtitle = stringResource(R.string.appearance_always_show_enter_badge_subtitle),
+                        subtitle =
+                            stringResource(
+                                R.string.appearance_always_show_enter_badge_subtitle,
+                            ),
                         checked = alwaysShowEnterBadge,
                         onCheckedChange = { settingsRepository.setAlwaysShowEnterBadge(it) },
                     )
@@ -519,7 +568,11 @@ fun AppearanceSettingsScreen(
                     SettingsSliderRow(
                         title = stringResource(R.string.appearance_background_opacity),
                         subtitle = stringResource(R.string.appearance_background_opacity_subtitle),
-                        valueText = stringResource(R.string.appearance_opacity_value, (backgroundOpacity * 100).roundToInt()),
+                        valueText =
+                            stringResource(
+                                R.string.appearance_opacity_value,
+                                (backgroundOpacity * 100).roundToInt(),
+                            ),
                         value = backgroundOpacity,
                         onValueChange = { settingsRepository.setBackgroundOpacity(it) },
                         steps = 19,
@@ -528,7 +581,11 @@ fun AppearanceSettingsScreen(
                     SettingsSliderRow(
                         title = stringResource(R.string.appearance_background_blur),
                         subtitle = stringResource(R.string.appearance_background_blur_subtitle),
-                        valueText = stringResource(R.string.appearance_opacity_value, (backgroundBlurStrength * 100).roundToInt()),
+                        valueText =
+                            stringResource(
+                                R.string.appearance_opacity_value,
+                                (backgroundBlurStrength * 100).roundToInt(),
+                            ),
                         value = backgroundBlurStrength,
                         onValueChange = { settingsRepository.setBackgroundBlurStrength(it) },
                         steps = 19,
@@ -571,11 +628,12 @@ private fun FirstResultHighlightModeChooser(
     onModeSelected: (FirstResultHighlightMode) -> Unit,
 ) {
     val context = LocalContext.current
-    val options = listOf(
-        FirstResultHighlightMode.SUBTLE,
-        FirstResultHighlightMode.BALANCED,
-        FirstResultHighlightMode.STRONG,
-    )
+    val options =
+        listOf(
+            FirstResultHighlightMode.SUBTLE,
+            FirstResultHighlightMode.BALANCED,
+            FirstResultHighlightMode.STRONG,
+        )
 
     Column(
         modifier =
@@ -614,7 +672,8 @@ private fun SettingsIconPositionChooser(
     onPositionSelected: (SettingsIconPosition) -> Unit,
 ) {
     val context = LocalContext.current
-    val options = listOf(SettingsIconPosition.BELOW, SettingsIconPosition.INSIDE, SettingsIconPosition.OFF)
+    val options =
+        listOf(SettingsIconPosition.BELOW, SettingsIconPosition.INSIDE, SettingsIconPosition.OFF)
 
     Column(
         modifier =
@@ -671,9 +730,17 @@ fun BehaviorSettingsScreen(
                 SettingsSliderRow(
                     title = stringResource(R.string.behavior_activity_indicator_delay),
                     subtitle = stringResource(R.string.behavior_activity_indicator_delay_subtitle),
-                    valueText = stringResource(R.string.value_milliseconds, activityIndicatorDelayMs),
+                    valueText =
+                        stringResource(
+                            R.string.value_milliseconds,
+                            activityIndicatorDelayMs,
+                        ),
                     value = activityIndicatorDelayMs.toFloat(),
-                    onValueChange = { settingsRepository.setActivityIndicatorDelayMs(it.roundToInt()) },
+                    onValueChange = {
+                        settingsRepository.setActivityIndicatorDelayMs(
+                            it.roundToInt(),
+                        )
+                    },
                     valueRange = 0f..1000f,
                     steps = 19,
                 )
@@ -817,7 +884,10 @@ private fun ProviderRow(
                         Modifier
                             .width(1.dp)
                             .height(28.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant, shape = MaterialTheme.shapes.extraSmall),
+                            .background(
+                                MaterialTheme.colorScheme.outlineVariant,
+                                shape = MaterialTheme.shapes.extraSmall,
+                            ),
                 )
             }
             Switch(

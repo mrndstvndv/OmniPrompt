@@ -9,13 +9,14 @@ import java.util.UUID
  * Single extra key/value pair with $query replacement support.
  */
 data class IntentExtra(
-    val key: String,           // e.g., "android.intent.extra.STREAM"
-    val value: String,         // e.g., "$query" or "fixed value"
+    val key: String, // e.g., "android.intent.extra.STREAM"
+    val value: String, // e.g., "$query" or "fixed value"
 ) {
-    fun toJson(): JSONObject = JSONObject().apply {
-        put("key", key)
-        put("value", value)
-    }
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("key", key)
+            put("value", value)
+        }
 
     companion object {
         fun fromJson(json: JSONObject): IntentExtra? {
@@ -36,16 +37,14 @@ data class IntentExtra(
  */
 data class IntentConfig(
     val id: String = UUID.randomUUID().toString(),
-    val title: String,                      // e.g., "Instagram"
-    val packageName: String,                 // Target app
+    val title: String, // e.g., "Instagram"
+    val packageName: String, // Target app
     val action: String = Intent.ACTION_SEND, // SEND, VIEW, SENDTO, etc.
-    val type: String? = null,                // MIME type (null = any/not set)
-    val className: String? = null,           // Specific activity class name to launch
-    val customIconPath: String? = null,      // Path to custom imported icon
-    
+    val type: String? = null, // MIME type (null = any/not set)
+    val className: String? = null, // Specific activity class name to launch
+    val customIconPath: String? = null, // Path to custom imported icon
     // Payload customization
-    val payloadTemplate: String? = null,     // "yabai $query" or null for raw
-    
+    val payloadTemplate: String? = null, // "yabai $query" or null for raw
     // Custom extras (multiple supported)
     val extras: List<IntentExtra> = emptyList(),
 ) {
@@ -62,11 +61,14 @@ data class IntentConfig(
         fun fromJson(json: JSONObject): IntentConfig? {
             return try {
                 val extrasArray = json.optJSONArray("extras") ?: JSONArray()
-                val extras = buildList {
-                    for (i in 0 until extrasArray.length()) {
-                        extrasArray.optJSONObject(i)?.let { IntentExtra.fromJson(it) }?.let { add(it) }
+                val extras =
+                    buildList {
+                        for (i in 0 until extrasArray.length()) {
+                            extrasArray.optJSONObject(
+                                i,
+                            )?.let { IntentExtra.fromJson(it) }?.let { add(it) }
+                        }
                     }
-                }
 
                 IntentConfig(
                     id = json.optString("id", UUID.randomUUID().toString()),
@@ -77,7 +79,7 @@ data class IntentConfig(
                     className = json.optString("className").takeIf { it.isNotEmpty() },
                     customIconPath = json.optString("customIconPath").takeIf { it.isNotEmpty() },
                     payloadTemplate = json.optString("payloadTemplate").takeIf { it.isNotEmpty() },
-                    extras = extras
+                    extras = extras,
                 )
             } catch (e: Exception) {
                 null
@@ -85,20 +87,19 @@ data class IntentConfig(
         }
     }
 
-    fun toJson(): JSONObject = JSONObject().apply {
-        put("id", id)
-        put("title", title)
-        put("packageName", packageName)
-        put("action", action)
-        type?.let { put("type", it) }
-        className?.let { put("className", it) }
-        customIconPath?.let { put("customIconPath", it) }
-        payloadTemplate?.let { put("payloadTemplate", it) }
-        
-        val extrasArray = JSONArray()
-        extras.forEach { extrasArray.put(it.toJson()) }
-        put("extras", extrasArray)
-    }
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("id", id)
+            put("title", title)
+            put("packageName", packageName)
+            put("action", action)
+            type?.let { put("type", it) }
+            className?.let { put("className", it) }
+            customIconPath?.let { put("customIconPath", it) }
+            payloadTemplate?.let { put("payloadTemplate", it) }
+
+            val extrasArray = JSONArray()
+            extras.forEach { extrasArray.put(it.toJson()) }
+            put("extras", extrasArray)
+        }
 }
-
-

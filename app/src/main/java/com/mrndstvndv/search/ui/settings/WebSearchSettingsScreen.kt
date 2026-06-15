@@ -8,12 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,10 +20,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -34,13 +29,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,11 +46,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.Quicklink
@@ -154,7 +145,12 @@ fun WebSearchSettingsScreen(
             onError(context.getString(R.string.web_search_duplicate_site_name))
             return false
         }
-        val newSite = WebSearchSite(id = candidateId, displayName = trimmedName, urlTemplate = trimmedTemplate)
+        val newSite =
+            WebSearchSite(
+                id = candidateId,
+                displayName = trimmedName,
+                urlTemplate = trimmedTemplate,
+            )
         sites = sites + newSite
         saveSettings()
         return true
@@ -343,7 +339,11 @@ fun WebSearchSettingsScreen(
                         )
                         TextButton(
                             onClick = { isAddDialogOpen = true },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier =
+                                Modifier.fillMaxWidth().padding(
+                                    horizontal = 8.dp,
+                                    vertical = 4.dp,
+                                ),
                         ) {
                             Text(text = stringResource(R.string.web_search_add_search_engine))
                         }
@@ -575,7 +575,11 @@ private fun QuicklinkAddDialog(
                     }
                 },
                 label = { Text(stringResource(R.string.web_search_quicklink_label_url)) },
-                placeholder = { Text(stringResource(R.string.web_search_quicklink_url_placeholder)) },
+                placeholder = {
+                    Text(
+                        stringResource(R.string.web_search_quicklink_url_placeholder),
+                    )
+                },
                 singleLine = true,
                 isError = url.isNotBlank() && !isValidUrl,
                 supportingText =
@@ -625,12 +629,26 @@ private fun QuicklinkAddDialog(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_favicon_loaded) else stringResource(R.string.web_search_no_favicon),
+                        text =
+                            if (fetchedFavicon != null) {
+                                stringResource(
+                                    R.string.web_search_favicon_loaded,
+                                )
+                            } else {
+                                stringResource(R.string.web_search_no_favicon)
+                            },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_tap_to_refresh) else stringResource(R.string.web_search_tap_to_fetch),
+                        text =
+                            if (fetchedFavicon != null) {
+                                stringResource(
+                                    R.string.web_search_tap_to_refresh,
+                                )
+                            } else {
+                                stringResource(R.string.web_search_tap_to_fetch)
+                            },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -654,7 +672,15 @@ private fun QuicklinkAddDialog(
                         onClick = { fetchFavicon() },
                         enabled = canFetchFavicon,
                     ) {
-                        Text(if (fetchedFavicon != null) stringResource(R.string.web_search_refresh) else stringResource(R.string.web_search_fetch))
+                        Text(
+                            if (fetchedFavicon != null) {
+                                stringResource(
+                                    R.string.web_search_refresh,
+                                )
+                            } else {
+                                stringResource(R.string.web_search_fetch)
+                            },
+                        )
                     }
                 }
             }
@@ -889,12 +915,26 @@ private fun QuicklinkEditDialog(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_favicon_loaded) else stringResource(R.string.web_search_no_favicon),
+                        text =
+                            if (fetchedFavicon != null) {
+                                stringResource(
+                                    R.string.web_search_favicon_loaded,
+                                )
+                            } else {
+                                stringResource(R.string.web_search_no_favicon)
+                            },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = if (fetchedFavicon != null) stringResource(R.string.web_search_tap_to_refresh) else stringResource(R.string.web_search_tap_to_fetch),
+                        text =
+                            if (fetchedFavicon != null) {
+                                stringResource(
+                                    R.string.web_search_tap_to_refresh,
+                                )
+                            } else {
+                                stringResource(R.string.web_search_tap_to_fetch)
+                            },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -918,7 +958,15 @@ private fun QuicklinkEditDialog(
                         onClick = { fetchFavicon() },
                         enabled = canFetchFavicon,
                     ) {
-                        Text(if (fetchedFavicon != null) stringResource(R.string.web_search_refresh) else stringResource(R.string.web_search_fetch))
+                        Text(
+                            if (fetchedFavicon != null) {
+                                stringResource(
+                                    R.string.web_search_refresh,
+                                )
+                            } else {
+                                stringResource(R.string.web_search_fetch)
+                            },
+                        )
                     }
                 }
             }
@@ -1028,7 +1076,12 @@ private fun WebSearchSiteEditDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onSave(site.copy(displayName = displayName.trim(), urlTemplate = urlTemplate.trim()))
+                            onSave(
+                                site.copy(
+                                    displayName = displayName.trim(),
+                                    urlTemplate = urlTemplate.trim(),
+                                ),
+                            )
                         },
                         enabled = isValid,
                     ) {
@@ -1056,7 +1109,11 @@ private fun WebSearchSiteEditDialog(
                 value = urlTemplate,
                 onValueChange = { urlTemplate = it },
                 label = { Text(stringResource(R.string.web_search_label_url_template)) },
-                supportingText = { Text(text = stringResource(R.string.web_search_include_placeholder)) },
+                supportingText = {
+                    Text(
+                        text = stringResource(R.string.web_search_include_placeholder),
+                    )
+                },
                 isError = !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
                 colors =
@@ -1132,7 +1189,11 @@ private fun WebSearchSiteAddDialog(
                 value = urlTemplate,
                 onValueChange = { urlTemplate = it },
                 label = { Text(stringResource(R.string.web_search_label_url_template)) },
-                supportingText = { Text(text = stringResource(R.string.web_search_include_placeholder)) },
+                supportingText = {
+                    Text(
+                        text = stringResource(R.string.web_search_include_placeholder),
+                    )
+                },
                 isError = urlTemplate.isNotBlank() && !urlTemplate.contains(placeholder),
                 modifier = Modifier.fillMaxWidth(),
                 colors =

@@ -23,16 +23,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -57,13 +53,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.mrndstvndv.search.R
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentApp
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
@@ -125,7 +121,10 @@ fun RecentAppsList(
                     repository.getRecentApps(limit = fetchLimit)
                 }.collectAsState(initial = emptyList())
 
-                val filteredApps = recentApps.filterNot { app -> app.packageName in excludePackages }.take(maxItems)
+                val filteredApps =
+                    recentApps.filterNot { app -> app.packageName in excludePackages }.take(
+                        maxItems,
+                    )
                 val displayApps = if (isReversed) filteredApps else filteredApps.asReversed()
                 val scrollState = rememberScrollState()
 
@@ -282,7 +281,12 @@ private fun Modifier.edgeFade(
         val (startX, endX, colors) =
             when (edge) {
                 FadeEdge.START -> Triple(0f, fadeWidthPx, listOf(Color.Transparent, Color.Black))
-                FadeEdge.END -> Triple(size.width - fadeWidthPx, size.width, listOf(Color.Black, Color.Transparent))
+                FadeEdge.END ->
+                    Triple(
+                        size.width - fadeWidthPx,
+                        size.width,
+                        listOf(Color.Black, Color.Transparent),
+                    )
             }
         drawRect(
             brush =
@@ -340,19 +344,23 @@ fun AppListContainer(
                 )
 
                 Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onSettingsClick,
-                            onLongClick = onSettingsLongClick,
-                        ),
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .combinedClickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onSettingsClick,
+                                onLongClick = onSettingsLongClick,
+                            ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Settings,
-                        contentDescription = stringResource(R.string.cd_settings_open_android_settings),
+                        contentDescription =
+                            stringResource(
+                                R.string.cd_settings_open_android_settings,
+                            ),
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
@@ -386,7 +394,8 @@ fun AppListSection(
         }
 
         AppListType.PINNED -> {
-            val pinnedAppsFlow = remember(pinnedAppsRepository) { pinnedAppsRepository.getPinnedApps() }
+            val pinnedAppsFlow =
+                remember(pinnedAppsRepository) { pinnedAppsRepository.getPinnedApps() }
             val pinnedApps by pinnedAppsFlow.collectAsState(initial = emptyList())
             if (pinnedApps.isNotEmpty()) {
                 BoxWithConstraints(modifier = modifier) {
@@ -410,7 +419,8 @@ fun AppListSection(
         }
 
         AppListType.BOTH -> {
-            val pinnedAppsFlow = remember(pinnedAppsRepository) { pinnedAppsRepository.getPinnedApps() }
+            val pinnedAppsFlow =
+                remember(pinnedAppsRepository) { pinnedAppsRepository.getPinnedApps() }
             val pinnedApps by pinnedAppsFlow.collectAsState(initial = emptyList())
             val excludePackages =
                 if (filterPinnedFromRecentsInBoth) {
@@ -446,7 +456,10 @@ fun AppListSection(
                         repository = recentAppsRepository,
                         isReversed = isReversedRecent,
                         shouldCenter = false,
-                        modifier = Modifier.weight(1f).padding(start = recentPaddingStart, end = recentPaddingEnd),
+                        modifier =
+                            Modifier.weight(
+                                1f,
+                            ).padding(start = recentPaddingStart, end = recentPaddingEnd),
                         visible = visible,
                         excludePackages = excludePackages,
                     )
@@ -454,7 +467,14 @@ fun AppListSection(
                 val pinnedContent: @Composable RowScope.() -> Unit = {
                     if (pinnedApps.isNotEmpty()) {
                         val fadeEdge = if (pinnedOnLeft) FadeEdge.START else FadeEdge.END
-                        val fadeModifier = if (shouldFadePinned) Modifier.edgeFade(fadeEdge) else Modifier
+                        val fadeModifier =
+                            if (shouldFadePinned) {
+                                Modifier.edgeFade(
+                                    fadeEdge,
+                                )
+                            } else {
+                                Modifier
+                            }
                         Box(modifier = pinnedModifier.then(fadeModifier)) {
                             AppListRow(
                                 apps = pinnedApps,
@@ -518,7 +538,11 @@ private fun safeLaunchApp(
         (context as? ComponentActivity)?.finish()
     } catch (_: android.content.ActivityNotFoundException) {
         android.widget.Toast
-            .makeText(context, context.getString(R.string.app_list_app_unavailable), android.widget.Toast.LENGTH_SHORT)
+            .makeText(
+                context,
+                context.getString(R.string.app_list_app_unavailable),
+                android.widget.Toast.LENGTH_SHORT,
+            )
             .show()
     } catch (e: Exception) {
         android.util.Log.w("AppList", "Failed to launch app", e)

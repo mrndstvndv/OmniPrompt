@@ -96,10 +96,16 @@ class ContactsRepository(
                 contactsCursor?.use { cursor ->
                     val idIndex = cursor.getColumnIndex(ContactsContract.Contacts._ID)
                     val lookupKeyIndex = cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY)
-                    val displayNameIndex = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+                    val displayNameIndex =
+                        cursor.getColumnIndex(
+                            ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+                        )
                     val photoUriIndex = cursor.getColumnIndex(ContactsContract.Contacts.PHOTO_URI)
                     val starredIndex = cursor.getColumnIndex(ContactsContract.Contacts.STARRED)
-                    val hasPhoneIndex = cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                    val hasPhoneIndex =
+                        cursor.getColumnIndex(
+                            ContactsContract.Contacts.HAS_PHONE_NUMBER,
+                        )
 
                     while (cursor.moveToNext()) {
                         val id = cursor.getString(idIndex) ?: continue
@@ -139,10 +145,22 @@ class ContactsRepository(
                 val phoneNumbersMap = mutableMapOf<String, MutableList<PhoneNumber>>()
 
                 phonesCursor?.use { cursor ->
-                    val contactIdIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                    val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                    val typeIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
-                    val labelIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL)
+                    val contactIdIndex =
+                        cursor.getColumnIndex(
+                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                        )
+                    val numberIndex =
+                        cursor.getColumnIndex(
+                            ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        )
+                    val typeIndex =
+                        cursor.getColumnIndex(
+                            ContactsContract.CommonDataKinds.Phone.TYPE,
+                        )
+                    val labelIndex =
+                        cursor.getColumnIndex(
+                            ContactsContract.CommonDataKinds.Phone.LABEL,
+                        )
 
                     while (cursor.moveToNext()) {
                         val contactId = cursor.getString(contactIdIndex) ?: continue

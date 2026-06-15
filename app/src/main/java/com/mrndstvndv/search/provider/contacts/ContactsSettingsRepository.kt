@@ -20,6 +20,6 @@ fun createContactsSettingsRepository(context: Context): SettingsRepository<Conta
                 null
             }
         },
-        serializer = { settings -> settings.toJson().toString() }
+        serializer = { settings -> settings.toJson().toString() },
     )
 }

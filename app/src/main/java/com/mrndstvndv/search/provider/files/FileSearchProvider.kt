@@ -10,17 +10,6 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.core.content.FileProvider
-import com.mrndstvndv.search.provider.Provider
-import com.mrndstvndv.search.provider.files.FileSearchMatch
-import com.mrndstvndv.search.provider.files.FileSearchRepository
-import com.mrndstvndv.search.provider.files.FileThumbnailRepository
-import com.mrndstvndv.search.provider.files.ThumbnailType
-import com.mrndstvndv.search.provider.model.ProviderResult
-import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.settings.FileSearchSettings
-import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
-import com.mrndstvndv.search.provider.settings.SettingsRepository
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Description
@@ -28,9 +17,16 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderZip
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.LibraryMusic
-import com.mrndstvndv.search.R
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.core.content.FileProvider
+import com.mrndstvndv.search.R
+import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.model.ProviderResult
+import com.mrndstvndv.search.provider.model.Query
+import com.mrndstvndv.search.provider.settings.FileSearchSettings
+import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -39,9 +35,8 @@ class FileSearchProvider(
     private val activity: ComponentActivity,
     private val settingsRepository: SettingsRepository<FileSearchSettings>,
     private val repository: FileSearchRepository,
-    private val thumbnailRepository: FileThumbnailRepository
+    private val thumbnailRepository: FileThumbnailRepository,
 ) : Provider {
-
     private val fileProviderAuthority: String = "${activity.packageName}.fileprovider"
 
     override val id: String = "file-search"
@@ -65,12 +60,13 @@ class FileSearchProvider(
             potentialRoots += FileSearchSettings.DOWNLOADS_ROOT_ID
         }
         if (potentialRoots.isEmpty()) return emptyList()
-        val matches = repository.search(
-            queryText = normalized,
-            rootIds = potentialRoots,
-            sortMode = settings.sortMode,
-            sortAscending = settings.sortAscending
-        )
+        val matches =
+            repository.search(
+                queryText = normalized,
+                rootIds = potentialRoots,
+                sortMode = settings.sortMode,
+                sortAscending = settings.sortAscending,
+            )
         if (matches.isEmpty()) return emptyList()
         val lowerQuery = normalized.lowercase()
         val results = mutableListOf<ProviderResult>()
@@ -79,23 +75,25 @@ class FileSearchProvider(
             val iconDescriptor = resolveIcons(match, thumbnailsEnabled, settings.thumbnailCropMode)
             val subtitle = describeMatch(match)
             val adjustedSubtitleIndices = match.matchedSubtitleIndices.map { it + subtitle.pathStartIndex }
-            results += ProviderResult(
-                id = "$id:${match.documentUri}",
-                title = match.displayName,
-                subtitle = subtitle.text,
-                icon = null,
-                vectorIcon = iconDescriptor.vectorIcon,
-                iconLoader = iconDescriptor.iconLoader,
-                providerId = id,
-                score = computeScore(match, lowerQuery),
-                extras = mapOf(
-                    EXTRA_ROOT_NAME to match.rootDisplayName,
-                    EXTRA_RELATIVE_PATH to match.relativePath
-                ),
-                onSelect = { openDocument(match) },
-                matchedTitleIndices = match.matchedTitleIndices,
-                matchedSubtitleIndices = adjustedSubtitleIndices
-            )
+            results +=
+                ProviderResult(
+                    id = "$id:${match.documentUri}",
+                    title = match.displayName,
+                    subtitle = subtitle.text,
+                    icon = null,
+                    vectorIcon = iconDescriptor.vectorIcon,
+                    iconLoader = iconDescriptor.iconLoader,
+                    providerId = id,
+                    score = computeScore(match, lowerQuery),
+                    extras =
+                        mapOf(
+                            EXTRA_ROOT_NAME to match.rootDisplayName,
+                            EXTRA_RELATIVE_PATH to match.relativePath,
+                        ),
+                    onSelect = { openDocument(match) },
+                    matchedTitleIndices = match.matchedTitleIndices,
+                    matchedSubtitleIndices = adjustedSubtitleIndices,
+                )
         }
         return results
     }
@@ -111,7 +109,7 @@ class FileSearchProvider(
     private fun resolveIcons(
         match: FileSearchMatch,
         thumbnailsEnabled: Boolean,
-        cropMode: FileSearchThumbnailCropMode
+        cropMode: FileSearchThumbnailCropMode,
     ): IconDescriptor {
         if (match.isDirectory) return IconDescriptor(folderIcon, null)
         val mime = match.mimeType?.lowercase()
@@ -119,25 +117,55 @@ class FileSearchProvider(
         if (isImageFile(mime, extension)) {
             return IconDescriptor(
                 vectorIcon = imageIcon,
-                iconLoader = if (thumbnailsEnabled) {
-                    { thumbnailRepository.loadThumbnail(match.documentUri, match.lastModified, cropMode, ThumbnailType.IMAGE) }
-                } else null
+                iconLoader =
+                    if (thumbnailsEnabled) {
+                        {
+                            thumbnailRepository.loadThumbnail(
+                                match.documentUri,
+                                match.lastModified,
+                                cropMode,
+                                ThumbnailType.IMAGE,
+                            )
+                        }
+                    } else {
+                        null
+                    },
             )
         }
         if (isVideoFile(mime, extension)) {
             return IconDescriptor(
                 vectorIcon = videoIcon,
-                iconLoader = if (thumbnailsEnabled) {
-                    { thumbnailRepository.loadThumbnail(match.documentUri, match.lastModified, cropMode, ThumbnailType.VIDEO) }
-                } else null
+                iconLoader =
+                    if (thumbnailsEnabled) {
+                        {
+                            thumbnailRepository.loadThumbnail(
+                                match.documentUri,
+                                match.lastModified,
+                                cropMode,
+                                ThumbnailType.VIDEO,
+                            )
+                        }
+                    } else {
+                        null
+                    },
             )
         }
         if (isAudioFile(mime, extension)) {
             return IconDescriptor(
                 vectorIcon = musicIcon,
-                iconLoader = if (thumbnailsEnabled) {
-                    { thumbnailRepository.loadThumbnail(match.documentUri, match.lastModified, cropMode, ThumbnailType.AUDIO) }
-                } else null
+                iconLoader =
+                    if (thumbnailsEnabled) {
+                        {
+                            thumbnailRepository.loadThumbnail(
+                                match.documentUri,
+                                match.lastModified,
+                                cropMode,
+                                ThumbnailType.AUDIO,
+                            )
+                        }
+                    } else {
+                        null
+                    },
             )
         }
         if (isApkFile(mime, extension)) return IconDescriptor(apkIcon, null)
@@ -145,22 +173,34 @@ class FileSearchProvider(
         return IconDescriptor(documentIcon, null)
     }
 
-    private fun isImageFile(mime: String?, extension: String): Boolean {
+    private fun isImageFile(
+        mime: String?,
+        extension: String,
+    ): Boolean {
         if (mime?.startsWith("image/") == true) return true
         return extension in IMAGE_EXTENSIONS
     }
 
-    private fun isAudioFile(mime: String?, extension: String): Boolean {
+    private fun isAudioFile(
+        mime: String?,
+        extension: String,
+    ): Boolean {
         if (mime?.startsWith("audio/") == true) return true
         return extension in AUDIO_EXTENSIONS
     }
 
-    private fun isApkFile(mime: String?, extension: String): Boolean {
+    private fun isApkFile(
+        mime: String?,
+        extension: String,
+    ): Boolean {
         if (mime == APK_MIME) return true
         return extension == "apk"
     }
 
-    private fun isVideoFile(mime: String?, extension: String): Boolean {
+    private fun isVideoFile(
+        mime: String?,
+        extension: String,
+    ): Boolean {
         if (mime?.startsWith("video/") == true) return true
         return extension in VIDEO_EXTENSIONS
     }
@@ -179,34 +219,55 @@ class FileSearchProvider(
 
     private suspend fun openDocument(match: FileSearchMatch) {
         val originalUri = Uri.parse(match.documentUri)
-        val targetMime = when {
-            match.isDirectory -> DocumentsContract.Document.MIME_TYPE_DIR
-            !match.mimeType.isNullOrBlank() -> match.mimeType
-            else -> DEFAULT_MIME
-        }
+        val targetMime =
+            when {
+                match.isDirectory -> DocumentsContract.Document.MIME_TYPE_DIR
+                !match.mimeType.isNullOrBlank() -> match.mimeType
+                else -> DEFAULT_MIME
+            }
         withContext(Dispatchers.Main) {
             val shareableUri = resolveSharableUri(originalUri)
             if (shareableUri == null) {
-                Toast.makeText(activity, activity.getString(R.string.toast_cant_open), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.toast_cant_open),
+                    Toast.LENGTH_SHORT,
+                ).show()
                 return@withContext
             }
-            val intent = Intent(Intent.ACTION_VIEW)
-                .setDataAndType(shareableUri, targetMime)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            val intent =
+                Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(shareableUri, targetMime)
+                    .addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                    )
             try {
                 activity.startActivity(intent)
                 activity.finish()
             } catch (error: ActivityNotFoundException) {
-                Toast.makeText(activity, activity.getString(R.string.toast_no_app_open), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.toast_no_app_open),
+                    Toast.LENGTH_SHORT,
+                ).show()
             } catch (error: SecurityException) {
-                Toast.makeText(activity, activity.getString(R.string.toast_permission_denied), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.toast_permission_denied),
+                    Toast.LENGTH_SHORT,
+                ).show()
             }
         }
     }
 
     private fun describeMatch(match: FileSearchMatch): MatchSubtitle {
         val path = if (match.relativePath.isBlank()) match.displayName else match.relativePath
-        val template = activity.getString(R.string.file_search_result_path, match.rootDisplayName, MATCH_PATH_PLACEHOLDER)
+        val template =
+            activity.getString(
+                R.string.file_search_result_path,
+                match.rootDisplayName,
+                MATCH_PATH_PLACEHOLDER,
+            )
         val pathStartIndex = template.indexOf(MATCH_PATH_PLACEHOLDER).coerceAtLeast(0)
         return MatchSubtitle(
             text = template.replace(MATCH_PATH_PLACEHOLDER, path),
@@ -214,7 +275,10 @@ class FileSearchProvider(
         )
     }
 
-    private fun computeScore(match: FileSearchMatch, query: String): Float {
+    private fun computeScore(
+        match: FileSearchMatch,
+        query: String,
+    ): Float {
         val lowerName = match.displayName.lowercase()
         var score = 0f
         if (lowerName.startsWith(query)) score += 2f
@@ -247,7 +311,7 @@ class FileSearchProvider(
 
     private data class IconDescriptor(
         val vectorIcon: ImageVector?,
-        val iconLoader: (suspend () -> Bitmap?)?
+        val iconLoader: (suspend () -> Bitmap?)?,
     )
 
     private data class MatchSubtitle(

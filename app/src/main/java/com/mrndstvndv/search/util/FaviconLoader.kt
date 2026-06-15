@@ -15,7 +15,6 @@ import java.net.URL
  * Favicons are stored in the app's internal storage under files/favicons/{id}.png
  */
 object FaviconLoader {
-
     private const val FAVICONS_DIR = "favicons"
     private const val FAVICON_SIZE = 64
     private const val CONNECTION_TIMEOUT_MS = 10_000
@@ -27,38 +26,44 @@ object FaviconLoader {
      * @param context Android context
      * @return Result containing Bitmap if successful, or exception if failed
      */
-    suspend fun fetchFavicon(url: String, context: Context): Result<Bitmap> = withContext(Dispatchers.IO) {
-        val domain = extractDomain(url) ?: return@withContext Result.failure(IllegalArgumentException("Could not extract domain from URL"))
-        val faviconUrl = "https://www.google.com/s2/favicons?domain=$domain&sz=$FAVICON_SIZE"
+    suspend fun fetchFavicon(
+        url: String,
+        context: Context,
+    ): Result<Bitmap> =
+        withContext(Dispatchers.IO) {
+            val domain = extractDomain(url) ?: return@withContext Result.failure(IllegalArgumentException("Could not extract domain from URL"))
+            val faviconUrl = "https://www.google.com/s2/favicons?domain=$domain&sz=$FAVICON_SIZE"
 
-        var connection: HttpURLConnection? = null
-        try {
-            val urlConnection = URL(faviconUrl).openConnection() as HttpURLConnection
-            connection = urlConnection
-            connection.connectTimeout = CONNECTION_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.instanceFollowRedirects = true
-            connection.requestMethod = "GET"
+            var connection: HttpURLConnection? = null
+            try {
+                val urlConnection = URL(faviconUrl).openConnection() as HttpURLConnection
+                connection = urlConnection
+                connection.connectTimeout = CONNECTION_TIMEOUT_MS
+                connection.readTimeout = READ_TIMEOUT_MS
+                connection.instanceFollowRedirects = true
+                connection.requestMethod = "GET"
 
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext Result.failure(Exception("HTTP $responseCode from $faviconUrl"))
-            }
-
-            connection.inputStream.use { inputStream ->
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                if (bitmap != null) {
-                    Result.success(bitmap)
-                } else {
-                    Result.failure(Exception("Failed to decode bitmap from $faviconUrl"))
+                val responseCode = connection.responseCode
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    return@withContext Result.failure(
+                        Exception("HTTP $responseCode from $faviconUrl"),
+                    )
                 }
+
+                connection.inputStream.use { inputStream ->
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    if (bitmap != null) {
+                        Result.success(bitmap)
+                    } else {
+                        Result.failure(Exception("Failed to decode bitmap from $faviconUrl"))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception("Error fetching $faviconUrl: ${e.message}", e))
+            } finally {
+                connection?.disconnect()
             }
-        } catch (e: Exception) {
-            Result.failure(Exception("Error fetching $faviconUrl: ${e.message}", e))
-        } finally {
-            connection?.disconnect()
         }
-    }
 
     /**
      * Saves a favicon bitmap to internal storage.
@@ -67,7 +72,11 @@ object FaviconLoader {
      * @param bitmap The favicon bitmap to save
      * @return true if saved successfully, false otherwise
      */
-    fun saveFavicon(context: Context, id: String, bitmap: Bitmap): Boolean {
+    fun saveFavicon(
+        context: Context,
+        id: String,
+        bitmap: Bitmap,
+    ): Boolean {
         return try {
             val dir = getFaviconsDir(context)
             if (!dir.exists()) {
@@ -89,22 +98,29 @@ object FaviconLoader {
      * @param id The quicklink ID
      * @return Bitmap if found, null otherwise
      */
-    suspend fun loadFavicon(context: Context, id: String): Bitmap? = withContext(Dispatchers.IO) {
-        try {
-            val file = File(getFaviconsDir(context), "$id.png")
-            if (!file.exists()) return@withContext null
-            BitmapFactory.decodeFile(file.absolutePath)
-        } catch (e: Exception) {
-            null
+    suspend fun loadFavicon(
+        context: Context,
+        id: String,
+    ): Bitmap? =
+        withContext(Dispatchers.IO) {
+            try {
+                val file = File(getFaviconsDir(context), "$id.png")
+                if (!file.exists()) return@withContext null
+                BitmapFactory.decodeFile(file.absolutePath)
+            } catch (e: Exception) {
+                null
+            }
         }
-    }
 
     /**
      * Deletes a favicon from internal storage.
      * @param context Android context
      * @param id The quicklink ID
      */
-    fun deleteFavicon(context: Context, id: String) {
+    fun deleteFavicon(
+        context: Context,
+        id: String,
+    ) {
         try {
             val file = File(getFaviconsDir(context), "$id.png")
             if (file.exists()) {
@@ -120,10 +136,11 @@ object FaviconLoader {
      * Example: "https://github.com/user/repo" -> "github.com"
      */
     fun extractDomain(url: String): String? {
-        val withoutProtocol = url
-            .removePrefix("https://")
-            .removePrefix("http://")
-            .trimStart('/')
+        val withoutProtocol =
+            url
+                .removePrefix("https://")
+                .removePrefix("http://")
+                .trimStart('/')
 
         if (withoutProtocol.isBlank()) return null
 

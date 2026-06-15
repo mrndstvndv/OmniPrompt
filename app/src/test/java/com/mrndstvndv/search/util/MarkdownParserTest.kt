@@ -5,10 +5,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MarkdownParserTest {
-
     @Test
     fun testSampleDataParsing() {
-        val sampleMarkdown = """
+        val sampleMarkdown =
+            """
             ## Features
             
             - incremental search flow
@@ -28,7 +28,7 @@ class MarkdownParserTest {
             ([d99d60e](https://github.com/mrndstvndv/OmniPrompt
             
             /commit/d99d60eea530462a1dfa06e2991ec276eb6aec7e))
-        """.trimIndent()
+            """.trimIndent()
 
         val blocks = MarkdownParser.parse(sampleMarkdown)
 
@@ -52,7 +52,10 @@ class MarkdownParserTest {
         assertEquals(MarkdownInline.Text("("), para1.content[0])
         val link1 = para1.content[1] as MarkdownInline.Link
         assertEquals("535c8bd", link1.text)
-        assertEquals("https://github.com/mrndstvndv/OmniPrompt/commit/535c8bd47fe3e37045e9619ad17c276557914173", link1.url)
+        assertEquals(
+            "https://github.com/mrndstvndv/OmniPrompt/commit/535c8bd47fe3e37045e9619ad17c276557914173",
+            link1.url,
+        )
         assertEquals(MarkdownInline.Text(")"), para1.content[2])
 
         // Block 4: ## Fixes
@@ -66,13 +69,19 @@ class MarkdownParserTest {
         assertEquals(2, item2.content.size)
         assertEquals(MarkdownInline.Bold("perf"), item2.content[0])
         assertTrue(item2.content[1] is MarkdownInline.Text)
-        assertEquals(": defer spacer animation to layout phase, add splash AVD workaround, add rememberSaveable and @Preview", (item2.content[1] as MarkdownInline.Text).text)
+        assertEquals(
+            ": defer spacer animation to layout phase, add splash AVD workaround, add rememberSaveable and @Preview",
+            (item2.content[1] as MarkdownInline.Text).text,
+        )
 
         // Block 6: Link paragraph
         val para2 = blocks[5] as MarkdownBlock.Paragraph
         val link2 = para2.content[1] as MarkdownInline.Link
         assertEquals("1f405e7", link2.text)
-        assertEquals("https://github.com/mrndstvndv/OmniPrompt/commit/1f405e7ba624adc901d5db16a94b53c364e7ed45", link2.url)
+        assertEquals(
+            "https://github.com/mrndstvndv/OmniPrompt/commit/1f405e7ba624adc901d5db16a94b53c364e7ed45",
+            link2.url,
+        )
 
         // Block 7: ## Performance
         val heading3 = blocks[6] as MarkdownBlock.Heading
@@ -80,7 +89,10 @@ class MarkdownParserTest {
 
         // Block 8: ListItem
         val item3 = blocks[7] as MarkdownBlock.ListItem
-        assertEquals(MarkdownInline.Text("improve compose layout and draw performance"), item3.content[0])
+        assertEquals(
+            MarkdownInline.Text("improve compose layout and draw performance"),
+            item3.content[0],
+        )
 
         // Block 9: Split link paragraph
         val para3 = blocks[8] as MarkdownBlock.Paragraph
@@ -88,7 +100,10 @@ class MarkdownParserTest {
         assertEquals(MarkdownInline.Text("("), para3.content[0])
         val link3 = para3.content[1] as MarkdownInline.Link
         assertEquals("d99d60e", link3.text)
-        assertEquals("https://github.com/mrndstvndv/OmniPrompt/commit/d99d60eea530462a1dfa06e2991ec276eb6aec7e", link3.url)
+        assertEquals(
+            "https://github.com/mrndstvndv/OmniPrompt/commit/d99d60eea530462a1dfa06e2991ec276eb6aec7e",
+            link3.url,
+        )
         assertEquals(MarkdownInline.Text(")"), para3.content[2])
     }
 

@@ -1,7 +1,6 @@
 package com.mrndstvndv.search.provider.contacts
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Person
 import com.mrndstvndv.search.R
@@ -12,8 +11,6 @@ import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * Provider for searching device contacts.
@@ -22,9 +19,8 @@ class ContactsProvider(
     private val context: Context,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<ContactsSettings>,
-    private val contactsRepository: ContactsRepository
+    private val contactsRepository: ContactsRepository,
 ) : Provider {
-
     override val id: String = "contacts"
     override val displayName: String = context.getString(R.string.provider_contacts)
 
@@ -53,80 +49,97 @@ class ContactsProvider(
             for (sim in simNumbers) {
                 // Use full title for matching so "my number" matches all SIMs
                 val fullTitle = buildSimNumberTitle(sim.displayName)
-                val match = if (normalized.isBlank()) {
-                    ScoredContact(
-                        contact = null,
-                        simNumber = sim,
-                        score = 0,
-                        matchedTitleIndices = emptyList(),
-                        matchedSubtitleIndices = emptyList()
-                    )
-                } else {
-                    val nameMatch = FuzzyMatcher.match(normalized, fullTitle)
-                    val numberMatch = FuzzyMatcher.match(normalized, sim.number)
-
-                    val bestMatch = listOfNotNull(nameMatch, numberMatch).maxByOrNull { it.score }
-                    if (bestMatch != null) {
-                        val isNameMatch = nameMatch != null && nameMatch.score >= (numberMatch?.score ?: 0)
+                val match =
+                    if (normalized.isBlank()) {
                         ScoredContact(
                             contact = null,
                             simNumber = sim,
-                            score = bestMatch.score,
-                            matchedTitleIndices = if (isNameMatch) nameMatch?.matchedIndices ?: emptyList() else emptyList(),
-                            matchedSubtitleIndices = if (!isNameMatch) numberMatch?.matchedIndices ?: emptyList() else emptyList()
+                            score = 0,
+                            matchedTitleIndices = emptyList(),
+                            matchedSubtitleIndices = emptyList(),
                         )
-                    } else null
-                }
+                    } else {
+                        val nameMatch = FuzzyMatcher.match(normalized, fullTitle)
+                        val numberMatch = FuzzyMatcher.match(normalized, sim.number)
+
+                        val bestMatch =
+                            listOfNotNull(
+                                nameMatch,
+                                numberMatch,
+                            ).maxByOrNull { it.score }
+                        if (bestMatch != null) {
+                            val isNameMatch = nameMatch != null && nameMatch.score >= (numberMatch?.score ?: 0)
+                            ScoredContact(
+                                contact = null,
+                                simNumber = sim,
+                                score = bestMatch.score,
+                                matchedTitleIndices = if (isNameMatch) nameMatch?.matchedIndices ?: emptyList() else emptyList(),
+                                matchedSubtitleIndices = if (!isNameMatch) numberMatch?.matchedIndices ?: emptyList() else emptyList(),
+                            )
+                        } else {
+                            null
+                        }
+                    }
                 if (match != null) results.add(match)
             }
         }
 
         // Search contacts
         for (contact in contacts) {
-            val match = if (normalized.isBlank()) {
-                // Return all contacts with zero score when query is empty
-                ScoredContact(
-                    contact = contact,
-                    simNumber = null,
-                    score = 0,
-                    matchedTitleIndices = emptyList(),
-                    matchedSubtitleIndices = emptyList()
-                )
-            } else {
-                // Fuzzy match on name
-                val nameMatch = FuzzyMatcher.match(normalized, contact.displayName)
-
-                // Optionally fuzzy match on phone numbers
-                val phoneMatch = if (includePhoneNumbers && contact.phoneNumbers.isNotEmpty()) {
-                    contact.phoneNumbers
-                        .mapNotNull { phone -> FuzzyMatcher.match(normalized, phone.number) }
-                        .maxByOrNull { it.score }
-                } else null
-
-                // Calculate the best match
-                val bestMatch = listOfNotNull(nameMatch, phoneMatch).maxByOrNull { it.score }
-
-                if (bestMatch != null) {
-                    val isNameMatch = nameMatch != null && nameMatch.score >= (phoneMatch?.score ?: 0)
+            val match =
+                if (normalized.isBlank()) {
+                    // Return all contacts with zero score when query is empty
                     ScoredContact(
                         contact = contact,
                         simNumber = null,
-                        score = bestMatch.score,
-                        matchedTitleIndices = if (isNameMatch) nameMatch?.matchedIndices ?: emptyList() else emptyList(),
-                        matchedSubtitleIndices = if (!isNameMatch) phoneMatch?.matchedIndices ?: emptyList() else emptyList()
+                        score = 0,
+                        matchedTitleIndices = emptyList(),
+                        matchedSubtitleIndices = emptyList(),
                     )
-                } else null
-            }
+                } else {
+                    // Fuzzy match on name
+                    val nameMatch = FuzzyMatcher.match(normalized, contact.displayName)
+
+                    // Optionally fuzzy match on phone numbers
+                    val phoneMatch =
+                        if (includePhoneNumbers && contact.phoneNumbers.isNotEmpty()) {
+                            contact.phoneNumbers
+                                .mapNotNull {
+                                        phone ->
+                                    FuzzyMatcher.match(normalized, phone.number)
+                                }
+                                .maxByOrNull { it.score }
+                        } else {
+                            null
+                        }
+
+                    // Calculate the best match
+                    val bestMatch = listOfNotNull(nameMatch, phoneMatch).maxByOrNull { it.score }
+
+                    if (bestMatch != null) {
+                        val isNameMatch = nameMatch != null && nameMatch.score >= (phoneMatch?.score ?: 0)
+                        ScoredContact(
+                            contact = contact,
+                            simNumber = null,
+                            score = bestMatch.score,
+                            matchedTitleIndices = if (isNameMatch) nameMatch?.matchedIndices ?: emptyList() else emptyList(),
+                            matchedSubtitleIndices = if (!isNameMatch) phoneMatch?.matchedIndices ?: emptyList() else emptyList(),
+                        )
+                    } else {
+                        null
+                    }
+                }
 
             if (match != null) results.add(match)
         }
 
         // Sort by score (descending), then by starred status, then alphabetically
-        val sorted = results.sortedWith(
-            compareByDescending<ScoredContact> { it.score }
-                .thenByDescending { it.contact?.isStarred == true }
-                .thenBy { it.contact?.displayName ?: it.simNumber?.displayName ?: "" }
-        )
+        val sorted =
+            results.sortedWith(
+                compareByDescending<ScoredContact> { it.score }
+                    .thenByDescending { it.contact?.isStarred == true }
+                    .thenBy { it.contact?.displayName ?: it.simNumber?.displayName ?: "" },
+            )
 
         return sorted.take(MAX_RESULTS).map { scored ->
             if (scored.simNumber != null) {
@@ -150,16 +163,17 @@ class ContactsProvider(
             defaultVectorIcon = Icons.Outlined.Person,
             iconLoader = { contactsRepository.loadContactThumbnail(contact.id) },
             providerId = id,
-            extras = mapOf(
-                EXTRA_CONTACT_ID to contact.id,
-                EXTRA_LOOKUP_KEY to contact.lookupKey,
-                EXTRA_PHONE_NUMBERS to contact.phoneNumbers,
-                EXTRA_DISPLAY_NAME to contact.displayName,
-                EXTRA_IS_SIM_NUMBER to false
-            ),
+            extras =
+                mapOf(
+                    EXTRA_CONTACT_ID to contact.id,
+                    EXTRA_LOOKUP_KEY to contact.lookupKey,
+                    EXTRA_PHONE_NUMBERS to contact.phoneNumbers,
+                    EXTRA_DISPLAY_NAME to contact.displayName,
+                    EXTRA_IS_SIM_NUMBER to false,
+                ),
             onSelect = null, // Handled specially in MainActivity to show action sheet
             matchedTitleIndices = scored.matchedTitleIndices,
-            matchedSubtitleIndices = scored.matchedSubtitleIndices
+            matchedSubtitleIndices = scored.matchedSubtitleIndices,
         )
     }
 
@@ -174,20 +188,22 @@ class ContactsProvider(
             defaultVectorIcon = Icons.Outlined.Person,
             iconLoader = null,
             providerId = id,
-            extras = mapOf(
-                EXTRA_PHONE_NUMBERS to listOf(
-                    PhoneNumber(
-                        number = sim.number,
-                        type = 0,
-                        label = sim.displayName
-                    )
+            extras =
+                mapOf(
+                    EXTRA_PHONE_NUMBERS to
+                        listOf(
+                            PhoneNumber(
+                                number = sim.number,
+                                type = 0,
+                                label = sim.displayName,
+                            ),
+                        ),
+                    EXTRA_DISPLAY_NAME to buildSimNumberTitle(sim.displayName),
+                    EXTRA_IS_SIM_NUMBER to true,
                 ),
-                EXTRA_DISPLAY_NAME to buildSimNumberTitle(sim.displayName),
-                EXTRA_IS_SIM_NUMBER to true
-            ),
             onSelect = null, // Handled specially in MainActivity to show action sheet
             matchedTitleIndices = scored.matchedTitleIndices,
-            matchedSubtitleIndices = scored.matchedSubtitleIndices
+            matchedSubtitleIndices = scored.matchedSubtitleIndices,
         )
     }
 
@@ -196,7 +212,7 @@ class ContactsProvider(
         val simNumber: SimNumber?,
         val score: Int,
         val matchedTitleIndices: List<Int>,
-        val matchedSubtitleIndices: List<Int>
+        val matchedSubtitleIndices: List<Int>,
     )
 
     companion object {
