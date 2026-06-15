@@ -3,6 +3,9 @@ package com.mrndstvndv.search.util
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.Rect
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
@@ -11,6 +14,47 @@ import android.os.Build
 import androidx.core.graphics.drawable.toBitmap
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
+
+class ScaledDrawable(private val drawable: Drawable, private val scale: Float) : Drawable() {
+    override fun draw(canvas: Canvas) {
+        val bounds = bounds
+        canvas.save()
+        canvas.scale(scale, scale, bounds.exactCenterX(), bounds.exactCenterY())
+        drawable.draw(canvas)
+        canvas.restore()
+    }
+
+    override fun setAlpha(alpha: Int) {
+        drawable.alpha = alpha
+    }
+
+    override fun setColorFilter(colorFilter: ColorFilter?) {
+        drawable.colorFilter = colorFilter
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun getOpacity(): Int {
+        @Suppress("DEPRECATION")
+        return drawable.opacity
+    }
+
+    override fun onBoundsChange(bounds: Rect) {
+        super.onBoundsChange(bounds)
+        drawable.bounds = bounds
+    }
+
+    override fun getIntrinsicWidth(): Int = drawable.intrinsicWidth
+    override fun getIntrinsicHeight(): Int = drawable.intrinsicHeight
+
+    override fun getPadding(padding: Rect): Boolean = drawable.getPadding(padding)
+    override fun isStateful(): Boolean = drawable.isStateful
+    override fun onStateChange(state: IntArray): Boolean = drawable.setState(state)
+    override fun onLevelChange(level: Int): Boolean = drawable.setLevel(level)
+    override fun setVisible(visible: Boolean, restart: Boolean): Boolean {
+        return super.setVisible(visible, restart) || drawable.setVisible(visible, restart)
+    }
+}
+
 
 private fun getForcedMonochromeDrawable(
     original: Drawable,
@@ -123,13 +167,19 @@ fun loadAppIconBitmap(
                 }
             }
             if (forceThemedIcons || loadedFromPack) {
-                val foreground = if (iconDrawable is AdaptiveIconDrawable) {
+                val isAdaptive = iconDrawable is AdaptiveIconDrawable
+                val foreground = if (isAdaptive) {
                     iconDrawable.foreground
                 } else {
                     iconDrawable
                 }
                 val forcedMonochrome = getForcedMonochromeDrawable(foreground, iconSize, primaryColor, surfaceColor)
-                val themedIcon = AdaptiveIconDrawable(ColorDrawable(surfaceColor), forcedMonochrome)
+                val finalForeground = if (!isAdaptive) {
+                    ScaledDrawable(forcedMonochrome, 1.5f)
+                } else {
+                    forcedMonochrome
+                }
+                val themedIcon = AdaptiveIconDrawable(ColorDrawable(surfaceColor), finalForeground)
                 return themedIcon.toBitmapOrNull(iconSize)
             }
         }
