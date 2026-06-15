@@ -118,68 +118,77 @@ fun AppSearchSettingsScreen(
                             repository.update { it.copy(aiAssistantQueriesEnabled = newValue) }
                         },
                     )
-                    SettingsDivider()
-                    SettingsSwitch(
-                        title = stringResource(R.string.app_search_themed_icons),
-                        subtitle = stringResource(R.string.app_search_themed_icons_subtitle),
-                        checked = appSearchSettings.useThemedIcons,
-                        onCheckedChange = { newValue ->
-                            repository.update { it.copy(useThemedIcons = newValue) }
-                        },
-                    )
-                    SettingsDivider()
-                    val useThemedIcons = appSearchSettings.useThemedIcons
-                    val disabledAlpha = 0.38f
-                    Box(
-                        modifier = Modifier.alpha(if (useThemedIcons) 1f else disabledAlpha),
-                    ) {
+                }
+            }
+
+            item {
+                SettingsSection(
+                    title = stringResource(R.string.app_icons_section_title),
+                    subtitle = stringResource(R.string.app_icons_section_subtitle),
+                ) {
+                    SettingsGroup {
                         SettingsSwitch(
-                            title = stringResource(R.string.app_search_force_themed_icons),
-                            subtitle = stringResource(R.string.app_search_force_themed_icons_subtitle),
-                            checked = appSearchSettings.forceThemedIcons,
-                            enabled = useThemedIcons,
+                            title = stringResource(R.string.app_search_themed_icons),
+                            subtitle = stringResource(R.string.app_search_themed_icons_subtitle),
+                            checked = appSearchSettings.useThemedIcons,
                             onCheckedChange = { newValue ->
-                                repository.update { it.copy(forceThemedIcons = newValue) }
+                                repository.update { it.copy(useThemedIcons = newValue) }
                             },
                         )
-                    }
-                    SettingsDivider()
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { isIconPackDialogOpen = true }
-                            .padding(horizontal = 20.dp, vertical = 18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.app_search_icon_pack),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                text = stringResource(R.string.app_search_icon_pack_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        SettingsDivider()
+                        val useThemedIcons = appSearchSettings.useThemedIcons
+                        val disabledAlpha = 0.38f
+                        Box(
+                            modifier = Modifier.alpha(if (useThemedIcons) 1f else disabledAlpha),
+                        ) {
+                            SettingsSwitch(
+                                title = stringResource(R.string.app_search_force_themed_icons),
+                                subtitle = stringResource(R.string.app_search_force_themed_icons_subtitle),
+                                checked = appSearchSettings.forceThemedIcons,
+                                enabled = useThemedIcons,
+                                onCheckedChange = { newValue ->
+                                    repository.update { it.copy(forceThemedIcons = newValue) }
+                                },
                             )
                         }
-                        val context = LocalContext.current
-                        val pm = context.packageManager
-                        val currentLabel = remember(appSearchSettings.selectedIconPack) {
-                            if (appSearchSettings.selectedIconPack.isEmpty()) {
-                                context.getString(R.string.app_search_icon_pack_default)
-                            } else {
-                                runCatching {
-                                    val info = pm.getApplicationInfo(appSearchSettings.selectedIconPack, 0)
-                                    pm.getApplicationLabel(info).toString()
-                                }.getOrDefault(context.getString(R.string.app_search_icon_pack_default))
+                        SettingsDivider()
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isIconPackDialogOpen = true }
+                                .padding(horizontal = 20.dp, vertical = 18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.app_search_icon_pack),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = stringResource(R.string.app_search_icon_pack_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
+                            val context = LocalContext.current
+                            val pm = context.packageManager
+                            val currentLabel = remember(appSearchSettings.selectedIconPack) {
+                                if (appSearchSettings.selectedIconPack.isEmpty()) {
+                                    context.getString(R.string.app_search_icon_pack_default)
+                                } else {
+                                    runCatching {
+                                        val info = pm.getApplicationInfo(appSearchSettings.selectedIconPack, 0)
+                                        pm.getApplicationLabel(info).toString()
+                                    }.getOrDefault(context.getString(R.string.app_search_icon_pack_default))
+                                }
+                            }
+                            Text(
+                                text = currentLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
-                        Text(
-                            text = currentLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
                     }
                 }
             }

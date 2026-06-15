@@ -131,6 +131,10 @@
     <string name="app_search_icon_pack_default">System Default</string>
     <string name="app_search_icon_pack_title">Select icon pack</string>
 
+    <!-- App icons settings -->
+    <string name="app_icons_section_title">App Icons</string>
+    <string name="app_icons_section_subtitle">Customize icon packs and theme settings.</string>
+
     <!-- App list settings -->
     <string name="app_list_section_title">App List</string>
     <string name="app_list_section_subtitle">Configure the app list on the home screen.</string>
