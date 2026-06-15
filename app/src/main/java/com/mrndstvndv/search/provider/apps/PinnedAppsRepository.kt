@@ -29,7 +29,7 @@ class PinnedAppsRepository(
                         RecentApp(
                             packageName = packageName,
                             label = label,
-                            iconLoader = { appListRepository.getIcon(packageName, settings.useThemedIcons) },
+                            iconLoader = { appListRepository.getIcon(packageName, settings.useThemedIcons, settings.forceThemedIcons) },
                             launchIntent = launchIntent,
                         )
                     } catch (e: PackageManager.NameNotFoundException) {

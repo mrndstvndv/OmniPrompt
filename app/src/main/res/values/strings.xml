@@ -124,6 +124,8 @@
     <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using &quot;ask gemini &lt;query&gt;&quot;.</string>
     <string name="app_search_themed_icons">Themed icons</string>
     <string name="app_search_themed_icons_subtitle">Apply Material You colors to supported app icons.</string>
+    <string name="app_search_force_themed_icons">Force themed icons</string>
+    <string name="app_search_force_themed_icons_subtitle">Attempt to generate themed icons for apps that do not support them natively.</string>
 
     <!-- App list settings -->
     <string name="app_list_section_title">App List</string>

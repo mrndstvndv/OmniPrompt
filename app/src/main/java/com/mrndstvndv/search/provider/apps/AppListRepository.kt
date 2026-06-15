@@ -90,8 +90,12 @@ class AppListRepository private constructor(
 
     fun getAllApps(): StateFlow<List<AppInfo>> = _apps
 
-    suspend fun getIcon(packageName: String, useThemedIcons: Boolean = false): Bitmap? {
-        val cacheKey = if (useThemedIcons) "$packageName:themed" else packageName
+    suspend fun getIcon(packageName: String, useThemedIcons: Boolean = false, forceThemedIcons: Boolean = false): Bitmap? {
+        val cacheKey = when {
+            useThemedIcons && forceThemedIcons -> "$packageName:themed-forced"
+            useThemedIcons -> "$packageName:themed"
+            else -> packageName
+        }
         // Fast path: check cache without holding the mutex during IO
         cacheMutex.withLock {
             if (iconCache.containsKey(cacheKey)) {
@@ -101,7 +105,7 @@ class AppListRepository private constructor(
 
         val icon =
             withContext(Dispatchers.IO) {
-                loadAppIconBitmap(packageManager, packageName, iconSize, useThemedIcons, context)
+                loadAppIconBitmap(packageManager, packageName, iconSize, useThemedIcons, forceThemedIcons, context)
             }
 
         // Store result under mutex (allow other readers while this one loaded)

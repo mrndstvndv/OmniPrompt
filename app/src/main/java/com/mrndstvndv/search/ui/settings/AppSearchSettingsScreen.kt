@@ -125,6 +125,22 @@ fun AppSearchSettingsScreen(
                             repository.update { it.copy(useThemedIcons = newValue) }
                         },
                     )
+                    SettingsDivider()
+                    val useThemedIcons = appSearchSettings.useThemedIcons
+                    val disabledAlpha = 0.38f
+                    Box(
+                        modifier = Modifier.alpha(if (useThemedIcons) 1f else disabledAlpha),
+                    ) {
+                        SettingsSwitch(
+                            title = stringResource(R.string.app_search_force_themed_icons),
+                            subtitle = stringResource(R.string.app_search_force_themed_icons_subtitle),
+                            checked = appSearchSettings.forceThemedIcons,
+                            enabled = useThemedIcons,
+                            onCheckedChange = { newValue ->
+                                repository.update { it.copy(forceThemedIcons = newValue) }
+                            },
+                        )
+                    }
                 }
             }
 
@@ -265,6 +281,7 @@ fun AppSearchSettingsScreen(
                                     pinnedApps = appSearchSettings.pinnedApps,
                                     enabled = appListEnabled,
                                     useThemedIcons = appSearchSettings.useThemedIcons,
+                                    forceThemedIcons = appSearchSettings.forceThemedIcons,
                                     onMoveUp = { packageName ->
                                         repository.update {
                                             val currentList = it.pinnedApps.toMutableList()
@@ -428,6 +445,7 @@ fun AppSearchSettingsScreen(
                                     pinnedApps = appSearchSettings.pinnedApps,
                                     enabled = appListEnabled,
                                     useThemedIcons = appSearchSettings.useThemedIcons,
+                                    forceThemedIcons = appSearchSettings.forceThemedIcons,
                                     onMoveUp = { packageName ->
                                         repository.update {
                                             val currentList = it.pinnedApps.toMutableList()
@@ -484,6 +502,7 @@ fun AppSearchSettingsScreen(
                 isAddAppDialogOpen = false
             },
             useThemedIcons = appSearchSettings.useThemedIcons,
+            forceThemedIcons = appSearchSettings.forceThemedIcons,
         )
     }
 }
@@ -541,6 +560,7 @@ private fun PinnedAppsSection(
     onRemove: (String) -> Unit,
     onAddClick: () -> Unit,
     useThemedIcons: Boolean,
+    forceThemedIcons: Boolean,
 ) {
     val disabledAlpha = 0.38f
     val allApps by appListRepository.getAllApps().collectAsState()
@@ -566,8 +586,8 @@ private fun PinnedAppsSection(
             )
         } else {
             pinnedAppInfos.forEachIndexed { index, appInfo ->
-                val appIcon by produceState<Bitmap?>(null, appInfo.packageName, useThemedIcons) {
-                    value = appListRepository.getIcon(appInfo.packageName, useThemedIcons)
+                val appIcon by produceState<Bitmap?>(null, appInfo.packageName, useThemedIcons, forceThemedIcons) {
+                    value = appListRepository.getIcon(appInfo.packageName, useThemedIcons, forceThemedIcons)
                 }
 
                 PinnedAppItem(
@@ -697,6 +717,7 @@ private fun AddPinnedAppDialog(
     onDismiss: () -> Unit,
     onAddApp: (packageName: String) -> Unit,
     useThemedIcons: Boolean,
+    forceThemedIcons: Boolean,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val allApps by appListRepository.getAllApps().collectAsState()
@@ -765,8 +786,8 @@ private fun AddPinnedAppDialog(
                 Column(modifier = Modifier.heightIn(max = 450.dp)) {
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
                         items(filteredApps, key = { it.packageName }) { app ->
-                            val appIcon by produceState<Bitmap?>(null, app.packageName, useThemedIcons) {
-                                value = appListRepository.getIcon(app.packageName, useThemedIcons)
+                            val appIcon by produceState<Bitmap?>(null, app.packageName, useThemedIcons, forceThemedIcons) {
+                                value = appListRepository.getIcon(app.packageName, useThemedIcons, forceThemedIcons)
                             }
 
                             Row(

@@ -77,6 +77,7 @@ fun RecentAppsList(
     visible: Boolean = true,
     excludePackages: Set<String> = emptySet(),
     useThemedIcons: Boolean = false,
+    forceThemedIcons: Boolean = false,
 ) {
     val context = LocalContext.current
     var hasPermission by remember(repository) { mutableStateOf(repository.hasPermission()) }
@@ -119,8 +120,8 @@ fun RecentAppsList(
                     remember(maxItems, excludePackages.size) {
                         (maxItems + excludePackages.size).coerceAtLeast(1)
                     }
-                val recentApps by remember(repository, fetchLimit, useThemedIcons) {
-                    repository.getRecentApps(limit = fetchLimit, useThemedIcons = useThemedIcons)
+                val recentApps by remember(repository, fetchLimit, useThemedIcons, forceThemedIcons) {
+                    repository.getRecentApps(limit = fetchLimit, useThemedIcons = useThemedIcons, forceThemedIcons = forceThemedIcons)
                 }.collectAsState(initial = emptyList())
 
                 val filteredApps =
@@ -388,6 +389,7 @@ fun AppListSection(
     modifier: Modifier = Modifier,
     visible: Boolean = true,
     useThemedIcons: Boolean = false,
+    forceThemedIcons: Boolean = false,
 ) {
     when (appListType) {
         AppListType.RECENT -> {
@@ -398,6 +400,7 @@ fun AppListSection(
                 modifier = modifier,
                 visible = visible,
                 useThemedIcons = useThemedIcons,
+                forceThemedIcons = forceThemedIcons,
             )
         }
 
@@ -471,6 +474,7 @@ fun AppListSection(
                         visible = visible,
                         excludePackages = excludePackages,
                         useThemedIcons = useThemedIcons,
+                        forceThemedIcons = forceThemedIcons,
                     )
                 }
                 val pinnedContent: @Composable RowScope.() -> Unit = {
