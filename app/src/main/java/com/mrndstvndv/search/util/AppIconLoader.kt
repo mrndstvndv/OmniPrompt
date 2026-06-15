@@ -155,32 +155,38 @@ fun loadAppIconBitmap(
             app.loadIcon(pm)
         }
         if (useThemedIcons && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && context != null) {
-            val (primaryColor, _, surfaceColor) = getThemeColors(context)
-            if (!loadedFromPack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && iconDrawable is AdaptiveIconDrawable) {
-                val monochrome = iconDrawable.monochrome
+            val (primaryColor, onPrimaryColor, surfaceColor) = getThemeColors(context)
+            val isDark = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val iconBgColor = if (isDark) surfaceColor else onPrimaryColor
+
+            if (iconDrawable is AdaptiveIconDrawable) {
+                val monochrome = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    iconDrawable.monochrome
+                } else {
+                    null
+                }
                 if (monochrome != null) {
                     val mutatedMonochrome = monochrome.mutate().apply {
                         setTint(primaryColor)
                     }
-                    val themedIcon = AdaptiveIconDrawable(ColorDrawable(surfaceColor), mutatedMonochrome)
+                    val themedIcon = AdaptiveIconDrawable(ColorDrawable(iconBgColor), mutatedMonochrome)
                     return themedIcon.toBitmapOrNull(iconSize)
                 }
-            }
-            if (forceThemedIcons || loadedFromPack) {
-                val isAdaptive = iconDrawable is AdaptiveIconDrawable
-                val foreground = if (isAdaptive) {
-                    iconDrawable.foreground
-                } else {
-                    iconDrawable
+
+                if (forceThemedIcons) {
+                    val foreground = iconDrawable.foreground
+                    val forcedMonochrome = getForcedMonochromeDrawable(foreground, iconSize, primaryColor, iconBgColor)
+                    val scaledForeground = ScaledDrawable(forcedMonochrome, 1.5f)
+                    val themedIcon = AdaptiveIconDrawable(ColorDrawable(iconBgColor), scaledForeground)
+                    return themedIcon.toBitmapOrNull(iconSize)
                 }
-                val forcedMonochrome = getForcedMonochromeDrawable(foreground, iconSize, primaryColor, surfaceColor)
-                val finalForeground = if (!isAdaptive) {
-                    ScaledDrawable(forcedMonochrome, 1.5f)
-                } else {
-                    forcedMonochrome
+            } else {
+                if (forceThemedIcons) {
+                    val forcedMonochrome = getForcedMonochromeDrawable(iconDrawable, iconSize, primaryColor, iconBgColor)
+                    val scaledForeground = ScaledDrawable(forcedMonochrome, 1.5f)
+                    val themedIcon = AdaptiveIconDrawable(ColorDrawable(iconBgColor), scaledForeground)
+                    return themedIcon.toBitmapOrNull(iconSize)
                 }
-                val themedIcon = AdaptiveIconDrawable(ColorDrawable(surfaceColor), finalForeground)
-                return themedIcon.toBitmapOrNull(iconSize)
             }
         }
         iconDrawable.toBitmapOrNull(iconSize)
