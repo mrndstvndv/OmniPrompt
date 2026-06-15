@@ -370,6 +370,7 @@ class BackupRestoreManager(
                         if (success) {
                             settingsRestored++
                             if (id == "file-search") {
+                                @Suppress("UNCHECKED_CAST")
                                 val fileSearchRepo =
                                     SettingsRegistry.get(
                                         "file-search",
