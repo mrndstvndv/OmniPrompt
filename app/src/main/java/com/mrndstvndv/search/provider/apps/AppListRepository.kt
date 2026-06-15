@@ -93,7 +93,9 @@ class AppListRepository private constructor(
     suspend fun getIcon(packageName: String): Bitmap? {
         // Fast path: check cache without holding the mutex during IO
         cacheMutex.withLock {
-            iconCache[packageName]?.let { return it }
+            if (iconCache.containsKey(packageName)) {
+                return iconCache[packageName]
+            }
         }
 
         val icon =
