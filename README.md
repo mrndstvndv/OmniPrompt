@@ -1,7 +1,5 @@
 # OmniPrompt
 
-> ⚠️ **Beta** — This project is in active development. Features may change or break.
-
 A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay. Set it as your default assistant for instant access from anywhere.
 
 ## Screenshots
@@ -12,6 +10,7 @@ A keyboard-first Android command palette that unifies app launching, device sear
 </p>
 <p float="left">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="45%" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/search.png" width="45%" />
 </p>
 
 ## Providers
@@ -30,11 +29,11 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Alias System** — Create custom keywords for apps and searches
 - **Smart Ranking** — Learns from usage with competitive decay
 - **Material 3 UI** — Adjustable blur, opacity, and motion
-- **Power-User Tools** — Deep Termux and Shizuku integration
+- **Power-User Tools** — Termux and Shizuku integration
 
 ## Building
 
-See [BUILDING.md](BUILDING.md) for local and CI build instructions.
+See [BUILDING.md](docs/BUILDING.md) for local and CI build instructions.
 
 ## License
 

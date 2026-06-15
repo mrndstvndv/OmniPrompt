@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      API 31+ override: use an empty <animated-vector> wrapper for the splash
+      icon so the platform renders it via the SurfaceView path (AVD renderer)
+      instead of ImmobileIconDrawable, which upscales a 108 dp pre-render and
+      appears blurry on XHDPI+ devices.
+    -->
+    <style name="Theme.OmniPrompt.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/black</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.OmniPrompt</item>
+    </style>
+</resources>

@@ -51,17 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
-import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
-import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
-import com.mrndstvndv.search.provider.termux.TermuxSettings
-import com.mrndstvndv.search.provider.intent.IntentSettings
-import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
-import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.settings.BackupRestoreManager
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -72,14 +65,7 @@ import org.json.JSONObject
 @Composable
 fun BackupRestoreSettingsScreen(
     settingsRepository: ProviderSettingsRepository,
-    webSearchSettingsRepo: SettingsRepository<WebSearchSettings>,
-    appSearchSettingsRepo: SettingsRepository<AppSearchSettings>,
-    textUtilitiesSettingsRepo: SettingsRepository<TextUtilitiesSettings>,
     fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
-    systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
-    contactsSettingsRepo: SettingsRepository<ContactsSettings>,
-    termuxSettingsRepo: SettingsRepository<TermuxSettings>,
-    intentSettingsRepo: SettingsRepository<IntentSettings>,
     rankingRepository: ProviderRankingRepository,
     aliasRepository: AliasRepository,
     onBack: () -> Unit,
@@ -114,14 +100,6 @@ fun BackupRestoreSettingsScreen(
                     val backupJson =
                         backupManager.createBackup(
                             settingsRepository = settingsRepository,
-                            webSearchSettingsRepo = webSearchSettingsRepo,
-                            appSearchSettingsRepo = appSearchSettingsRepo,
-                            textUtilitiesSettingsRepo = textUtilitiesSettingsRepo,
-                            fileSearchSettingsRepo = fileSearchSettingsRepo,
-                            systemSettingsSettingsRepo = systemSettingsSettingsRepo,
-                            contactsSettingsRepo = contactsSettingsRepo,
-                            termuxSettingsRepo = termuxSettingsRepo,
-                            intentSettingsRepo = intentSettingsRepo,
                             rankingRepository = rankingRepository,
                             aliasRepository = aliasRepository,
                         )
@@ -218,14 +196,6 @@ fun BackupRestoreSettingsScreen(
                                 backupManager.restoreFromBackup(
                                     backupJson = json,
                                     settingsRepository = settingsRepository,
-                                    webSearchSettingsRepo = webSearchSettingsRepo,
-                                    appSearchSettingsRepo = appSearchSettingsRepo,
-                                    textUtilitiesSettingsRepo = textUtilitiesSettingsRepo,
-                                    fileSearchSettingsRepo = fileSearchSettingsRepo,
-                                    systemSettingsSettingsRepo = systemSettingsSettingsRepo,
-                                    contactsSettingsRepo = contactsSettingsRepo,
-                                    termuxSettingsRepo = termuxSettingsRepo,
-                                    intentSettingsRepo = intentSettingsRepo,
                                     rankingRepository = rankingRepository,
                                     aliasRepository = aliasRepository,
                                 )

@@ -58,14 +58,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
-import androidx.core.graphics.drawable.toBitmap
+import android.graphics.Bitmap
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.intent.AppDiscovery
 import com.mrndstvndv.search.provider.intent.AppInfo
 import com.mrndstvndv.search.provider.intent.IntentConfig
 import com.mrndstvndv.search.provider.intent.IntentExtra
 import com.mrndstvndv.search.provider.intent.IntentOption
+import com.mrndstvndv.search.provider.intent.ActivityOption
 import com.mrndstvndv.search.provider.intent.IntentSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
@@ -81,6 +84,7 @@ import java.util.UUID
 private enum class AddDialogStep {
     AppSelection,
     IntentSelection,
+    ActivitySelection,
     Configuration
 }
 
@@ -118,6 +122,12 @@ fun IntentSettingsScreen(
     }
 
     fun removeConfig(index: Int) {
+        val config = configs[index]
+        config.customIconPath?.let { path ->
+            try {
+                java.io.File(path).delete()
+            } catch (e: Exception) {}
+        }
         configs = configs.toMutableList().apply { removeAt(index) }
         saveSettings()
     }
@@ -190,6 +200,7 @@ fun IntentSettingsScreen(
                         } else {
                             configs.forEachIndexed { index, config ->
                                 IntentConfigRow(
+                                    appListRepository = appListRepository,
                                     config = config,
                                     onClick = { editingConfig = index to config }
                                 )
@@ -272,9 +283,34 @@ fun IntentSettingsScreen(
 
 @Composable
 private fun IntentConfigRow(
+    appListRepository: AppListRepository,
     config: IntentConfig,
     onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val iconBitmap by produceState<Bitmap?>(initialValue = null, key1 = config.customIconPath, key2 = config.packageName) {
+        withContext(Dispatchers.IO) {
+            val baseBitmap = when {
+                !config.customIconPath.isNullOrEmpty() -> {
+                    try {
+                        android.graphics.BitmapFactory.decodeFile(config.customIconPath)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                config.packageName.isNotEmpty() -> {
+                    appListRepository.getIcon(config.packageName)
+                }
+                else -> null
+            }
+            value = if (baseBitmap != null) {
+                com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
+            } else {
+                null
+            }
+        }
+    }
+
     Row(
         modifier =
             Modifier
@@ -283,20 +319,30 @@ private fun IntentConfigRow(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier =
-                Modifier
+        if (iconBitmap != null) {
+            Image(
+                bitmap = iconBitmap!!.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
                     .size(40.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Share,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(24.dp),
             )
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Share,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -310,10 +356,15 @@ private fun IntentConfigRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
+            val actionOrClassLabel = if (!config.className.isNullOrEmpty()) {
+                config.className.substringAfterLast(".")
+            } else {
+                config.action.substringAfterLast(".")
+            }
             Text(
                 text = stringResource(
                     R.string.intent_action_package,
-                    config.action.substringAfterLast("."),
+                    actionOrClassLabel,
                     config.packageName.ifEmpty { stringResource(R.string.intent_system) },
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -337,13 +388,24 @@ private fun IntentConfigAddDialog(
     
     var selectedApp by remember { mutableStateOf<AppInfo?>(null) }
     var selectedIntent by remember { mutableStateOf<IntentOption?>(null) }
+    var selectedActivity by remember { mutableStateOf<ActivityOption?>(null) }
     
     // Configuration fields
     var title by remember { mutableStateOf("") }
     var mimeType by remember { mutableStateOf<String?>(null) }
     var payloadTemplate by remember { mutableStateOf<String?>(null) }
     var extras by remember { mutableStateOf(listOf<IntentExtra>()) }
+    var customIconPath by remember { mutableStateOf<String?>(null) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
+
+    val handleDismiss = {
+        customIconPath?.let { path ->
+            try {
+                java.io.File(path).delete()
+            } catch (e: Exception) {}
+        }
+        onDismiss()
+    }
 
     when (currentStep) {
         AddDialogStep.AppSelection -> {
@@ -355,12 +417,13 @@ private fun IntentConfigAddDialog(
                         // Manual entry - skip to config
                         currentStep = AddDialogStep.Configuration
                         selectedIntent = IntentOption("android.intent.action.SEND", context.getString(R.string.intent_share_content))
+                        selectedActivity = null
                         title = ""
                     } else {
                         currentStep = AddDialogStep.IntentSelection
                     }
                 },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
             )
         }
         AddDialogStep.IntentSelection -> {
@@ -369,17 +432,42 @@ private fun IntentConfigAddDialog(
                 app = selectedApp!!,
                 onIntentSelected = { intent ->
                     selectedIntent = intent
+                    selectedActivity = null
                     title = selectedApp!!.name
                     mimeType = intent.mimeTypes.firstOrNull()
                     currentStep = AddDialogStep.Configuration
                 },
+                onActivityLauncherSelected = {
+                    currentStep = AddDialogStep.ActivitySelection
+                },
                 onBack = { currentStep = AddDialogStep.AppSelection },
-                onDismiss = onDismiss
+                onDismiss = handleDismiss
+            )
+        }
+        AddDialogStep.ActivitySelection -> {
+            ActivitySelectionStep(
+                discovery = discovery,
+                app = selectedApp!!,
+                onActivitySelected = { activity ->
+                    selectedActivity = activity
+                    selectedIntent = null
+                    title = "${selectedApp!!.name} - ${activity.label}"
+                    mimeType = null
+                    currentStep = AddDialogStep.Configuration
+                },
+                onBack = { currentStep = AddDialogStep.IntentSelection },
+                onDismiss = handleDismiss
             )
         }
         AddDialogStep.Configuration -> {
             var manualPackageName by remember { mutableStateOf("") }
-            var manualAction by remember { mutableStateOf("android.intent.action.SEND") }
+            var actionState by remember {
+                mutableStateOf(
+                    selectedIntent?.action
+                        ?: if (selectedActivity != null) "android.intent.action.MAIN"
+                        else "android.intent.action.SEND"
+                )
+            }
 
             IntentConfigDialogContent(
                 title = if (selectedApp!!.packageName.isEmpty()) stringResource(R.string.intent_manual_intent) else stringResource(R.string.intent_configure),
@@ -387,8 +475,12 @@ private fun IntentConfigAddDialog(
                 onTitleChange = { title = it },
                 packageName = selectedApp!!.packageName.ifEmpty { manualPackageName },
                 onPackageNameChange = { manualPackageName = it },
-                action = selectedIntent?.action ?: manualAction,
-                onActionChange = { manualAction = it },
+                action = actionState,
+                onActionChange = { actionState = it },
+                className = selectedActivity?.name,
+                appListRepository = appListRepository,
+                customIconPath = customIconPath,
+                onCustomIconPathChange = { customIconPath = it },
                 type = mimeType ?: "",
                 onTypeChange = { mimeType = it },
                 typeOptions = selectedIntent?.mimeTypes ?: emptyList(),
@@ -400,13 +492,21 @@ private fun IntentConfigAddDialog(
                 canSave = title.isNotBlank(),
                 showRemove = false,
                 onRemove = {},
-                onBack = { currentStep = if (selectedApp!!.packageName.isEmpty()) AddDialogStep.AppSelection else AddDialogStep.IntentSelection },
-                onDismiss = onDismiss,
+                onBack = {
+                    currentStep = when {
+                        selectedApp!!.packageName.isEmpty() -> AddDialogStep.AppSelection
+                        selectedActivity != null -> AddDialogStep.ActivitySelection
+                        else -> AddDialogStep.IntentSelection
+                    }
+                },
+                onDismiss = handleDismiss,
                 onSave = {
                     onAdd(IntentConfig(
                         title = title.trim(),
                         packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
-                        action = selectedIntent?.action ?: manualAction,
+                        action = actionState,
+                        className = selectedActivity?.name,
+                        customIconPath = customIconPath,
                         type = mimeType?.takeIf { it != anyMimeTypeLabel },
                         payloadTemplate = payloadTemplate?.trim(),
                         extras = extras
@@ -544,6 +644,7 @@ private fun IntentSelectionStep(
     discovery: AppDiscovery,
     app: AppInfo,
     onIntentSelected: (IntentOption) -> Unit,
+    onActivityLauncherSelected: () -> Unit,
     onBack: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -596,8 +697,127 @@ private fun IntentSelectionStep(
                     }
                 }
                 
+                Surface(
+                    onClick = onActivityLauncherSelected,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 32.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = MaterialTheme.colorScheme.surface,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(stringResource(R.string.intent_activity_launcher), style = MaterialTheme.typography.titleMedium)
+                        Text("MAIN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
                 if (intents.isEmpty()) {
                     Text(stringResource(R.string.intent_no_compatible_intents), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun ActivitySelectionStep(
+    discovery: AppDiscovery,
+    app: AppInfo,
+    onActivitySelected: (ActivityOption) -> Unit,
+    onBack: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf("") }
+
+    val activitiesState by produceState<List<ActivityOption>?>(initialValue = null) {
+        value = withContext(Dispatchers.IO) {
+            discovery.getActivitiesForApp(app.packageName)
+        }
+    }
+
+    val filteredActivities = remember(searchQuery, activitiesState) {
+        val activities = activitiesState ?: emptyList()
+        if (searchQuery.isBlank()) activities
+        else activities
+            .mapNotNull { activity ->
+                val labelMatch = FuzzyMatcher.match(searchQuery, activity.label)
+                val nameMatch = FuzzyMatcher.match(searchQuery, activity.name)
+                val bestScore = listOfNotNull(labelMatch?.score, nameMatch?.score).maxOrNull()
+                if (bestScore != null) activity to bestScore else null
+            }
+            .sortedByDescending { it.second }
+            .map { it.first }
+    }
+
+    ContentDialog(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxWidth(0.92f),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
+                }
+                Column {
+                    Text(
+                        text = stringResource(R.string.intent_select_activity),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    Text(
+                        text = app.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        buttons = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        },
+        content = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.search_activities_placeholder)) },
+                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                )
+
+                if (activitiesState == null) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.intent_searching_activities), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else if (filteredActivities.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.intent_no_activities_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                            items(filteredActivities, key = { it.name }) { activity ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onActivitySelected(activity) }
+                                        .padding(vertical = 12.dp)
+                                ) {
+                                    Text(activity.label, style = MaterialTheme.typography.bodyLarge)
+                                    Text(activity.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (filteredActivities.indexOf(activity) < filteredActivities.lastIndex) {
+                                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -626,9 +846,13 @@ private fun IntentConfigEditDialog(
     var title by remember { mutableStateOf(config.title) }
     var action by remember { mutableStateOf(config.action) }
     var mimeType by remember { mutableStateOf(config.type ?: "") }
+    var className by remember { mutableStateOf(config.className ?: "") }
+    var customIconPath by remember { mutableStateOf(config.customIconPath) }
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
+    
+    val initialCustomIconPath = remember { config.customIconPath }
 
     val canSave = title.isNotBlank()
 
@@ -639,10 +863,28 @@ private fun IntentConfigEditDialog(
                 title = title.trim(),
                 action = action,
                 type = mimeType.takeIf { it.isNotBlank() && it != anyMimeTypeLabel },
+                className = className.takeIf { it.isNotBlank() },
+                customIconPath = customIconPath,
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
                 extras = extras
             )
+        if (initialCustomIconPath != null && initialCustomIconPath != customIconPath) {
+            try {
+                java.io.File(initialCustomIconPath).delete()
+            } catch (e: Exception) {}
+        }
         onSave(updated)
+    }
+
+    val handleDismiss = {
+        if (customIconPath != initialCustomIconPath) {
+            customIconPath?.let { path ->
+                try {
+                    java.io.File(path).delete()
+                } catch (e: Exception) {}
+            }
+        }
+        onDismiss()
     }
 
     IntentConfigDialogContent(
@@ -651,6 +893,11 @@ private fun IntentConfigEditDialog(
         onTitleChange = { title = it },
         packageName = config.packageName,
         action = action,
+        onActionChange = { action = it },
+        className = className,
+        appListRepository = appListRepository,
+        customIconPath = customIconPath,
+        onCustomIconPathChange = { customIconPath = it },
         type = mimeType,
         onTypeChange = { mimeType = it },
         typeOptions = currentIntentOption?.mimeTypes ?: emptyList(),
@@ -663,7 +910,7 @@ private fun IntentConfigEditDialog(
         showRemove = true,
         onRemove = onRemove,
         onBack = null,
-        onDismiss = onDismiss,
+        onDismiss = handleDismiss,
         onSave = { save() },
     )
 }
@@ -678,6 +925,10 @@ private fun IntentConfigDialogContent(
     onPackageNameChange: (String) -> Unit = {},
     action: String,
     onActionChange: (String) -> Unit = {},
+    className: String? = null,
+    appListRepository: AppListRepository,
+    customIconPath: String?,
+    onCustomIconPathChange: (String?) -> Unit,
     type: String,
     onTypeChange: (String) -> Unit,
     typeOptions: List<String>,
@@ -697,6 +948,7 @@ private fun IntentConfigDialogContent(
     var actionExpanded by remember { mutableStateOf(false) }
     
     val standardActions = listOf(
+        "android.intent.action.MAIN",
         "android.intent.action.SEND",
         "android.intent.action.VIEW",
         "android.intent.action.SENDTO",
@@ -754,6 +1006,94 @@ private fun IntentConfigDialogContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                val context = LocalContext.current
+                var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+                
+                LaunchedEffect(customIconPath, packageName) {
+                    withContext(Dispatchers.IO) {
+                        val baseBitmap = when {
+                            !customIconPath.isNullOrEmpty() -> {
+                                try {
+                                    android.graphics.BitmapFactory.decodeFile(customIconPath)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                            packageName.isNotEmpty() -> {
+                                appListRepository.getIcon(packageName)
+                            }
+                            else -> null
+                        }
+                        previewBitmap = if (baseBitmap != null) {
+                            com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
+                        } else {
+                            null
+                        }
+                    }
+                }
+                
+                val iconPickerLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri: android.net.Uri? ->
+                    if (uri != null) {
+                        val savedPath = com.mrndstvndv.search.util.saveCustomIcon(context, uri)
+                        if (savedPath != null) {
+                            onCustomIconPathChange(savedPath)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { iconPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (previewBitmap != null) {
+                            Image(
+                                bitmap = previewBitmap!!.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Share,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column {
+                        Text(
+                            text = stringResource(R.string.intent_icon_label),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { iconPickerLauncher.launch("image/*") }) {
+                                Text(stringResource(R.string.intent_select_icon))
+                            }
+                            if (!customIconPath.isNullOrEmpty()) {
+                                TextButton(onClick = { onCustomIconPathChange(null) }) {
+                                    Text(
+                                        text = stringResource(R.string.intent_reset_icon),
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = title_,
                     onValueChange = onTitleChange,
@@ -774,6 +1114,17 @@ private fun IntentConfigDialogContent(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                if (!className.isNullOrEmpty()) {
+                    OutlinedTextField(
+                        value = className,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.intent_label_class_name)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 if (onActionChange == {}) {
                     OutlinedTextField(

@@ -82,6 +82,23 @@ class SettingsRepository<S : ProviderSettings>(
     }
 
     /**
+     * Replace settings from a JSON object (used by backup restore).
+     */
+    fun replaceFromJson(json: JSONObject): Boolean {
+        return try {
+            val deserialized = deserializer(json.toString())
+            if (deserialized != null) {
+                replace(deserialized)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
      * Serialize to JSON for backup export.
      */
     fun toBackupJson(): JSONObject = value.toJson()

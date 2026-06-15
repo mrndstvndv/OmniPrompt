@@ -15,14 +15,12 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -35,15 +33,22 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +59,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +73,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import com.mrndstvndv.search.util.GitHubUpdateChecker
+import com.mrndstvndv.search.util.VersionComparator
 import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.alias.AliasCreationCandidate
 import com.mrndstvndv.search.alias.AliasEntry
@@ -136,6 +150,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -170,6 +186,7 @@ private fun buildTriggerText(
 class MainActivity : ComponentActivity() {
     companion object {
         private const val MAX_BACKGROUND_BLUR_RADIUS = 80
+        private val SLOW_PROVIDER_IDS = setOf("contacts", "file-search", "termux")
     }
 
     private val defaultAppIconSize by lazy { resources.getDimensionPixelSize(android.R.dimen.app_icon_size) }
@@ -284,7 +301,7 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
-            val textState = remember { mutableStateOf(TextFieldValue("")) }
+            val textState = rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
             val focusRequester = remember { FocusRequester() }
             val coroutineScope = rememberCoroutineScope()
             val settingsRepository = remember(this@MainActivity) { ProviderSettingsRepository(this@MainActivity, coroutineScope) }
@@ -323,6 +340,12 @@ class MainActivity : ComponentActivity() {
             val alwaysShowEnterBadge by settingsRepository.alwaysShowEnterBadge.collectAsState()
             val hasUsedEnter by settingsRepository.hasUsedEnter.collectAsState()
             val enabledProviders by settingsRepository.enabledProviders.collectAsState()
+            val updateCheckInterval by settingsRepository.updateCheckInterval.collectAsState()
+            val customUpdateIntervalDays by settingsRepository.customUpdateIntervalDays.collectAsState()
+            val lastUpdateCheckTime by settingsRepository.lastUpdateCheckTime.collectAsState()
+            val dismissedVersion by settingsRepository.dismissedVersion.collectAsState()
+            val latestUpdate by settingsRepository.latestUpdate.collectAsState()
+            val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
             LaunchedEffect(backgroundBlurStrength) {
@@ -390,6 +413,41 @@ class MainActivity : ComponentActivity() {
                     // Also ensure periodic sync is scheduled based on current settings
                     if (settings.syncIntervalMinutes > 0 && settings.hasEnabledRoots()) {
                         fileSearchRepository.schedulePeriodicSync(settings.syncIntervalMinutes)
+                    }
+                }
+            }
+
+            var activeUpdateResult by remember { mutableStateOf<GitHubUpdateChecker.UpdateResult?>(null) }
+            var showUpdateBanner by remember { mutableStateOf(false) }
+
+            LaunchedEffect(latestUpdate, dismissedVersion) {
+                val update = latestUpdate
+                if (update != null && update.version != dismissedVersion) {
+                    activeUpdateResult = update
+                    showUpdateBanner = true
+                } else {
+                    showUpdateBanner = false
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                val now = System.currentTimeMillis()
+                val intervalMillis = when (updateCheckInterval) {
+                    "daily" -> 24 * 60 * 60 * 1000L
+                    "weekly" -> 7 * 24 * 60 * 60 * 1000L
+                    "monthly" -> 30 * 24 * 60 * 60 * 1000L
+                    "custom" -> customUpdateIntervalDays * 24 * 60 * 60 * 1000L
+                    else -> 7 * 24 * 60 * 60 * 1000L
+                }
+
+                if (now - lastUpdateCheckTime >= intervalMillis) {
+                    val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
+                    if (result is GitHubUpdateChecker.CheckResult.NewUpdate) {
+                        settingsRepository.setLastUpdateCheckTime(now)
+                        settingsRepository.setLatestUpdate(result.update)
+                    } else if (result is GitHubUpdateChecker.CheckResult.UpToDate) {
+                        settingsRepository.setLastUpdateCheckTime(now)
+                        settingsRepository.setLatestUpdate(null)
                     }
                 }
             }
@@ -481,27 +539,26 @@ class MainActivity : ComponentActivity() {
                 return results.filter { seenIds.add(it.id) }
             }
 
-            suspend fun queryProviders(
+            fun queryProvidersFlow(
                 query: Query,
                 providersToQuery: List<Provider>,
-            ): List<ProviderResult> {
-                if (providersToQuery.isEmpty()) return emptyList()
-                val allResults =
-                    supervisorScope {
-                        providersToQuery
-                            .map { provider ->
-                                async {
-                                    try {
-                                        withContext(Dispatchers.IO) { provider.query(query) }
-                                    } catch (e: CancellationException) {
-                                        throw e
-                                    } catch (_: Exception) {
-                                        emptyList()
-                                    }
+            ): kotlinx.coroutines.flow.Flow<Pair<String, List<ProviderResult>>> {
+                if (providersToQuery.isEmpty()) return flowOf()
+                val providerFlows =
+                    providersToQuery.map { provider ->
+                        flow {
+                            val results =
+                                try {
+                                    withContext(Dispatchers.IO) { provider.query(query) }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (_: Exception) {
+                                    emptyList()
                                 }
-                            }.awaitAll()
+                            emit(provider.id to results)
+                        }
                     }
-                return deduplicateResults(allResults.flatten())
+                return merge(*providerFlows.toTypedArray())
             }
 
             fun sortResults(
@@ -686,12 +743,53 @@ class MainActivity : ComponentActivity() {
                                             activeProviders.filter { provider -> provider.canHandle(payloadQuery) }
                                         }
                                     }
-                                val supplementalResults = sortResults(queryProviders(payloadQuery, supplementalProviders), triggerFrequencyQuery)
-                                val mergedResults = deduplicateResults(triggerResults + supplementalResults)
-                                if (providerResults != mergedResults) {
-                                    providerResults = mergedResults
+
+                                // Show trigger results immediately
+                                providerResults = triggerResults
+                                shouldShowResults = triggerResults.isNotEmpty()
+
+                                val supplementalMap = mutableMapOf<String, List<ProviderResult>>()
+                                val (slowSupplemental, fastSupplemental) = supplementalProviders.partition { it.id in SLOW_PROVIDER_IDS }
+
+                                // 1. Query fast supplemental providers concurrently
+                                if (fastSupplemental.isNotEmpty()) {
+                                    val fastResults = supervisorScope {
+                                        fastSupplemental.map { provider ->
+                                            async {
+                                                try {
+                                                    withContext(Dispatchers.IO) { provider.query(payloadQuery) }
+                                                } catch (e: CancellationException) {
+                                                    throw e
+                                                } catch (_: Exception) {
+                                                    emptyList()
+                                                }
+                                            }
+                                        }.awaitAll()
+                                    }
+                                    fastSupplemental.forEachIndexed { index, provider ->
+                                        supplementalMap[provider.id] = fastResults[index]
+                                    }
                                 }
-                                shouldShowResults = mergedResults.isNotEmpty()
+
+                                val initialSorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
+                                val initialMerged = deduplicateResults(triggerResults + initialSorted)
+                                if (providerResults != initialMerged) {
+                                    providerResults = initialMerged
+                                }
+                                shouldShowResults = initialMerged.isNotEmpty()
+
+                                // 2. Query slow supplemental providers incrementally
+                                if (slowSupplemental.isNotEmpty()) {
+                                    queryProvidersFlow(payloadQuery, slowSupplemental).collect { (providerId, batch) ->
+                                        supplementalMap[providerId] = batch
+                                        val sorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
+                                        val merged = deduplicateResults(triggerResults + sorted)
+                                        if (providerResults != merged) {
+                                            providerResults = merged
+                                        }
+                                        shouldShowResults = merged.isNotEmpty()
+                                    }
+                                }
                             } catch (_: Exception) {
                                 providerResults = emptyList()
                                 shouldShowResults = false
@@ -706,23 +804,64 @@ class MainActivity : ComponentActivity() {
                         val query = Query(normalizedText, originalText = currentText)
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
                         val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
-                        val aggregated = queryProviders(query, matchingProviders)
-                        val filtered =
-                            match?.entry?.target?.let { aliasTarget ->
-                                aggregated.filterNot { it.aliasTarget == aliasTarget }
-                            } ?: aggregated
-                        val sortedResults = sortResults(filtered, normalizedText)
-                        val newResults =
-                            buildList {
-                                aliasResult?.let { add(it) }
-                                addAll(sortedResults)
-                            }
-
-                        if (providerResults != newResults) {
-                            providerResults = newResults
-                        }
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
+
+                        val resultsMap = mutableMapOf<String, List<ProviderResult>>()
+                        val (slowProviders, fastProviders) = matchingProviders.partition { it.id in SLOW_PROVIDER_IDS }
+
+                        // 1. Query fast providers concurrently
+                        if (fastProviders.isNotEmpty()) {
+                            val fastResults = supervisorScope {
+                                fastProviders.map { provider ->
+                                    async {
+                                        try {
+                                            withContext(Dispatchers.IO) { provider.query(query) }
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (_: Exception) {
+                                            emptyList()
+                                        }
+                                    }
+                                }.awaitAll()
+                            }
+                            fastProviders.forEachIndexed { index, provider ->
+                                resultsMap[provider.id] = fastResults[index]
+                            }
+                        }
+
+                        val initialFiltered =
+                            match?.entry?.target?.let { aliasTarget ->
+                                resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
+                            } ?: resultsMap.values.flatten()
+                        val initialSorted = sortResults(initialFiltered, normalizedText)
+                        val initialResults = buildList {
+                            aliasResult?.let { add(it) }
+                            addAll(initialSorted)
+                        }
+                        if (providerResults != initialResults) {
+                            providerResults = initialResults
+                        }
+
+                        // 2. Query slow providers incrementally
+                        if (slowProviders.isNotEmpty()) {
+                            queryProvidersFlow(query, slowProviders).collect { (providerId, batch) ->
+                                resultsMap[providerId] = batch
+                                val filtered =
+                                    match?.entry?.target?.let { aliasTarget ->
+                                        resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
+                                    } ?: resultsMap.values.flatten()
+                                val sortedResults = sortResults(filtered, normalizedText)
+                                val newResults =
+                                    buildList {
+                                        aliasResult?.let { add(it) }
+                                        addAll(sortedResults)
+                                    }
+                                if (providerResults != newResults) {
+                                    providerResults = newResults
+                                }
+                            }
+                        }
                     }
             }
 
@@ -753,6 +892,93 @@ class MainActivity : ComponentActivity() {
 
                 if (query.isNotEmpty()) {
                     handleQuerySubmission(query)
+                }
+            }
+
+            @OptIn(ExperimentalMaterial3Api::class)
+            @Composable
+            fun UpdateBanner(
+                result: GitHubUpdateChecker.UpdateResult,
+                onDismiss: () -> Unit,
+                onDownload: () -> Unit,
+                modifier: Modifier = Modifier
+            ) {
+                val dismissState = rememberSwipeToDismissBoxState(
+                    positionalThreshold = { totalDistance -> totalDistance * 0.6f },
+                )
+
+                LaunchedEffect(dismissState.currentValue) {
+                    if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
+                        dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+                    ) {
+                        onDismiss()
+                    }
+                }
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    backgroundContent = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color.Transparent)
+                        )
+                    },
+                    modifier = modifier
+                ) {
+                    val borderStroke = if (firstResultHighlightEnabled) {
+                        val borderColor = MaterialTheme.colorScheme.primary.copy(
+                            alpha = if (translucentResultsEnabled) 0.5f else 0.22f
+                        )
+                        BorderStroke(firstResultBorderThickness.dp, borderColor)
+                    } else {
+                        null
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clickable(
+                                onClick = onDownload
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        border = borderStroke
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Update available: ${result.version}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                contentDescription = "Download Update",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -811,33 +1037,12 @@ class MainActivity : ComponentActivity() {
             SearchTheme(motionPreferences = motionPreferences) {
                 val hasVisibleResults = shouldShowResults && providerResults.isNotEmpty()
 
-                // Single unit animation: search bar + app list animate together
-                val spacerAnimatable = remember { Animatable(if (hasVisibleResults) 0.01f else 1f) }
-                var prevHasVisibleResults by remember { mutableStateOf(hasVisibleResults) }
-
-                LaunchedEffect(hasVisibleResults) {
-                    val targetValue = if (hasVisibleResults) 0.01f else 1f
-                    // Going up (showing results): fast (300ms)
-                    // Going down (hiding results): slow (500ms)
-                    // But when app list will appear (going down), snap spacer immediately
-                    val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                    val shouldSnap =
-                        isGoingDown && appSearchSettings.appListEnabled &&
-                            (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                    val durationMillis = if (hasVisibleResults) 300 else 500
-                    if (motionPreferences.animationsEnabled && !shouldSnap) {
-                        spacerAnimatable.animateTo(
-                            targetValue = targetValue,
-                            animationSpec = tween(durationMillis = durationMillis),
-                        )
-                    } else {
-                        spacerAnimatable.snapTo(targetValue)
-                    }
-                    prevHasVisibleResults = hasVisibleResults
-                }
-
-                val spacerWeight = spacerAnimatable.value
-                val bottomSpacerWeight = if (hasVisibleResults) 0.01f else 1f
+                // No spacer-weight animation — per-frame Animatable.value reads in composition
+                // would force recomposition on every animation frame under SSM.
+                // Instead we use constant weight distribution + AnimatedVisibility on ItemsList
+                // for smooth enter/exit of results; the search bar snaps between centered and bottom.
+                // The visual transition is masked by ItemsList's fade+expand animation.
+                val spacerWeight = if (hasVisibleResults) 0.01f else 1f
 
                 val tintedPrimaryBackground =
                     lerp(
@@ -866,7 +1071,7 @@ class MainActivity : ComponentActivity() {
                         if (searchBarPosition == SearchBarPosition.TOP) {
                             Spacer(Modifier.weight(spacerWeight))
                         } else if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
-                            Spacer(Modifier.weight(bottomSpacerWeight))
+                            Spacer(Modifier.weight(0.01f))
                         }
 
                         if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
@@ -980,6 +1185,22 @@ class MainActivity : ComponentActivity() {
                                             .padding(bottom = animatedBottomPadding),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
+                                    if (showUpdateBanner && !hasVisibleResults) {
+                                        activeUpdateResult?.let { update ->
+                                            UpdateBanner(
+                                                result = update,
+                                                onDismiss = {
+                                                    showUpdateBanner = false
+                                                    settingsRepository.setDismissedVersion(update.version)
+                                                },
+                                                onDownload = {
+                                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                                                    browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                    startActivity(browserIntent)
+                                                }
+                                            )
+                                        }
+                                    }
                                     SearchBar()
 
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -989,13 +1210,12 @@ class MainActivity : ComponentActivity() {
                                     val showAppList =
                                         appSearchSettings.appListEnabled &&
                                             (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                    // Single unit animation: match spacer animation durations
-                                    val isGoingDown = prevHasVisibleResults && !hasVisibleResults
+                                    // App list enter duration (not tied to spacer animation anymore)
                                     val appListEnterDuration =
                                         when {
-                                            !isGoingDown -> 300
+                                            !appSearchSettings.hideAppListWhenResultsVisible -> 300
                                             appSearchSettings.appListType == AppListType.BOTH -> 300
-                                            else -> 500
+                                            else -> 300
                                         }
                                     val appListExitDuration = 200
                                     AppListContainer(
@@ -1036,6 +1256,22 @@ class MainActivity : ComponentActivity() {
                             }
                         } else {
                             Column(Modifier.fillMaxWidth()) {
+                                if (showUpdateBanner && !hasVisibleResults) {
+                                    activeUpdateResult?.let { update ->
+                                        UpdateBanner(
+                                            result = update,
+                                            onDismiss = {
+                                                showUpdateBanner = false
+                                                settingsRepository.setDismissedVersion(update.version)
+                                            },
+                                            onDownload = {
+                                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                                                browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                                startActivity(browserIntent)
+                                            }
+                                        )
+                                    }
+                                }
                                 SearchBar()
 
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -1045,14 +1281,8 @@ class MainActivity : ComponentActivity() {
                                 val showAppList =
                                     appSearchSettings.appListEnabled &&
                                         (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                // Single unit animation: match spacer animation durations
-                                val isGoingDown = prevHasVisibleResults && !hasVisibleResults
-                                val appListEnterDuration =
-                                    when {
-                                        !isGoingDown -> 300
-                                        appSearchSettings.appListType == AppListType.BOTH -> 300
-                                        else -> 500
-                                    }
+                                // App list enter duration (not tied to spacer animation anymore)
+                                val appListEnterDuration = 300
                                 val appListExitDuration = 200
                                 AppListContainer(
                                     visible = showAppList,
