@@ -42,7 +42,20 @@ private fun getForcedMonochromeDrawable(
     }
     
     val avgLuminance = if (nonTransparentPixels > 0) totalLuminance / nonTransparentPixels else 128
-    val invert = avgLuminance > 160
+    val coverage = nonTransparentPixels.toFloat() / pixels.size
+    val invert = when {
+        avgLuminance > 140 && coverage > 0.60f -> true // light background
+        avgLuminance < 80 -> true // dark logo on transparent background
+        else -> false
+    }
+    
+    val surfR = (surfaceColor ushr 16) and 0xFF
+    val surfG = (surfaceColor ushr 8) and 0xFF
+    val surfB = surfaceColor and 0xFF
+    
+    val primR = (primaryColor ushr 16) and 0xFF
+    val primG = (primaryColor ushr 8) and 0xFF
+    val primB = primaryColor and 0xFF
     
     for (i in pixels.indices) {
         val color = pixels[i]
@@ -58,10 +71,13 @@ private fun getForcedMonochromeDrawable(
             lum = 255 - lum
         }
         
-        val factor = lum / 255f
-        val newAlpha = (alpha * (0.2f + 0.8f * factor)).toInt().coerceIn(0, 255)
+        val ratio = lum / 255f
         
-        val newColor = (newAlpha shl 24) or (primaryColor and 0x00FFFFFF)
+        val red = ((1f - ratio) * surfR + ratio * primR).toInt().coerceIn(0, 255)
+        val green = ((1f - ratio) * surfG + ratio * primG).toInt().coerceIn(0, 255)
+        val blue = ((1f - ratio) * surfB + ratio * primB).toInt().coerceIn(0, 255)
+        
+        val newColor = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
         pixels[i] = newColor
     }
     
