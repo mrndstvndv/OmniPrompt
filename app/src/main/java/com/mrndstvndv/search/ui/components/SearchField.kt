@@ -1,8 +1,8 @@
 package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
-import android.view.KeyEvent as AndroidKeyEvent
 import android.view.inputmethod.InputConnectionWrapper
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,18 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-
-import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -67,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.model.SearchTrigger
 import com.mrndstvndv.search.provider.model.TriggerMatch
 import com.mrndstvndv.search.ui.theme.motionAwareTween
+import android.view.KeyEvent as AndroidKeyEvent
 
 /**
  * State representing an active trigger in the search field.
@@ -122,14 +112,20 @@ fun SearchField(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(50)
-    val colors = TextFieldDefaults.colors(
-        focusedIndicatorColor = Color.Transparent,
-        unfocusedIndicatorColor = Color.Transparent,
-        disabledIndicatorColor = Color.Transparent,
-    )
+    val colors =
+        TextFieldDefaults.colors(
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+        )
     val isFocused by interactionSource.collectIsFocusedAsState()
     val textColor = colors.textColor(enabled = true, isError = false, focused = isFocused)
-    val placeholderColor = colors.placeholderColor(enabled = true, isError = false, focused = isFocused)
+    val placeholderColor =
+        colors.placeholderColor(
+            enabled = true,
+            isError = false,
+            focused = isFocused,
+        )
     val latestValue = rememberUpdatedState(value)
     val latestOnBackspaceAtStart = rememberUpdatedState(onBackspaceAtStart)
 
@@ -139,22 +135,24 @@ fun SearchField(
         return selection.start == 0 && selection.end == 0
     }
 
-    val effectiveModifier = modifier.onPreviewKeyEvent { event ->
-        val callback = latestOnBackspaceAtStart.value ?: return@onPreviewKeyEvent false
-        if (event.key != Key.Backspace) return@onPreviewKeyEvent false
-        if (!canDismissTriggerWithBackspace(latestValue.value)) return@onPreviewKeyEvent false
-        callback()
-        true
-    }
+    val effectiveModifier =
+        modifier.onPreviewKeyEvent { event ->
+            val callback = latestOnBackspaceAtStart.value ?: return@onPreviewKeyEvent false
+            if (event.key != Key.Backspace) return@onPreviewKeyEvent false
+            if (!canDismissTriggerWithBackspace(latestValue.value)) return@onPreviewKeyEvent false
+            callback()
+            true
+        }
 
     val textField: @Composable () -> Unit = {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = effectiveModifier,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = textColor,
-            ),
+            textStyle =
+                MaterialTheme.typography.bodyLarge.copy(
+                    color = textColor,
+                ),
             singleLine = singleLine,
             keyboardOptions = keyboardOptions,
             keyboardActions = keyboardActions,
@@ -162,9 +160,10 @@ fun SearchField(
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             decorationBox = { innerTextField ->
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                 ) {
                     TextFieldDefaults.Container(
                         enabled = true,
@@ -176,9 +175,10 @@ fun SearchField(
                     )
 
                     Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         triggerChip?.let { chip ->
@@ -191,7 +191,9 @@ fun SearchField(
                             contentAlignment = Alignment.CenterStart,
                         ) {
                             if (value.text.isEmpty()) {
-                                CompositionLocalProvider(LocalContentColor provides placeholderColor) {
+                                CompositionLocalProvider(
+                                    LocalContentColor provides placeholderColor,
+                                ) {
                                     placeholder?.invoke()
                                 }
                             }
@@ -211,7 +213,10 @@ fun SearchField(
                                 prevShowClear = showClear
                                 morphCue.snapTo(if (showClear) 0f else 1f)
                                 bounceCue.snapTo(0f)
-                                morphCue.animateTo(if (showClear) 1f else 0f, animationSpec = morphSpec)
+                                morphCue.animateTo(
+                                    if (showClear) 1f else 0f,
+                                    animationSpec = morphSpec,
+                                )
                                 bounceCue.animateTo(1f, animationSpec = bounceExpandSpec)
                                 bounceCue.animateTo(0f, animationSpec = bounceSettleSpec)
                             }
@@ -224,20 +229,22 @@ fun SearchField(
                         val bounceScaleX = 1f + (bounceCue.value * 0.012f)
                         val bounceScaleY = 1f + (bounceCue.value * 0.024f)
                         Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(50))
-                                .clickable { if (showClear) onClear!!() },
+                            modifier =
+                                Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable { if (showClear) onClear!!() },
                             contentAlignment = Alignment.Center,
                         ) {
                             trailingIcon?.let { icon ->
                                 Box(
-                                    modifier = Modifier
-                                        .graphicsLayer {
-                                            scaleX = trailingScale * bounceScaleX
-                                            scaleY = trailingScale * bounceScaleY
-                                            alpha = trailingAlpha
-                                        },
+                                    modifier =
+                                        Modifier
+                                            .graphicsLayer {
+                                                scaleX = trailingScale * bounceScaleX
+                                                scaleY = trailingScale * bounceScaleY
+                                                alpha = trailingAlpha
+                                            },
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     icon()
@@ -246,13 +253,14 @@ fun SearchField(
                             Icon(
                                 imageVector = Icons.Outlined.Close,
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .graphicsLayer {
-                                        scaleX = clearScale * bounceScaleX
-                                        scaleY = clearScale * bounceScaleY
-                                        alpha = clearAlpha
-                                    },
+                                modifier =
+                                    Modifier
+                                        .size(18.dp)
+                                        .graphicsLayer {
+                                            scaleX = clearScale * bounceScaleX
+                                            scaleY = clearScale * bounceScaleY
+                                            alpha = clearAlpha
+                                        },
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -264,48 +272,56 @@ fun SearchField(
 
     // Keep the platform text input interceptor mounted at all times so the
     // underlying input connection stays stable when trigger mode toggles.
-    val interceptor = remember {
-        PlatformTextInputInterceptor { request, nextHandler ->
-            val wrappedRequest = PlatformTextInputMethodRequest { outAttributes ->
-                val inputConnection = request.createInputConnection(outAttributes)
-                val view = nextHandler.view
+    val interceptor =
+        remember {
+            PlatformTextInputInterceptor { request, nextHandler ->
+                val wrappedRequest =
+                    PlatformTextInputMethodRequest { outAttributes ->
+                        val inputConnection = request.createInputConnection(outAttributes)
+                        val view = nextHandler.view
 
-                object : InputConnectionWrapper(inputConnection, false) {
-                    private fun handleBackspace(): Boolean {
-                        val callback = latestOnBackspaceAtStart.value ?: return false
-                        if (!canDismissTriggerWithBackspace(latestValue.value)) return false
-                        view.post(callback)
-                        return true
-                    }
+                        object : InputConnectionWrapper(inputConnection, false) {
+                            private fun handleBackspace(): Boolean {
+                                val callback = latestOnBackspaceAtStart.value ?: return false
+                                if (!canDismissTriggerWithBackspace(latestValue.value)) return false
+                                view.post(callback)
+                                return true
+                            }
 
-                    override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
-                        if (beforeLength > 0 && afterLength == 0 && handleBackspace()) return true
-                        return super.deleteSurroundingText(beforeLength, afterLength)
-                    }
+                            override fun deleteSurroundingText(
+                                beforeLength: Int,
+                                afterLength: Int,
+                            ): Boolean {
+                                if (beforeLength > 0 && afterLength == 0 && handleBackspace()) return true
+                                return super.deleteSurroundingText(beforeLength, afterLength)
+                            }
 
-                    override fun deleteSurroundingTextInCodePoints(
-                        beforeLength: Int,
-                        afterLength: Int,
-                    ): Boolean {
-                        if (beforeLength > 0 && afterLength == 0 && handleBackspace()) return true
-                        return super.deleteSurroundingTextInCodePoints(beforeLength, afterLength)
-                    }
+                            override fun deleteSurroundingTextInCodePoints(
+                                beforeLength: Int,
+                                afterLength: Int,
+                            ): Boolean {
+                                if (beforeLength > 0 && afterLength == 0 && handleBackspace()) return true
+                                return super.deleteSurroundingTextInCodePoints(
+                                    beforeLength,
+                                    afterLength,
+                                )
+                            }
 
-                    override fun sendKeyEvent(event: AndroidKeyEvent): Boolean {
-                        if (
-                            event.action == AndroidKeyEvent.ACTION_DOWN &&
-                                event.keyCode == AndroidKeyEvent.KEYCODE_DEL &&
-                                handleBackspace()
-                        ) {
-                            return true
+                            override fun sendKeyEvent(event: AndroidKeyEvent): Boolean {
+                                if (
+                                    event.action == AndroidKeyEvent.ACTION_DOWN &&
+                                    event.keyCode == AndroidKeyEvent.KEYCODE_DEL &&
+                                    handleBackspace()
+                                ) {
+                                    return true
+                                }
+                                return super.sendKeyEvent(event)
+                            }
                         }
-                        return super.sendKeyEvent(event)
                     }
-                }
+                nextHandler.startInputMethod(wrappedRequest)
             }
-            nextHandler.startInputMethod(wrappedRequest)
         }
-    }
 
     InterceptPlatformTextInput(interceptor) {
         textField()
@@ -333,9 +349,10 @@ fun TriggerChip(
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(start = 8.dp, end = 4.dp),
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .padding(start = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Icon
@@ -344,9 +361,10 @@ fun TriggerChip(
                     Image(
                         bitmap = iconBitmap!!.asImageBitmap(),
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(RoundedCornerShape(2.dp)),
+                        modifier =
+                            Modifier
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(2.dp)),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
@@ -366,9 +384,10 @@ fun TriggerChip(
             )
 
             Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onDismiss),
+                modifier =
+                    Modifier
+                        .size(20.dp)
+                        .clickable(onClick = onDismiss),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

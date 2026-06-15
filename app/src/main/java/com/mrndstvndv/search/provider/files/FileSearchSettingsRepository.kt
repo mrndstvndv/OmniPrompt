@@ -20,6 +20,6 @@ fun createFileSearchSettingsRepository(context: Context): SettingsRepository<Fil
                 null
             }
         },
-        serializer = { settings -> settings.toJson().toString() }
+        serializer = { settings -> settings.toJson().toString() },
     )
 }

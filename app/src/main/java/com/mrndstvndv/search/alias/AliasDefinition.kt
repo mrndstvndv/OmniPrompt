@@ -13,6 +13,7 @@ import org.json.JSONObject
 sealed interface AliasTarget {
     val providerId: String
     val summary: String
+
     fun toJson(): JSONObject
 
     companion object {
@@ -37,7 +38,7 @@ sealed interface AliasTarget {
 data class AliasEntry(
     val alias: String,
     val target: AliasTarget,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
 ) {
     companion object {
         private const val KEY_ALIAS = "alias"
@@ -64,18 +65,18 @@ data class AliasEntry(
 
 data class AliasMatch(
     val entry: AliasEntry,
-    val remainingQuery: String
+    val remainingQuery: String,
 )
 
 data class AliasCreationCandidate(
     val target: AliasTarget,
     val suggestion: String,
-    val description: String
+    val description: String,
 )
 
 data class WebSearchAliasTarget(
     val siteId: String,
-    val displayName: String
+    val displayName: String,
 ) : AliasTarget {
     override val providerId: String = "web-search"
     override val summary: String
@@ -103,7 +104,7 @@ data class WebSearchAliasTarget(
 
 data class AppLaunchAliasTarget(
     val packageName: String,
-    val label: String
+    val label: String,
 ) : AliasTarget {
     override val providerId: String = "app-list"
     override val summary: String
@@ -131,7 +132,7 @@ data class AppLaunchAliasTarget(
 
 data class QuicklinkAliasTarget(
     val quicklinkId: String,
-    val title: String
+    val title: String,
 ) : AliasTarget {
     override val providerId: String = "web-search"
     override val summary: String

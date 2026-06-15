@@ -4,19 +4,19 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.FastOutSlowInEasing
 import com.mrndstvndv.search.provider.settings.MotionPreferences
 
 val LocalMotionPreferences = staticCompositionLocalOf { MotionPreferences.Default }
@@ -25,7 +25,7 @@ val LocalMotionPreferences = staticCompositionLocalOf { MotionPreferences.Defaul
 fun <T> motionAwareTween(
     durationMillis: Int,
     delayMillis: Int = 0,
-    easing: Easing = FastOutSlowInEasing
+    easing: Easing = FastOutSlowInEasing,
 ): FiniteAnimationSpec<T> {
     val motionPreferences = LocalMotionPreferences.current
     val resolvedDuration = motionPreferences.effectiveDurationMillis(durationMillis)
@@ -45,17 +45,18 @@ fun rememberMotionAwareFloat(
     durationMillis: Int,
     delayMillis: Int = 0,
     easing: Easing = FastOutSlowInEasing,
-    label: String = "motionAwareFloat"
+    label: String = "motionAwareFloat",
 ): State<Float> {
-    val spec = motionAwareTween<Float>(
-        durationMillis = durationMillis,
-        delayMillis = delayMillis,
-        easing = easing
-    )
+    val spec =
+        motionAwareTween<Float>(
+            durationMillis = durationMillis,
+            delayMillis = delayMillis,
+            easing = easing,
+        )
     return animateFloatAsState(
         targetValue = targetValue,
         animationSpec = spec,
-        label = label
+        label = label,
     )
 }
 
@@ -65,7 +66,7 @@ fun motionAwareVisibility(
     modifier: Modifier = Modifier,
     enter: EnterTransition = fadeIn(),
     exit: ExitTransition = fadeOut(),
-    content: @Composable AnimatedVisibilityScope.() -> Unit
+    content: @Composable AnimatedVisibilityScope.() -> Unit,
 ) {
     val enabled = LocalMotionPreferences.current.animationsEnabled
     AnimatedVisibility(
@@ -73,6 +74,6 @@ fun motionAwareVisibility(
         modifier = modifier,
         enter = if (enabled) enter else EnterTransition.None,
         exit = if (enabled) exit else ExitTransition.None,
-        content = content
+        content = content,
     )
 }

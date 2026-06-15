@@ -22,14 +22,13 @@ import java.io.File
  * - Root access detection
  */
 class DeveloperSettingsManager(private val context: Context) {
-
     companion object {
         private const val TAG = "DeveloperSettingsManager"
         private const val SHIZUKU_PERMISSION_REQUEST_CODE = 101
-        
+
         @Volatile
         private var instance: DeveloperSettingsManager? = null
-        
+
         fun getInstance(context: Context): DeveloperSettingsManager {
             return instance ?: synchronized(this) {
                 instance ?: DeveloperSettingsManager(context.applicationContext).also { instance = it }
@@ -41,14 +40,14 @@ class DeveloperSettingsManager(private val context: Context) {
         NONE,
         ROOT,
         SHIZUKU,
-        ADB
+        ADB,
     }
 
     data class PermissionStatus(
         val availableMethod: PermissionMethod = PermissionMethod.NONE,
         val isShizukuAvailable: Boolean = false,
         val hasShizukuPermission: Boolean = false,
-        val isReady: Boolean = false
+        val isReady: Boolean = false,
     )
 
     private val _permissionStatus = MutableStateFlow(PermissionStatus())
@@ -59,7 +58,7 @@ class DeveloperSettingsManager(private val context: Context) {
 
     private val userServiceArgs by lazy {
         Shizuku.UserServiceArgs(
-            ComponentName(BuildConfig.APPLICATION_ID, UserService::class.java.name)
+            ComponentName(BuildConfig.APPLICATION_ID, UserService::class.java.name),
         )
             .daemon(false)
             .processNameSuffix("service")
@@ -67,40 +66,50 @@ class DeveloperSettingsManager(private val context: Context) {
             .version(BuildConfig.VERSION_CODE)
     }
 
-    private val userServiceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-            Log.d(TAG, "onServiceConnected: name=$name, binder=$binder, pingBinder=${binder?.pingBinder()}")
-            if (binder != null && binder.pingBinder()) {
-                userService = IUserService.Stub.asInterface(binder)
-                Log.d(TAG, "userService bound successfully")
+    private val userServiceConnection =
+        object : ServiceConnection {
+            override fun onServiceConnected(
+                name: ComponentName?,
+                binder: IBinder?,
+            ) {
+                Log.d(
+                    TAG,
+                    "onServiceConnected: name=$name, binder=$binder, pingBinder=${binder?.pingBinder()}",
+                )
+                if (binder != null && binder.pingBinder()) {
+                    userService = IUserService.Stub.asInterface(binder)
+                    Log.d(TAG, "userService bound successfully")
+                }
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                Log.d(TAG, "onServiceDisconnected: name=$name")
+                userService = null
             }
         }
 
-        override fun onServiceDisconnected(name: ComponentName?) {
-            Log.d(TAG, "onServiceDisconnected: name=$name")
-            userService = null
-        }
-    }
-
-    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
-        Log.d(TAG, "binderReceivedListener triggered")
-        updatePermissionStatus()
-    }
-
-    private val binderDeadListener = Shizuku.OnBinderDeadListener {
-        Log.d(TAG, "binderDeadListener triggered")
-        userService = null
-        updatePermissionStatus()
-    }
-
-    private val permissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
-        if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
+    private val binderReceivedListener =
+        Shizuku.OnBinderReceivedListener {
+            Log.d(TAG, "binderReceivedListener triggered")
             updatePermissionStatus()
-            if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                bindUserService()
+        }
+
+    private val binderDeadListener =
+        Shizuku.OnBinderDeadListener {
+            Log.d(TAG, "binderDeadListener triggered")
+            userService = null
+            updatePermissionStatus()
+        }
+
+    private val permissionResultListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
+                updatePermissionStatus()
+                if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                    bindUserService()
+                }
             }
         }
-    }
 
     /**
      * Register Shizuku listeners. Call this when the feature is enabled.
@@ -172,7 +181,7 @@ class DeveloperSettingsManager(private val context: Context) {
             Settings.Global.getInt(
                 context.contentResolver,
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-                0
+                0,
             ) == 1
         } catch (e: Exception) {
             false
@@ -185,18 +194,22 @@ class DeveloperSettingsManager(private val context: Context) {
      */
     fun setDeveloperSettingsEnabled(enabled: Boolean): Boolean {
         val status = _permissionStatus.value
-        Log.d(TAG, "setDeveloperSettingsEnabled: enabled=$enabled, method=${status.availableMethod}")
-        
-        val result = when (status.availableMethod) {
-            PermissionMethod.ADB -> toggleViaDirectPermission(enabled)
-            PermissionMethod.ROOT -> toggleViaRoot(enabled)
-            PermissionMethod.SHIZUKU -> toggleViaShizuku(enabled)
-            PermissionMethod.NONE -> {
-                Log.w(TAG, "No permission method available")
-                false
+        Log.d(
+            TAG,
+            "setDeveloperSettingsEnabled: enabled=$enabled, method=${status.availableMethod}",
+        )
+
+        val result =
+            when (status.availableMethod) {
+                PermissionMethod.ADB -> toggleViaDirectPermission(enabled)
+                PermissionMethod.ROOT -> toggleViaRoot(enabled)
+                PermissionMethod.SHIZUKU -> toggleViaShizuku(enabled)
+                PermissionMethod.NONE -> {
+                    Log.w(TAG, "No permission method available")
+                    false
+                }
             }
-        }
-        
+
         Log.d(TAG, "setDeveloperSettingsEnabled result: $result")
         return result
     }
@@ -207,24 +220,29 @@ class DeveloperSettingsManager(private val context: Context) {
         val isShizukuAvailable = isShizukuAvailable()
         val hasShizukuPermission = if (isShizukuAvailable) checkShizukuPermission() else false
 
-        Log.d(TAG, "updatePermissionStatus: adb=$hasAdbPermission, root=$isRooted, shizuku=$isShizukuAvailable, shizukuPerm=$hasShizukuPermission")
+        Log.d(
+            TAG,
+            "updatePermissionStatus: adb=$hasAdbPermission, root=$isRooted, shizuku=$isShizukuAvailable, shizukuPerm=$hasShizukuPermission",
+        )
 
-        val method = when {
-            hasAdbPermission -> PermissionMethod.ADB
-            isRooted -> PermissionMethod.ROOT
-            isShizukuAvailable && hasShizukuPermission -> PermissionMethod.SHIZUKU
-            else -> PermissionMethod.NONE
-        }
+        val method =
+            when {
+                hasAdbPermission -> PermissionMethod.ADB
+                isRooted -> PermissionMethod.ROOT
+                isShizukuAvailable && hasShizukuPermission -> PermissionMethod.SHIZUKU
+                else -> PermissionMethod.NONE
+            }
 
         val isReady = method != PermissionMethod.NONE
 
-        _permissionStatus.value = PermissionStatus(
-            availableMethod = method,
-            isShizukuAvailable = isShizukuAvailable,
-            hasShizukuPermission = hasShizukuPermission,
-            isReady = isReady
-        )
-        
+        _permissionStatus.value =
+            PermissionStatus(
+                availableMethod = method,
+                isShizukuAvailable = isShizukuAvailable,
+                hasShizukuPermission = hasShizukuPermission,
+                isReady = isReady,
+            )
+
         Log.d(TAG, "Permission method: $method, isReady: $isReady")
 
         // Auto-bind Shizuku service if ready
@@ -235,15 +253,16 @@ class DeveloperSettingsManager(private val context: Context) {
 
     private fun hasDirectPermission(): Boolean {
         return try {
-            val currentValue = Settings.Global.getInt(
-                context.contentResolver,
-                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-                0
-            )
+            val currentValue =
+                Settings.Global.getInt(
+                    context.contentResolver,
+                    Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+                    0,
+                )
             Settings.Global.putInt(
                 context.contentResolver,
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-                currentValue
+                currentValue,
             )
             true
         } catch (e: SecurityException) {
@@ -252,18 +271,19 @@ class DeveloperSettingsManager(private val context: Context) {
     }
 
     private fun isDeviceRooted(): Boolean {
-        val paths = listOf(
-            "/system/app/Superuser.apk",
-            "/sbin/su",
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/data/local/xbin/su",
-            "/data/local/bin/su",
-            "/system/sd/xbin/su",
-            "/system/bin/failsafe/su",
-            "/data/local/su",
-            "/su/bin/su"
-        )
+        val paths =
+            listOf(
+                "/system/app/Superuser.apk",
+                "/sbin/su",
+                "/system/bin/su",
+                "/system/xbin/su",
+                "/data/local/xbin/su",
+                "/data/local/bin/su",
+                "/system/sd/xbin/su",
+                "/system/bin/failsafe/su",
+                "/data/local/su",
+                "/su/bin/su",
+            )
         return paths.any { File(it).exists() }
     }
 
@@ -288,7 +308,10 @@ class DeveloperSettingsManager(private val context: Context) {
     }
 
     private fun bindUserService() {
-        Log.d(TAG, "bindUserService called, isShizukuListenersRegistered=$isShizukuListenersRegistered")
+        Log.d(
+            TAG,
+            "bindUserService called, isShizukuListenersRegistered=$isShizukuListenersRegistered",
+        )
         try {
             val version = Shizuku.getVersion()
             Log.d(TAG, "Shizuku version: $version")
@@ -324,7 +347,7 @@ class DeveloperSettingsManager(private val context: Context) {
             Settings.Global.putInt(
                 context.contentResolver,
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-                if (enable) 1 else 0
+                if (enable) 1 else 0,
             )
             Log.d(TAG, "toggleViaDirectPermission: success")
             true
@@ -338,9 +361,10 @@ class DeveloperSettingsManager(private val context: Context) {
         Log.d(TAG, "toggleViaRoot: enable=$enable")
         return try {
             val value = if (enable) "1" else "0"
-            val process = Runtime.getRuntime().exec(
-                arrayOf("su", "-c", "settings put global development_settings_enabled $value")
-            )
+            val process =
+                Runtime.getRuntime().exec(
+                    arrayOf("su", "-c", "settings put global development_settings_enabled $value"),
+                )
             val exitCode = process.waitFor()
             Log.d(TAG, "toggleViaRoot: exitCode=$exitCode")
             exitCode == 0
@@ -375,7 +399,7 @@ class DeveloperSettingsManager(private val context: Context) {
     fun launchWirelessDebugging(): Boolean {
         return launchSettingsFragment(
             "com.android.settings.development.WirelessDebuggingFragment",
-            null
+            null,
         )
     }
 
@@ -385,24 +409,31 @@ class DeveloperSettingsManager(private val context: Context) {
     fun launchUsbDebugging(): Boolean {
         return launchSettingsFragment(
             "com.android.settings.development.DevelopmentSettingsDashboardFragment",
-            "enable_adb"
+            "enable_adb",
         )
     }
 
-    private fun launchSettingsFragment(fragmentName: String, highlightKey: String?): Boolean {
+    private fun launchSettingsFragment(
+        fragmentName: String,
+        highlightKey: String?,
+    ): Boolean {
         val status = _permissionStatus.value
-        
+
         return when (status.availableMethod) {
             PermissionMethod.ROOT -> {
                 try {
-                    val cmd = StringBuilder("am start -n com.android.settings/.SubSettings -e :settings:show_fragment $fragmentName")
+                    val cmd =
+                        StringBuilder(
+                            "am start -n com.android.settings/.SubSettings -e :settings:show_fragment $fragmentName",
+                        )
                     if (!highlightKey.isNullOrEmpty()) {
                         cmd.append(" -e :settings:fragment_args_key $highlightKey")
                     }
-                    
-                    val process = Runtime.getRuntime().exec(
-                        arrayOf("su", "-c", cmd.toString())
-                    )
+
+                    val process =
+                        Runtime.getRuntime().exec(
+                            arrayOf("su", "-c", cmd.toString()),
+                        )
                     process.waitFor() == 0
                 } catch (e: Exception) {
                     Log.e(TAG, "launchSettingsFragment via Root failed", e)

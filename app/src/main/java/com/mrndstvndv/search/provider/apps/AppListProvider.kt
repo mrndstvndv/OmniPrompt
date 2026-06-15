@@ -1,7 +1,6 @@
 package com.mrndstvndv.search.provider.apps
 
 import android.content.Intent
-import android.graphics.Bitmap
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
@@ -55,7 +54,14 @@ class AppListProvider(
         val matches: List<ScoredApp> =
             if (normalized.isBlank()) {
                 // No query - return all apps with zero score
-                appListRepository.getAllApps().value.map { ScoredApp(it, 0, emptyList(), emptyList()) }
+                appListRepository.getAllApps().value.map {
+                    ScoredApp(
+                        it,
+                        0,
+                        emptyList(),
+                        emptyList(),
+                    )
+                }
             } else if (askMatch != null) {
                 // When "ask <assistant>" is detected, only show that assistant's app
                 appListRepository

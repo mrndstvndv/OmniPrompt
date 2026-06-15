@@ -1,7 +1,7 @@
 package com.mrndstvndv.search.provider.settings
 
 data class MotionPreferences(
-    val animationsEnabled: Boolean = true
+    val animationsEnabled: Boolean = true,
 ) {
     companion object {
         val Default = MotionPreferences()

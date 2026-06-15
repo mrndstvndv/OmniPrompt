@@ -5,7 +5,8 @@ package com.mrndstvndv.search.provider.settings
  */
 enum class SearchBarPosition {
     TOP,
-    BOTTOM;
+    BOTTOM,
+    ;
 
     companion object {
         fun fromStorageValue(value: String?): SearchBarPosition {

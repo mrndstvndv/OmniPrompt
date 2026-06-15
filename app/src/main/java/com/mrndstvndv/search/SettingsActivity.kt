@@ -116,8 +116,8 @@ class SettingsActivity : ComponentActivity() {
                     refreshDefaultAssistantState()
                 }
                 AnimatedContent(
-                        targetState = currentScreen,
-                        label = "settings_nav",
+                    targetState = currentScreen,
+                    label = "settings_nav",
                     transitionSpec = {
                         val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
                         slideInHorizontally(
@@ -262,7 +262,10 @@ class SettingsActivity : ComponentActivity() {
                             }
                             ProviderListScreen(
                                 settingsRepository = settingsRepository,
-                                isTermuxInstalled = TermuxProvider.isTermuxInstalled(this@SettingsActivity),
+                                isTermuxInstalled =
+                                    TermuxProvider.isTermuxInstalled(
+                                        this@SettingsActivity,
+                                    ),
                                 onBack = {
                                     if (initialScreen == Screen.ProviderList) {
                                         finish()
@@ -335,7 +338,10 @@ class SettingsActivity : ComponentActivity() {
                             BackHandler { currentScreen = Screen.Providers }
                             TermuxSettingsScreen(
                                 repository = termuxSettingsRepo,
-                                isTermuxInstalled = TermuxProvider.isTermuxInstalled(this@SettingsActivity),
+                                isTermuxInstalled =
+                                    TermuxProvider.isTermuxInstalled(
+                                        this@SettingsActivity,
+                                    ),
                                 onBack = { currentScreen = Screen.Providers },
                             )
                         }

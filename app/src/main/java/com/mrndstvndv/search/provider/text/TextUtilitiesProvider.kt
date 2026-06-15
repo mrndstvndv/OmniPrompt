@@ -54,8 +54,9 @@ class TextUtilitiesProvider(
                         resultPolicy = TriggerResultPolicy.EXCLUSIVE,
                         matchLogic = { trigger, firstToken ->
                             if (firstToken.isBlank()) return@create null
-                            val exactAlias = trigger.aliases.firstOrNull { it.equals(firstToken, ignoreCase = true) }
-                                ?: return@create null
+                            val exactAlias =
+                                trigger.aliases.firstOrNull { it.equals(firstToken, ignoreCase = true) }
+                                    ?: return@create null
                             TriggerMatch(
                                 trigger = trigger,
                                 score = 100 + exactAlias.length,
@@ -86,11 +87,12 @@ class TextUtilitiesProvider(
             val utility = utilities.firstOrNull { it.id == trigger.id } ?: return@mapNotNull null
             val settings = settingsRepository.value
             val savedMode = settings.utilityDefaultModes[utility.id]
-            val mode = when (savedMode) {
-                TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
-                TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
-                null -> utility.defaultMode
-            }
+            val mode =
+                when (savedMode) {
+                    TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
+                    TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+                    null -> utility.defaultMode
+                }
             buildSuggestionResult(utility, mode)
         }
     }
@@ -108,8 +110,14 @@ class TextUtilitiesProvider(
         }
 
         return when (val outcome = utility.transform(mode, cleanPayload, activity)) {
-            is TransformOutcome.Success -> listOf(buildSuccessResult(invocation, utility, mode, cleanPayload, outcome, settings))
-            is TransformOutcome.InvalidInput -> listOf(buildInvalidInputResult(utility, mode, cleanPayload, outcome))
+            is TransformOutcome.Success ->
+                listOf(
+                    buildSuccessResult(invocation, utility, mode, cleanPayload, outcome, settings),
+                )
+            is TransformOutcome.InvalidInput ->
+                listOf(
+                    buildInvalidInputResult(utility, mode, cleanPayload, outcome),
+                )
         }
     }
 
@@ -119,14 +127,15 @@ class TextUtilitiesProvider(
         settings: TextUtilitiesSettings,
     ): Pair<TransformMode, String> {
         val savedMode = settings.utilityDefaultModes[utility.id]
-        var mode = if (savedMode != null) {
-            when (savedMode) {
-                TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
-                TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+        var mode =
+            if (savedMode != null) {
+                when (savedMode) {
+                    TextUtilityDefaultMode.ENCODE -> TransformMode.ENCODE
+                    TextUtilityDefaultMode.DECODE -> TransformMode.DECODE
+                }
+            } else {
+                utility.defaultMode
             }
-        } else {
-            utility.defaultMode
-        }
 
         if (!utility.supportsBothModes || payload.isBlank()) return mode to payload
 
@@ -382,13 +391,17 @@ class TextUtilitiesProvider(
         ): TransformOutcome {
             val sanitized = text.trim().replace("\\s+".toRegex(), "")
             if (sanitized.isEmpty()) {
-                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_base64_error_nothing_to_decode))
+                return TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_base64_error_nothing_to_decode),
+                )
             }
             return try {
                 val decoded = Base64.decode(sanitized, Base64.DEFAULT)
                 TransformOutcome.Success(decoded.toString(Charsets.UTF_8))
             } catch (_: IllegalArgumentException) {
-                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_base64_error_invalid))
+                TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_base64_error_invalid),
+                )
             }
         }
     }
@@ -410,7 +423,9 @@ class TextUtilitiesProvider(
         ): TransformOutcome {
             val trimmed = text.trim()
             return if (trimmed.isEmpty()) {
-                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_trim_error_nothing_to_trim))
+                TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_trim_error_nothing_to_trim),
+                )
             } else {
                 TransformOutcome.Success(trimmed)
             }
@@ -434,7 +449,9 @@ class TextUtilitiesProvider(
         ): TransformOutcome {
             val result = text.replace("\\s+".toRegex(), "")
             return if (result.isEmpty()) {
-                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_remove_whitespaces_error_empty))
+                TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_remove_whitespaces_error_empty),
+                )
             } else {
                 TransformOutcome.Success(result)
             }
@@ -446,7 +463,8 @@ class TextUtilitiesProvider(
         override val displayNameRes: Int = R.string.text_utility_remove_newlines_name
         override val descriptionRes: Int = R.string.text_utility_remove_newlines_description
         override val primaryKeyword: String = "rnl"
-        override val keywords: Set<String> = setOf("rnl", "removenl", "removelines", "stripnl", "stripnewlines")
+        override val keywords: Set<String> =
+            setOf("rnl", "removenl", "removelines", "stripnl", "stripnewlines")
         override val invalidInputHintRes: Int = R.string.text_utility_remove_newlines_example
         override val supportsBothModes: Boolean = false
         override val defaultMode: TransformMode = TransformMode.DECODE
@@ -458,7 +476,9 @@ class TextUtilitiesProvider(
         ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_remove_newlines_error_no_text))
+                return TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_remove_newlines_error_no_text),
+                )
             }
             val result =
                 trimmed
@@ -466,7 +486,9 @@ class TextUtilitiesProvider(
                     .replace("\\s+".toRegex(), " ")
                     .trim()
             return if (result.isEmpty()) {
-                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_remove_newlines_error_empty))
+                TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_remove_newlines_error_empty),
+                )
             } else {
                 TransformOutcome.Success(result)
             }
@@ -490,19 +512,25 @@ class TextUtilitiesProvider(
         ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_no_url))
+                return TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_messenger_url_error_no_url),
+                )
             }
 
             val uri =
                 try {
                     Uri.parse(trimmed)
                 } catch (_: Exception) {
-                    return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_invalid_url))
+                    return TransformOutcome.InvalidInput(
+                        context.getString(R.string.text_utility_messenger_url_error_invalid_url),
+                    )
                 }
 
             val host = uri.host?.lowercase()
             if (host != "l.facebook.com") {
-                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_messenger_url_error_not_redirect))
+                return TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_messenger_url_error_not_redirect),
+                )
             }
 
             val originalUrl =
@@ -538,7 +566,9 @@ class TextUtilitiesProvider(
             context: Context,
         ): TransformOutcome {
             if (text.isEmpty()) {
-                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_url_error_nothing_to_encode))
+                return TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_url_error_nothing_to_encode),
+                )
             }
             val encoded = Uri.encode(text)
             return TransformOutcome.Success(encoded)
@@ -550,13 +580,17 @@ class TextUtilitiesProvider(
         ): TransformOutcome {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) {
-                return TransformOutcome.InvalidInput(context.getString(R.string.text_utility_url_error_nothing_to_decode))
+                return TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_url_error_nothing_to_decode),
+                )
             }
             return try {
                 val decoded = Uri.decode(trimmed)
                 TransformOutcome.Success(decoded)
             } catch (_: Exception) {
-                TransformOutcome.InvalidInput(context.getString(R.string.text_utility_url_error_invalid))
+                TransformOutcome.InvalidInput(
+                    context.getString(R.string.text_utility_url_error_invalid),
+                )
             }
         }
     }

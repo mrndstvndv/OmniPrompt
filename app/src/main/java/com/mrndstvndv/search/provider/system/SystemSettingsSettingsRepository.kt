@@ -8,7 +8,9 @@ import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
  * Factory function to create SystemSettings settings repository.
  * Uses existing SystemSettingsSettings from ProviderSettingsRepository.
  */
-fun createSystemSettingsSettingsRepository(context: Context): SettingsRepository<SystemSettingsSettings> {
+fun createSystemSettingsSettingsRepository(
+    context: Context,
+): SettingsRepository<SystemSettingsSettings> {
     return SettingsRepository(
         context = context,
         providerId = SystemSettingsSettings.PROVIDER_ID,
@@ -20,6 +22,6 @@ fun createSystemSettingsSettingsRepository(context: Context): SettingsRepository
                 null
             }
         },
-        serializer = { settings -> settings.toJson().toString() }
+        serializer = { settings -> settings.toJson().toString() },
     )
 }

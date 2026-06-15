@@ -20,68 +20,71 @@ import java.io.File
 
 class FileSearchIndexWorker(
     appContext: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
-
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val rootId = inputData.getString(KEY_ROOT_ID)
-        val rootUri = inputData.getString(KEY_ROOT_URI)
-        val rootDisplayName = inputData.getString(KEY_ROOT_DISPLAY_NAME)
-        if (rootId.isNullOrBlank() || rootUri.isNullOrBlank() || rootDisplayName.isNullOrBlank()) {
-            return@withContext Result.failure()
-        }
-        val settingsRepository = createFileSearchSettingsRepository(applicationContext)
-        updateScanState(settingsRepository, rootId, FileSearchScanState.INDEXING)
-        val parsedUri = Uri.parse(rootUri)
-        val documentTree = when (parsedUri.scheme) {
-            "file" -> {
-                val file = parsedUri.path?.let { File(it) }
-                if (file != null && file.exists()) {
-                    DocumentFile.fromFile(file)
-                } else null
+    override suspend fun doWork(): Result =
+        withContext(Dispatchers.IO) {
+            val rootId = inputData.getString(KEY_ROOT_ID)
+            val rootUri = inputData.getString(KEY_ROOT_URI)
+            val rootDisplayName = inputData.getString(KEY_ROOT_DISPLAY_NAME)
+            if (rootId.isNullOrBlank() || rootUri.isNullOrBlank() || rootDisplayName.isNullOrBlank()) {
+                return@withContext Result.failure()
             }
-            else -> DocumentFile.fromTreeUri(applicationContext, parsedUri)
-        } ?: return@withContext Result.failure()
-        val dao = FileSearchDatabase.get(applicationContext).indexedDocumentDao()
-        return@withContext try {
-            dao.deleteForRoot(rootId)
-            val batch = ArrayList<IndexedDocumentEntity>(BATCH_SIZE)
-            val counter = Counter()
-            indexDirectory(
-                document = documentTree,
-                rootId = rootId,
-                rootDisplayName = rootDisplayName,
-                currentPath = "",
-                dao = dao,
-                batch = batch,
-                counter = counter,
-                settingsRepository = settingsRepository
-            )
-            flushBatch(
-                dao = dao,
-                batch = batch,
-                settingsRepository = settingsRepository,
-                rootId = rootId,
-                counter = counter
-            )
-            updateScanState(
-                settingsRepository = settingsRepository,
-                rootId = rootId,
-                state = FileSearchScanState.SUCCESS,
-                itemCount = counter.value,
-                errorMessage = null
-            )
-            Result.success(workDataOf(KEY_INDEXED_COUNT to counter.value))
-        } catch (error: Exception) {
-            updateScanState(
-                settingsRepository = settingsRepository,
-                rootId = rootId,
-                state = FileSearchScanState.ERROR,
-                errorMessage = error.message ?: "Unknown error"
-            )
-            Result.failure()
+            val settingsRepository = createFileSearchSettingsRepository(applicationContext)
+            updateScanState(settingsRepository, rootId, FileSearchScanState.INDEXING)
+            val parsedUri = Uri.parse(rootUri)
+            val documentTree =
+                when (parsedUri.scheme) {
+                    "file" -> {
+                        val file = parsedUri.path?.let { File(it) }
+                        if (file != null && file.exists()) {
+                            DocumentFile.fromFile(file)
+                        } else {
+                            null
+                        }
+                    }
+                    else -> DocumentFile.fromTreeUri(applicationContext, parsedUri)
+                } ?: return@withContext Result.failure()
+            val dao = FileSearchDatabase.get(applicationContext).indexedDocumentDao()
+            return@withContext try {
+                dao.deleteForRoot(rootId)
+                val batch = ArrayList<IndexedDocumentEntity>(BATCH_SIZE)
+                val counter = Counter()
+                indexDirectory(
+                    document = documentTree,
+                    rootId = rootId,
+                    rootDisplayName = rootDisplayName,
+                    currentPath = "",
+                    dao = dao,
+                    batch = batch,
+                    counter = counter,
+                    settingsRepository = settingsRepository,
+                )
+                flushBatch(
+                    dao = dao,
+                    batch = batch,
+                    settingsRepository = settingsRepository,
+                    rootId = rootId,
+                    counter = counter,
+                )
+                updateScanState(
+                    settingsRepository = settingsRepository,
+                    rootId = rootId,
+                    state = FileSearchScanState.SUCCESS,
+                    itemCount = counter.value,
+                    errorMessage = null,
+                )
+                Result.success(workDataOf(KEY_INDEXED_COUNT to counter.value))
+            } catch (error: Exception) {
+                updateScanState(
+                    settingsRepository = settingsRepository,
+                    rootId = rootId,
+                    state = FileSearchScanState.ERROR,
+                    errorMessage = error.message ?: "Unknown error",
+                )
+                Result.failure()
+            }
         }
-    }
 
     private suspend fun indexDirectory(
         document: DocumentFile,
@@ -91,7 +94,7 @@ class FileSearchIndexWorker(
         dao: IndexedDocumentDao,
         batch: MutableList<IndexedDocumentEntity>,
         counter: Counter,
-        settingsRepository: SettingsRepository<FileSearchSettings>
+        settingsRepository: SettingsRepository<FileSearchSettings>,
     ) {
         if (isStopped || counter.value >= MAX_INDEXED_ITEMS) return
         val children = document.listFiles()
@@ -99,17 +102,18 @@ class FileSearchIndexWorker(
             if (isStopped || counter.value >= MAX_INDEXED_ITEMS) return
             val name = child.name ?: child.uri.lastPathSegment ?: UNKNOWN_NAME
             val relativePath = if (currentPath.isEmpty()) name else "$currentPath/$name"
-            val entity = IndexedDocumentEntity(
-                rootId = rootId,
-                rootDisplayName = rootDisplayName,
-                documentUri = child.uri.toString(),
-                relativePath = relativePath,
-                displayName = name,
-                mimeType = child.type,
-                sizeBytes = child.length(),
-                lastModified = child.lastModified(),
-                isDirectory = child.isDirectory
-            )
+            val entity =
+                IndexedDocumentEntity(
+                    rootId = rootId,
+                    rootDisplayName = rootDisplayName,
+                    documentUri = child.uri.toString(),
+                    relativePath = relativePath,
+                    displayName = name,
+                    mimeType = child.type,
+                    sizeBytes = child.length(),
+                    lastModified = child.lastModified(),
+                    isDirectory = child.isDirectory,
+                )
             batch.add(entity)
             counter.increment()
             if (batch.size >= BATCH_SIZE) {
@@ -118,7 +122,7 @@ class FileSearchIndexWorker(
                     batch = batch,
                     settingsRepository = settingsRepository,
                     rootId = rootId,
-                    counter = counter
+                    counter = counter,
                 )
             }
             if (child.isDirectory) {
@@ -130,7 +134,7 @@ class FileSearchIndexWorker(
                     dao = dao,
                     batch = batch,
                     counter = counter,
-                    settingsRepository = settingsRepository
+                    settingsRepository = settingsRepository,
                 )
             }
         }
@@ -141,7 +145,7 @@ class FileSearchIndexWorker(
         batch: MutableList<IndexedDocumentEntity>,
         settingsRepository: SettingsRepository<FileSearchSettings>,
         rootId: String,
-        counter: Counter
+        counter: Counter,
     ) {
         if (batch.isEmpty()) return
         dao.insertAll(batch.toList())
@@ -150,7 +154,7 @@ class FileSearchIndexWorker(
             rootId = rootId,
             state = FileSearchScanState.INDEXING,
             itemCount = counter.value,
-            errorMessage = null
+            errorMessage = null,
         )
         batch.clear()
     }
@@ -160,16 +164,17 @@ class FileSearchIndexWorker(
         rootId: String,
         state: FileSearchScanState,
         itemCount: Int = 0,
-        errorMessage: String? = null
+        errorMessage: String? = null,
     ) {
         settingsRepository.update { currentSettings ->
             val currentMetadata = currentSettings.scanMetadata.toMutableMap()
-            currentMetadata[rootId] = FileSearchScanMetadata(
-                state = state,
-                indexedItemCount = itemCount,
-                updatedAtMillis = System.currentTimeMillis(),
-                errorMessage = errorMessage
-            )
+            currentMetadata[rootId] =
+                FileSearchScanMetadata(
+                    state = state,
+                    indexedItemCount = itemCount,
+                    updatedAtMillis = System.currentTimeMillis(),
+                    errorMessage = errorMessage,
+                )
             currentSettings.copy(scanMetadata = currentMetadata)
         }
     }

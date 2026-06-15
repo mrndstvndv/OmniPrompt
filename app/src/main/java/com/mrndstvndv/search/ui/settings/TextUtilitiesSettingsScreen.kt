@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -68,16 +67,29 @@ fun TextUtilitiesSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.provider_text_utilities), subtitle = stringResource(R.string.text_utilities_header_subtitle), onBack = onBack)
+                SettingsHeader(
+                    title = stringResource(R.string.provider_text_utilities),
+                    subtitle = stringResource(R.string.text_utilities_header_subtitle),
+                    onBack = onBack,
+                )
             }
 
             item {
                 SettingsGroup {
                     SettingsSwitch(
                         title = stringResource(R.string.text_utilities_open_decoded_urls),
-                        subtitle = stringResource(R.string.text_utilities_open_decoded_urls_subtitle),
+                        subtitle =
+                            stringResource(
+                                R.string.text_utilities_open_decoded_urls_subtitle,
+                            ),
                         checked = textUtilitiesSettings.openDecodedUrls,
-                        onCheckedChange = { enabled -> repository.update { settings -> settings.copy(openDecodedUrls = enabled) } },
+                        onCheckedChange = {
+                                enabled ->
+                            repository.update {
+                                    settings ->
+                                settings.copy(openDecodedUrls = enabled)
+                            }
+                        },
                     )
                 }
             }
@@ -95,7 +107,10 @@ fun TextUtilitiesSettingsScreen(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = stringResource(R.string.text_utilities_available_utilities_subtitle),
+                            text =
+                                stringResource(
+                                    R.string.text_utilities_available_utilities_subtitle,
+                                ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

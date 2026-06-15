@@ -4,46 +4,45 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.AppListRepository
-import kotlinx.coroutines.flow.first
 
 data class AppInfo(
     val packageName: String,
     val name: String,
-    val icon: Bitmap? = null
+    val icon: Bitmap? = null,
 )
 
 data class IntentOption(
     val action: String,
     val label: String,
-    val mimeTypes: List<String> = emptyList()
+    val mimeTypes: List<String> = emptyList(),
 )
 
 data class ActivityOption(
     val name: String,
-    val label: String
+    val label: String,
 )
 
 class AppDiscovery(
     private val context: Context,
-    private val appListRepository: AppListRepository
+    private val appListRepository: AppListRepository,
 ) {
     private val packageManager: PackageManager = context.packageManager
 
     suspend fun getTargetApps(): List<AppInfo> {
         // Ensure repository is initialized
         appListRepository.initialize()
-        
+
         // Get all apps from repository
         val allApps = appListRepository.apps.value
-        
-        val targetActions = listOf(
-            Intent.ACTION_SEND,
-            Intent.ACTION_VIEW,
-            Intent.ACTION_SENDTO
-        )
+
+        val targetActions =
+            listOf(
+                Intent.ACTION_SEND,
+                Intent.ACTION_VIEW,
+                Intent.ACTION_SENDTO,
+            )
 
         val filteredApps = mutableListOf<AppInfo>()
 
@@ -57,29 +56,42 @@ class AppDiscovery(
         return filteredApps.sortedBy { it.name }
     }
 
-    private fun appHasAnyTargetIntent(packageName: String, actions: List<String>): Boolean {
+    private fun appHasAnyTargetIntent(
+        packageName: String,
+        actions: List<String>,
+    ): Boolean {
         for (action in actions) {
-            val intent = Intent(action).apply {
-                setPackage(packageName)
-                if (action == Intent.ACTION_SEND) type = "*/*"
-            }
-            
-            val resolves = try {
-                packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-            } catch (e: Exception) {
-                emptyList()
-            }
-            
+            val intent =
+                Intent(action).apply {
+                    setPackage(packageName)
+                    if (action == Intent.ACTION_SEND) type = "*/*"
+                }
+
+            val resolves =
+                try {
+                    packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
             if (resolves.isNotEmpty()) return true
-            
+
             // Try again with common schemes for VIEW
             if (action == Intent.ACTION_VIEW) {
-                val viewHttp = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://")).setPackage(packageName)
+                val viewHttp =
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://"),
+                    ).setPackage(packageName)
                 if (packageManager.queryIntentActivities(viewHttp, 0).isNotEmpty()) return true
             }
-            
+
             if (action == Intent.ACTION_SENDTO) {
-                val sendtoMail = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:")).setPackage(packageName)
+                val sendtoMail =
+                    Intent(
+                        Intent.ACTION_SENDTO,
+                        android.net.Uri.parse("mailto:"),
+                    ).setPackage(packageName)
                 if (packageManager.queryIntentActivities(sendtoMail, 0).isNotEmpty()) return true
             }
         }
@@ -87,36 +99,47 @@ class AppDiscovery(
     }
 
     fun getIntentsForApp(packageName: String): List<IntentOption> {
-        val actions = mapOf(
-            Intent.ACTION_SEND to context.getString(R.string.intent_share_content),
-            Intent.ACTION_VIEW to context.getString(R.string.intent_open_url),
-            Intent.ACTION_SENDTO to context.getString(R.string.intent_send_to_address),
-        )
+        val actions =
+            mapOf(
+                Intent.ACTION_SEND to context.getString(R.string.intent_share_content),
+                Intent.ACTION_VIEW to context.getString(R.string.intent_open_url),
+                Intent.ACTION_SENDTO to context.getString(R.string.intent_send_to_address),
+            )
 
         val options = mutableListOf<IntentOption>()
 
         actions.forEach { (action, label) ->
-            val intent = Intent(action).apply {
-                setPackage(packageName)
-                if (action == Intent.ACTION_SEND) type = "*/*"
-            }
-            
-            var resolveInfos = try {
-                packageManager.queryIntentActivities(intent, PackageManager.GET_RESOLVED_FILTER)
-            } catch (e: Exception) {
-                emptyList()
-            }
+            val intent =
+                Intent(action).apply {
+                    setPackage(packageName)
+                    if (action == Intent.ACTION_SEND) type = "*/*"
+                }
+
+            var resolveInfos =
+                try {
+                    packageManager.queryIntentActivities(intent, PackageManager.GET_RESOLVED_FILTER)
+                } catch (e: Exception) {
+                    emptyList()
+                }
 
             if (resolveInfos.isEmpty() && action == Intent.ACTION_VIEW) {
-                val viewHttp = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://")).setPackage(packageName)
+                val viewHttp =
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://"),
+                    ).setPackage(packageName)
                 resolveInfos = packageManager.queryIntentActivities(viewHttp, PackageManager.GET_RESOLVED_FILTER)
             }
 
             if (resolveInfos.isEmpty() && action == Intent.ACTION_SENDTO) {
-                val sendtoMail = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:")).setPackage(packageName)
+                val sendtoMail =
+                    Intent(
+                        Intent.ACTION_SENDTO,
+                        android.net.Uri.parse("mailto:"),
+                    ).setPackage(packageName)
                 resolveInfos = packageManager.queryIntentActivities(sendtoMail, PackageManager.GET_RESOLVED_FILTER)
             }
-            
+
             if (resolveInfos.isNotEmpty()) {
                 val mimeTypes = mutableSetOf<String>()
                 resolveInfos.forEach { info ->
@@ -131,34 +154,44 @@ class AppDiscovery(
         }
 
         if (options.isEmpty()) {
-            options.add(IntentOption(Intent.ACTION_SEND, context.getString(R.string.intent_share_content_generic)))
+            options.add(
+                IntentOption(
+                    Intent.ACTION_SEND,
+                    context.getString(R.string.intent_share_content_generic),
+                ),
+            )
         }
 
         return options
     }
 
     fun getActivitiesForApp(packageName: String): List<ActivityOption> {
-        val packageInfo = try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_ACTIVITIES.toLong()))
-            } else {
-                packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+        val packageInfo =
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getPackageInfo(
+                        packageName,
+                        PackageManager.PackageInfoFlags.of(PackageManager.GET_ACTIVITIES.toLong()),
+                    )
+                } else {
+                    packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+                }
+            } catch (e: Exception) {
+                return emptyList()
             }
-        } catch (e: Exception) {
-            return emptyList()
-        }
         val activities = packageInfo.activities ?: return emptyList()
         return activities
             .filter { it.exported }
             .map { activityInfo ->
-                val label = try {
-                    activityInfo.loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
-                } catch (e: Exception) {
-                    null
-                } ?: activityInfo.name.substringAfterLast(".")
+                val label =
+                    try {
+                        activityInfo.loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
+                    } catch (e: Exception) {
+                        null
+                    } ?: activityInfo.name.substringAfterLast(".")
                 ActivityOption(
                     name = activityInfo.name,
-                    label = label
+                    label = label,
                 )
             }.sortedBy { it.label }
     }

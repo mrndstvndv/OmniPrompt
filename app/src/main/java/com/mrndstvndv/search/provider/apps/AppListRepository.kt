@@ -91,18 +91,21 @@ class AppListRepository private constructor(
     fun getAllApps(): StateFlow<List<AppInfo>> = _apps
 
     suspend fun getIcon(packageName: String): Bitmap? {
-        return cacheMutex.withLock {
-            if (packageName in iconCache) {
-                return@withLock iconCache[packageName]
+        // Fast path: check cache without holding the mutex during IO
+        cacheMutex.withLock {
+            iconCache[packageName]?.let { return it }
+        }
+
+        val icon =
+            withContext(Dispatchers.IO) {
+                loadAppIconBitmap(packageManager, packageName, iconSize)
             }
 
-            val icon =
-                withContext(Dispatchers.IO) {
-                    loadAppIconBitmap(packageManager, packageName, iconSize)
-                }
+        // Store result under mutex (allow other readers while this one loaded)
+        cacheMutex.withLock {
             iconCache[packageName] = icon
-            icon
         }
+        return icon
     }
 
     /**

@@ -32,13 +32,12 @@ import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
 
 @Composable
-fun OpenSourceLicensesScreen(
-    onBack: () -> Unit,
-) {
+fun OpenSourceLicensesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val licenses = remember(context) {
-        runCatching { OpenSourceLicensesParser.load(context) }.getOrDefault(emptyList())
-    }
+    val licenses =
+        remember(context) {
+            runCatching { OpenSourceLicensesParser.load(context) }.getOrDefault(emptyList())
+        }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val normalizedSearch = searchQuery.trim()
     val filteredLicenses =
@@ -97,7 +96,9 @@ fun OpenSourceLicensesScreen(
                         title = license.libraryName,
                         subtitle = license.displayUrl,
                         onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(license.licenseUrl)))
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(license.licenseUrl)),
+                            )
                         },
                     )
                     if (index < filteredLicenses.lastIndex) {
@@ -154,9 +155,10 @@ private object OpenSourceLicensesParser {
         val chunkStart = (offset - 2).coerceAtLeast(0)
         val chunkEnd = (offset + length).coerceAtMost(licensesText.length)
         val licenseChunk = licensesText.substring(chunkStart, chunkEnd)
-        val resolvedUrl = urlPattern.find(licenseChunk)?.value?.trimEnd(')', ']', ';', ',', '.')
-            ?: manualLicenseUrls[libraryName]
-            ?: return null
+        val resolvedUrl =
+            urlPattern.find(licenseChunk)?.value?.trimEnd(')', ']', ';', ',', '.')
+                ?: manualLicenseUrls[libraryName]
+                ?: return null
 
         return OpenSourceLicenseItem(
             libraryName = libraryName,

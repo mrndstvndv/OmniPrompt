@@ -4,7 +4,6 @@ package com.mrndstvndv.search.provider.model
  * Utility for parsing trigger-style input: "<firstToken> <payload>".
  */
 object TriggerParser {
-
     /**
      * Extract the first token and remaining payload from input text.
      *

@@ -8,7 +8,9 @@ import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
  * Factory function to create TextUtilities settings repository.
  * Uses existing TextUtilitiesSettings from ProviderSettingsRepository.
  */
-fun createTextUtilitiesSettingsRepository(context: Context): SettingsRepository<TextUtilitiesSettings> {
+fun createTextUtilitiesSettingsRepository(
+    context: Context,
+): SettingsRepository<TextUtilitiesSettings> {
     return SettingsRepository(
         context = context,
         providerId = TextUtilitiesSettings.PROVIDER_ID,
@@ -20,6 +22,6 @@ fun createTextUtilitiesSettingsRepository(context: Context): SettingsRepository<
                 null
             }
         },
-        serializer = { settings -> settings.toJson().toString() }
+        serializer = { settings -> settings.toJson().toString() },
     )
 }

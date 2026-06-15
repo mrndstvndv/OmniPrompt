@@ -4,8 +4,8 @@ import android.content.Context
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListRepository
-import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
+import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.apps.createAppSearchSettingsRepository
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
@@ -41,11 +41,20 @@ class AppContainer(private val context: Context) {
     val fileSearchRepository by lazy { FileSearchRepository.getInstance(context) }
     val fileThumbnailRepository by lazy { FileThumbnailRepository.getInstance(context) }
     val contactsRepository by lazy { ContactsRepository.getInstance(context) }
-    val rankingRepository by lazy { ProviderRankingRepository.getInstance(context, applicationScope) }
-    
-    val defaultAppIconSize by lazy { context.resources.getDimensionPixelSize(android.R.dimen.app_icon_size) }
+    val rankingRepository by lazy {
+        ProviderRankingRepository.getInstance(
+            context,
+            applicationScope,
+        )
+    }
+
+    val defaultAppIconSize by lazy {
+        context.resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
+    }
     val appListRepository by lazy { AppListRepository.getInstance(context, defaultAppIconSize) }
     val recentAppsRepository by lazy { RecentAppsRepository(context, appListRepository) }
-    val pinnedAppsRepository by lazy { PinnedAppsRepository(context, appSearchSettingsRepo, appListRepository) }
+    val pinnedAppsRepository by lazy {
+        PinnedAppsRepository(context, appSearchSettingsRepo, appListRepository)
+    }
     val developerSettingsManager by lazy { DeveloperSettingsManager.getInstance(context) }
 }

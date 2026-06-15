@@ -33,19 +33,20 @@ class IntentProvider(
     override val displayName: String = activity.getString(R.string.provider_intent_launcher)
 
     override val triggers: List<SearchTrigger>
-        get() = settingsRepository.value.configs
-            .filter { it.hasQuerySlot }
-            .map { config ->
-                SearchTrigger.create(
-                    id = config.id,
-                    ownerProviderId = id,
-                    label = config.title,
-                    vectorIcon = Icons.Outlined.Share,
-                    iconLoader = getIconLoader(config),
-                    resultPolicy = TriggerResultPolicy.EXCLUSIVE,
-                    execute = { invocation -> executeIntentTrigger(config.id, invocation) },
-                )
-            }
+        get() =
+            settingsRepository.value.configs
+                .filter { it.hasQuerySlot }
+                .map { config ->
+                    SearchTrigger.create(
+                        id = config.id,
+                        ownerProviderId = id,
+                        label = config.title,
+                        vectorIcon = Icons.Outlined.Share,
+                        iconLoader = getIconLoader(config),
+                        resultPolicy = TriggerResultPolicy.EXCLUSIVE,
+                        execute = { invocation -> executeIntentTrigger(config.id, invocation) },
+                    )
+                }
 
     private suspend fun executeIntentTrigger(
         configId: String,
@@ -57,13 +58,18 @@ class IntentProvider(
         val payload = invocation.payload
         val systemLabel = activity.getString(R.string.intent_system)
         val targetLabel = config.packageName.ifEmpty { systemLabel }
-        val subtitle = if (payload.isNotEmpty()) {
-            activity.getString(R.string.intent_result_subtitle_with_payload, payload, targetLabel)
-        } else if (config.hasQuerySlot) {
-            activity.getString(R.string.intent_payload_required_hint)
-        } else {
-            targetLabel
-        }
+        val subtitle =
+            if (payload.isNotEmpty()) {
+                activity.getString(
+                    R.string.intent_result_subtitle_with_payload,
+                    payload,
+                    targetLabel,
+                )
+            } else if (config.hasQuerySlot) {
+                activity.getString(R.string.intent_payload_required_hint)
+            } else {
+                targetLabel
+            }
 
         return listOf(
             createTriggerResult(
@@ -76,17 +82,17 @@ class IntentProvider(
                 providerId = id,
                 triggerId = config.id,
                 onSelect = { executeIntent(config, payload) },
-            )
+            ),
         )
     }
 
     override fun canHandle(query: Query): Boolean {
         val isEnabled = globalSettingsRepository.enabledProviders.value[id] ?: true
         if (!isEnabled) return false
-        
+
         val cleaned = query.trimmedText
         if (cleaned.isBlank()) return false
-        
+
         val settings = settingsRepository.value
         val configs = settings.configs
         return configs.isNotEmpty()
@@ -104,119 +110,136 @@ class IntentProvider(
         val searchTerm = parsedTrigger.firstToken
 
         // Fuzzy match first word against titles
-        val scored = configs.mapNotNull { config ->
-            val titleMatch = FuzzyMatcher.match(searchTerm, config.title)
-            if (titleMatch != null) {
-                Triple(config, titleMatch.score, titleMatch.matchedIndices)
-            } else {
-                null
-            }
-        }.sortedByDescending { it.second }
+        val scored =
+            configs.mapNotNull { config ->
+                val titleMatch = FuzzyMatcher.match(searchTerm, config.title)
+                if (titleMatch != null) {
+                    Triple(config, titleMatch.score, titleMatch.matchedIndices)
+                } else {
+                    null
+                }
+            }.sortedByDescending { it.second }
 
         if (scored.isEmpty()) return emptyList()
 
         val rawPayload = parsedTrigger.payload.trim()
-        
+
         val systemLabel = activity.getString(R.string.intent_system)
         val payloadHint = activity.getString(R.string.intent_payload_required_hint)
 
         return scored.map { (config, _, matchedIndices) ->
             // For the best match use actual payload, for others show hint if payload is needed
-            val displayPayload = if (config == scored.first().first) {
-                if (rawPayload.isNotEmpty()) {
-                    rawPayload
-                } else if (config.hasQuerySlot) {
-                    payloadHint
+            val displayPayload =
+                if (config == scored.first().first) {
+                    if (rawPayload.isNotEmpty()) {
+                        rawPayload
+                    } else if (config.hasQuerySlot) {
+                        payloadHint
+                    } else {
+                        ""
+                    }
                 } else {
-                    ""
+                    if (config.hasQuerySlot) payloadHint else ""
                 }
-            } else {
-                if (config.hasQuerySlot) payloadHint else ""
-            }
 
             val targetLabel = config.packageName.ifEmpty { systemLabel }
 
             ProviderResult(
                 id = "$id:${config.id}",
                 title = config.title,
-                subtitle = if (displayPayload.isNotEmpty()) {
-                    activity.getString(R.string.intent_result_subtitle_with_payload, displayPayload, targetLabel)
-                } else {
-                    targetLabel
-                },
+                subtitle =
+                    if (displayPayload.isNotEmpty()) {
+                        activity.getString(
+                            R.string.intent_result_subtitle_with_payload,
+                            displayPayload,
+                            targetLabel,
+                        )
+                    } else {
+                        targetLabel
+                    },
                 vectorIcon = Icons.Outlined.Share,
                 iconLoader = getIconLoader(config),
                 providerId = id,
                 onSelect = { executeIntent(config, rawPayload) },
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedIndices,
-                frequencyQuery = if (config.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
-                    dynamicTriggerFrequencyQuery(searchTerm)
-                } else {
-                    searchTerm
-                },
+                frequencyQuery =
+                    if (config.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
+                        dynamicTriggerFrequencyQuery(searchTerm)
+                    } else {
+                        searchTerm
+                    },
             )
         }
     }
 
-    private fun executeIntent(config: IntentConfig, rawPayload: String) {
+    private fun executeIntent(
+        config: IntentConfig,
+        rawPayload: String,
+    ) {
         // Resolve payload using template
-        val resolvedPayload = when {
-            config.payloadTemplate == null -> rawPayload
-            config.payloadTemplate.contains("\$query") -> config.payloadTemplate.replace("\$query", rawPayload)
-            else -> config.payloadTemplate // Fixed template
-        }
-
-        val intent = Intent().apply {
-            action = config.action
-            type = config.type
-
-            // Set package or class name if specified
-            if (config.packageName.isNotEmpty()) {
-                if (!config.className.isNullOrEmpty()) {
-                    setClassName(config.packageName, config.className)
-                } else {
-                    setPackage(config.packageName)
-                }
+        val resolvedPayload =
+            when {
+                config.payloadTemplate == null -> rawPayload
+                config.payloadTemplate.contains(
+                    "\$query",
+                ) -> config.payloadTemplate.replace("\$query", rawPayload)
+                else -> config.payloadTemplate // Fixed template
             }
 
-            // Standard intent handling based on action
-            when (config.action) {
-                Intent.ACTION_SEND -> {
-                    putExtra(Intent.EXTRA_TEXT, resolvedPayload)
-                }
-                Intent.ACTION_VIEW -> {
-                    if (resolvedPayload.isNotEmpty()) {
-                        data = android.net.Uri.parse(resolvedPayload)
+        val intent =
+            Intent().apply {
+                action = config.action
+                type = config.type
+
+                // Set package or class name if specified
+                if (config.packageName.isNotEmpty()) {
+                    if (!config.className.isNullOrEmpty()) {
+                        setClassName(config.packageName, config.className)
+                    } else {
+                        setPackage(config.packageName)
                     }
                 }
-                Intent.ACTION_SENDTO -> {
-                    if (resolvedPayload.isNotEmpty()) {
-                        data = android.net.Uri.parse(resolvedPayload)
+
+                // Standard intent handling based on action
+                when (config.action) {
+                    Intent.ACTION_SEND -> {
+                        putExtra(Intent.EXTRA_TEXT, resolvedPayload)
+                    }
+                    Intent.ACTION_VIEW -> {
+                        if (resolvedPayload.isNotEmpty()) {
+                            data = android.net.Uri.parse(resolvedPayload)
+                        }
+                    }
+                    Intent.ACTION_SENDTO -> {
+                        if (resolvedPayload.isNotEmpty()) {
+                            data = android.net.Uri.parse(resolvedPayload)
+                        }
                     }
                 }
-            }
 
-            // Custom extras with $query replacement
-            config.extras.forEach { extra ->
-                val resolvedExtraValue = extra.value.replace("\$query", rawPayload)
-                putExtra(extra.key, resolvedExtraValue)
-            }
+                // Custom extras with $query replacement
+                config.extras.forEach { extra ->
+                    val resolvedExtraValue = extra.value.replace("\$query", rawPayload)
+                    putExtra(extra.key, resolvedExtraValue)
+                }
 
-            // Clear launch flags for external apps
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+                // Clear launch flags for external apps
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
 
         try {
             activity.startActivity(intent)
         } catch (e: Exception) {
             // Fallback for ACTION_SEND with URL
-            if (config.action == Intent.ACTION_SEND && resolvedPayload.isNotEmpty() && 
-                (resolvedPayload.startsWith("http://") || resolvedPayload.startsWith("https://"))) {
-                val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
-                    data = android.net.Uri.parse(resolvedPayload)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
+            if (config.action == Intent.ACTION_SEND && resolvedPayload.isNotEmpty() &&
+                (resolvedPayload.startsWith("http://") || resolvedPayload.startsWith("https://"))
+            ) {
+                val fallbackIntent =
+                    Intent(Intent.ACTION_VIEW).apply {
+                        data = android.net.Uri.parse(resolvedPayload)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
                 try {
                     activity.startActivity(fallbackIntent)
                 } catch (e2: Exception) {
@@ -229,25 +252,32 @@ class IntentProvider(
     private fun getIconLoader(config: IntentConfig): (suspend () -> Bitmap?) {
         return {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val baseBitmap = when {
-                    !config.customIconPath.isNullOrEmpty() -> {
-                        try {
-                            android.graphics.BitmapFactory.decodeFile(config.customIconPath)
-                        } catch (e: Exception) {
-                            null
+                val baseBitmap =
+                    when {
+                        !config.customIconPath.isNullOrEmpty() -> {
+                            try {
+                                android.graphics.BitmapFactory.decodeFile(config.customIconPath)
+                            } catch (e: Exception) {
+                                null
+                            }
                         }
+                        config.packageName.isNotEmpty() -> {
+                            com.mrndstvndv.search.util.loadAppIconBitmap(
+                                activity.packageManager,
+                                config.packageName,
+                                activity.resources.getDimensionPixelSize(
+                                    android.R.dimen.app_icon_size,
+                                ),
+                            )
+                        }
+                        else -> null
                     }
-                    config.packageName.isNotEmpty() -> {
-                        com.mrndstvndv.search.util.loadAppIconBitmap(
-                            activity.packageManager,
-                            config.packageName,
-                            activity.resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
-                        )
-                    }
-                    else -> null
-                }
                 if (baseBitmap != null) {
-                    com.mrndstvndv.search.util.createBadgedIcon(activity, baseBitmap, R.drawable.ic_share)
+                    com.mrndstvndv.search.util.createBadgedIcon(
+                        activity,
+                        baseBitmap,
+                        R.drawable.ic_share,
+                    )
                 } else {
                     null
                 }

@@ -30,7 +30,7 @@ class PinnedAppsRepository(
                             packageName = packageName,
                             label = label,
                             iconLoader = { appListRepository.getIcon(packageName) },
-                            launchIntent = launchIntent
+                            launchIntent = launchIntent,
                         )
                     } catch (e: PackageManager.NameNotFoundException) {
                         null // App uninstalled

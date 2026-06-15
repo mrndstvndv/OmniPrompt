@@ -12,7 +12,6 @@ import org.json.JSONObject
 data class IntentSettings(
     val configs: List<IntentConfig> = emptyList(),
 ) : ProviderSettings {
-
     override val providerId = PROVIDER_ID
 
     companion object {
@@ -42,8 +41,7 @@ data class IntentSettings(
         /**
          * Parse from JSON string (for repository).
          */
-        fun fromJsonString(jsonString: String): IntentSettings? =
-            fromJson(JSONObject(jsonString))
+        fun fromJsonString(jsonString: String): IntentSettings? = fromJson(JSONObject(jsonString))
     }
 
     /**
@@ -72,6 +70,6 @@ fun createIntentSettingsRepository(context: Context): SettingsRepository<IntentS
         providerId = IntentSettings.PROVIDER_ID,
         default = { IntentSettings.default() },
         deserializer = { jsonString -> IntentSettings.fromJsonString(jsonString) },
-        serializer = { settings -> settings.toJsonString() }
+        serializer = { settings -> settings.toJsonString() },
     )
 }

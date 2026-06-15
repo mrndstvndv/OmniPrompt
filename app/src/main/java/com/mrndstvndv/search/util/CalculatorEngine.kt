@@ -3,7 +3,6 @@ package com.mrndstvndv.search.util
 import kotlin.math.pow
 
 object CalculatorEngine {
-
     private val expressionRegex = Regex("^[0-9+\\-*/().\\s]+$")
 
     fun isExpression(input: String): Boolean {
@@ -44,29 +43,35 @@ object CalculatorEngine {
                 fun parse(): Double {
                     nextChar()
                     val x = parseExpression()
-                    if (pos < expression.length) throw IllegalArgumentException("Unexpected: ${expression[pos]}")
+                    if (pos < expression.length) {
+                        throw IllegalArgumentException(
+                            "Unexpected: ${expression[pos]}",
+                        )
+                    }
                     return x
                 }
 
                 fun parseExpression(): Double {
                     var x = parseTerm()
                     while (true) {
-                        x = when {
-                            eat('+'.code) -> x + parseTerm()
-                            eat('-'.code) -> x - parseTerm()
-                            else -> return x
-                        }
+                        x =
+                            when {
+                                eat('+'.code) -> x + parseTerm()
+                                eat('-'.code) -> x - parseTerm()
+                                else -> return x
+                            }
                     }
                 }
 
                 fun parseTerm(): Double {
                     var x = parseFactor()
                     while (true) {
-                        x = when {
-                            eat('*'.code) -> x * parseFactor()
-                            eat('/'.code) -> x / parseFactor()
-                            else -> return x
-                        }
+                        x =
+                            when {
+                                eat('*'.code) -> x * parseFactor()
+                                eat('/'.code) -> x / parseFactor()
+                                else -> return x
+                            }
                     }
                 }
 
@@ -75,20 +80,30 @@ object CalculatorEngine {
                     if (eat('-'.code)) return -parseFactor()
 
                     val startPos = pos
-                    val x: Double = when {
-                        eat('('.code) -> {
-                            val inner = parseExpression()
-                            if (!eat(')'.code)) throw IllegalArgumentException("Missing closing parenthesis")
-                            inner
-                        }
+                    val x: Double =
+                        when {
+                            eat('('.code) -> {
+                                val inner = parseExpression()
+                                if (!eat(
+                                        ')'.code,
+                                    )
+                                ) {
+                                    throw IllegalArgumentException(
+                                        "Missing closing parenthesis",
+                                    )
+                                }
+                                inner
+                            }
 
-                        ch in '0'.code..'9'.code || ch == '.'.code -> {
-                            while (ch in '0'.code..'9'.code || ch == '.'.code) nextChar()
-                            expression.substring(startPos, pos).toDouble()
-                        }
+                            ch in '0'.code..'9'.code || ch == '.'.code -> {
+                                while (ch in '0'.code..'9'.code || ch == '.'.code) nextChar()
+                                expression.substring(startPos, pos).toDouble()
+                            }
 
-                        else -> throw IllegalArgumentException("Unexpected: ${if (ch == -1) "end" else expression[pos]}")
-                    }
+                            else -> throw IllegalArgumentException(
+                                "Unexpected: ${if (ch == -1) "end" else expression[pos]}",
+                            )
+                        }
 
                     return if (eat('^'.code)) {
                         x.pow(parseFactor())

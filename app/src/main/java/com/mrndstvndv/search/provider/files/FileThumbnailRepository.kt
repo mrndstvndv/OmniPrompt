@@ -13,34 +13,42 @@ import kotlin.math.max
 import kotlin.math.min
 
 class FileThumbnailRepository private constructor(private val context: Context) {
-
-    private val cache = object : LruCache<String, Bitmap>(MAX_CACHE_ITEMS) {
-        override fun sizeOf(key: String, value: Bitmap): Int {
-            return value.byteCount / 1024
+    private val cache =
+        object : LruCache<String, Bitmap>(MAX_CACHE_ITEMS) {
+            override fun sizeOf(
+                key: String,
+                value: Bitmap,
+            ): Int {
+                return value.byteCount / 1024
+            }
         }
-    }
 
     suspend fun loadThumbnail(
         uriString: String,
         lastModified: Long,
         cropMode: FileSearchThumbnailCropMode,
-        type: ThumbnailType
-    ): Bitmap? = withContext(Dispatchers.IO) {
-        val key = "$uriString#$lastModified#${type.name}#${cropMode.name}"
-        cache.get(key)?.let { return@withContext it }
-        val uri = Uri.parse(uriString)
-        val decoded = when (type) {
-            ThumbnailType.IMAGE -> decodeImage(uri, cropMode)
-            ThumbnailType.VIDEO -> decodeVideo(uri, cropMode)
-            ThumbnailType.AUDIO -> decodeAudioArt(uri, cropMode)
+        type: ThumbnailType,
+    ): Bitmap? =
+        withContext(Dispatchers.IO) {
+            val key = "$uriString#$lastModified#${type.name}#${cropMode.name}"
+            cache.get(key)?.let { return@withContext it }
+            val uri = Uri.parse(uriString)
+            val decoded =
+                when (type) {
+                    ThumbnailType.IMAGE -> decodeImage(uri, cropMode)
+                    ThumbnailType.VIDEO -> decodeVideo(uri, cropMode)
+                    ThumbnailType.AUDIO -> decodeAudioArt(uri, cropMode)
+                }
+            if (decoded != null) {
+                cache.put(key, decoded)
+            }
+            decoded
         }
-        if (decoded != null) {
-            cache.put(key, decoded)
-        }
-        decoded
-    }
 
-    private fun decodeImage(uri: Uri, cropMode: FileSearchThumbnailCropMode): Bitmap? {
+    private fun decodeImage(
+        uri: Uri,
+        cropMode: FileSearchThumbnailCropMode,
+    ): Bitmap? {
         return try {
             val resolver = context.contentResolver
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -51,16 +59,20 @@ class FileThumbnailRepository private constructor(private val context: Context) 
             if (sampleWidth <= 0 || sampleHeight <= 0) return null
             val sampleSize = calculateSampleSize(sampleWidth, sampleHeight, TARGET_SIZE)
             val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-            val bitmap = resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, decodeOptions)
-            }
+            val bitmap =
+                resolver.openInputStream(uri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream, null, decodeOptions)
+                }
             bitmap?.let { scaleToTarget(it, cropMode) }
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun decodeVideo(uri: Uri, cropMode: FileSearchThumbnailCropMode): Bitmap? {
+    private fun decodeVideo(
+        uri: Uri,
+        cropMode: FileSearchThumbnailCropMode,
+    ): Bitmap? {
         return try {
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(context, uri)
@@ -72,14 +84,21 @@ class FileThumbnailRepository private constructor(private val context: Context) 
         }
     }
 
-    private fun decodeAudioArt(uri: Uri, cropMode: FileSearchThumbnailCropMode): Bitmap? {
+    private fun decodeAudioArt(
+        uri: Uri,
+        cropMode: FileSearchThumbnailCropMode,
+    ): Bitmap? {
         return try {
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(context, uri)
             val picture = retriever.embeddedPicture
             retriever.release()
             if (picture != null) {
-                BitmapFactory.decodeByteArray(picture, 0, picture.size)?.let { scaleToTarget(it, cropMode) }
+                BitmapFactory.decodeByteArray(
+                    picture,
+                    0,
+                    picture.size,
+                )?.let { scaleToTarget(it, cropMode) }
             } else {
                 null
             }
@@ -88,7 +107,11 @@ class FileThumbnailRepository private constructor(private val context: Context) 
         }
     }
 
-    private fun calculateSampleSize(width: Int, height: Int, target: Int): Int {
+    private fun calculateSampleSize(
+        width: Int,
+        height: Int,
+        target: Int,
+    ): Int {
         var sample = 1
         if (height > target || width > target) {
             val halfHeight = height / 2
@@ -100,7 +123,10 @@ class FileThumbnailRepository private constructor(private val context: Context) 
         return sample
     }
 
-    private fun scaleToTarget(bitmap: Bitmap, cropMode: FileSearchThumbnailCropMode): Bitmap {
+    private fun scaleToTarget(
+        bitmap: Bitmap,
+        cropMode: FileSearchThumbnailCropMode,
+    ): Bitmap {
         return when (cropMode) {
             FileSearchThumbnailCropMode.FIT -> scaleToFit(bitmap)
             FileSearchThumbnailCropMode.CENTER_CROP -> centerCrop(bitmap)
@@ -124,13 +150,14 @@ class FileThumbnailRepository private constructor(private val context: Context) 
         if (minSide <= 0) return bitmap
         val scale = TARGET_SIZE.toFloat() / minSide
         val shouldDownscale = scale < 1f
-        val scaledBitmap = if (shouldDownscale) {
-            val scaledWidth = max(1, (width * scale).toInt())
-            val scaledHeight = max(1, (height * scale).toInt())
-            Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
-        } else {
-            bitmap
-        }
+        val scaledBitmap =
+            if (shouldDownscale) {
+                val scaledWidth = max(1, (width * scale).toInt())
+                val scaledHeight = max(1, (height * scale).toInt())
+                Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+            } else {
+                bitmap
+            }
         val cropSize = min(TARGET_SIZE, min(scaledBitmap.width, scaledBitmap.height))
         if (cropSize <= 0) return scaledBitmap
         val left = max(0, (scaledBitmap.width - cropSize) / 2)
@@ -157,5 +184,5 @@ class FileThumbnailRepository private constructor(private val context: Context) 
 enum class ThumbnailType {
     IMAGE,
     VIDEO,
-    AUDIO
+    AUDIO,
 }
