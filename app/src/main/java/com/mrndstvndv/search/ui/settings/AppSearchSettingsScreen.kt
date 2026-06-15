@@ -116,6 +116,15 @@ fun AppSearchSettingsScreen(
                             repository.update { it.copy(aiAssistantQueriesEnabled = newValue) }
                         },
                     )
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = stringResource(R.string.app_search_themed_icons),
+                        subtitle = stringResource(R.string.app_search_themed_icons_subtitle),
+                        checked = appSearchSettings.useThemedIcons,
+                        onCheckedChange = { newValue ->
+                            repository.update { it.copy(useThemedIcons = newValue) }
+                        },
+                    )
                 }
             }
 
@@ -255,6 +264,7 @@ fun AppSearchSettingsScreen(
                                     appListRepository = appListRepository,
                                     pinnedApps = appSearchSettings.pinnedApps,
                                     enabled = appListEnabled,
+                                    useThemedIcons = appSearchSettings.useThemedIcons,
                                     onMoveUp = { packageName ->
                                         repository.update {
                                             val currentList = it.pinnedApps.toMutableList()
@@ -417,6 +427,7 @@ fun AppSearchSettingsScreen(
                                     appListRepository = appListRepository,
                                     pinnedApps = appSearchSettings.pinnedApps,
                                     enabled = appListEnabled,
+                                    useThemedIcons = appSearchSettings.useThemedIcons,
                                     onMoveUp = { packageName ->
                                         repository.update {
                                             val currentList = it.pinnedApps.toMutableList()
@@ -472,6 +483,7 @@ fun AppSearchSettingsScreen(
                 repository.update { it.copy(pinnedApps = it.pinnedApps + packageName) }
                 isAddAppDialogOpen = false
             },
+            useThemedIcons = appSearchSettings.useThemedIcons,
         )
     }
 }
@@ -528,6 +540,7 @@ private fun PinnedAppsSection(
     onMoveDown: (String) -> Unit,
     onRemove: (String) -> Unit,
     onAddClick: () -> Unit,
+    useThemedIcons: Boolean,
 ) {
     val disabledAlpha = 0.38f
     val allApps by appListRepository.getAllApps().collectAsState()
@@ -553,8 +566,8 @@ private fun PinnedAppsSection(
             )
         } else {
             pinnedAppInfos.forEachIndexed { index, appInfo ->
-                val appIcon by produceState<Bitmap?>(null, appInfo.packageName) {
-                    value = appListRepository.getIcon(appInfo.packageName)
+                val appIcon by produceState<Bitmap?>(null, appInfo.packageName, useThemedIcons) {
+                    value = appListRepository.getIcon(appInfo.packageName, useThemedIcons)
                 }
 
                 PinnedAppItem(
@@ -683,6 +696,7 @@ private fun AddPinnedAppDialog(
     existingPinnedApps: List<String>,
     onDismiss: () -> Unit,
     onAddApp: (packageName: String) -> Unit,
+    useThemedIcons: Boolean,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val allApps by appListRepository.getAllApps().collectAsState()
@@ -751,8 +765,8 @@ private fun AddPinnedAppDialog(
                 Column(modifier = Modifier.heightIn(max = 450.dp)) {
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
                         items(filteredApps, key = { it.packageName }) { app ->
-                            val appIcon by produceState<Bitmap?>(null, app.packageName) {
-                                value = appListRepository.getIcon(app.packageName)
+                            val appIcon by produceState<Bitmap?>(null, app.packageName, useThemedIcons) {
+                                value = appListRepository.getIcon(app.packageName, useThemedIcons)
                             }
 
                             Row(

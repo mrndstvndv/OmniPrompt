@@ -170,7 +170,7 @@ class AppListProvider(
                     subtitle = subtitle,
                     icon = null,
                     defaultVectorIcon = Icons.Outlined.Android,
-                    iconLoader = { appListRepository.getIcon(entry.packageName) },
+                    iconLoader = { appListRepository.getIcon(entry.packageName, settings.useThemedIcons) },
                     providerId = id,
                     extras = mapOf(EXTRA_PACKAGE_NAME to entry.packageName),
                     onSelect = action,

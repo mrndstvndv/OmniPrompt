@@ -50,7 +50,7 @@ class RecentAppsRepository(
         return hasPermissionCache
     }
 
-    fun getRecentApps(limit: Int = 5): Flow<List<RecentApp>> =
+    fun getRecentApps(limit: Int = 5, useThemedIcons: Boolean = false): Flow<List<RecentApp>> =
         flow {
             if (!hasPermissionCache) {
                 emit(emptyList())
@@ -93,7 +93,7 @@ class RecentAppsRepository(
                         RecentApp(
                             packageName = packageName,
                             label = packageManager.getApplicationLabel(appInfo).toString(),
-                            iconLoader = { appListRepository.getIcon(packageName) },
+                            iconLoader = { appListRepository.getIcon(packageName, useThemedIcons) },
                             launchIntent = launchIntent,
                         )
                     }

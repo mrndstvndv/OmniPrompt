@@ -122,6 +122,8 @@
     <string name="app_search_include_package_name_subtitle">Search apps by their package name (e.g. com.android.settings).</string>
     <string name="app_search_ai_queries">AI Assistant queries</string>
     <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using &quot;ask gemini &lt;query&gt;&quot;.</string>
+    <string name="app_search_themed_icons">Themed icons</string>
+    <string name="app_search_themed_icons_subtitle">Apply Material You colors to supported app icons.</string>
 
     <!-- App list settings -->
     <string name="app_list_section_title">App List</string>

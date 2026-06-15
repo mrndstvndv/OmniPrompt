@@ -2,6 +2,8 @@ package com.mrndstvndv.search.util
 
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.core.graphics.drawable.toBitmap
@@ -10,11 +12,25 @@ fun loadAppIconBitmap(
     pm: PackageManager,
     packageName: String,
     iconSize: Int,
+    useThemedIcons: Boolean = false,
+    context: android.content.Context? = null,
 ): Bitmap? {
     if (!isPackageInstalled(pm, packageName)) return null
     return runCatching {
         val app = pm.getApplicationInfo(packageName, 0)
-        app.loadIcon(pm).toBitmapOrNull(iconSize)
+        val iconDrawable = app.loadIcon(pm)
+        if (useThemedIcons && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && iconDrawable is AdaptiveIconDrawable && context != null) {
+            val monochrome = iconDrawable.monochrome
+            if (monochrome != null) {
+                val (primaryColor, _, surfaceColor) = getThemeColors(context)
+                val mutatedMonochrome = monochrome.mutate().apply {
+                    setTint(primaryColor)
+                }
+                val themedIcon = AdaptiveIconDrawable(ColorDrawable(surfaceColor), mutatedMonochrome)
+                return themedIcon.toBitmapOrNull(iconSize)
+            }
+        }
+        iconDrawable.toBitmapOrNull(iconSize)
     }.getOrNull()
 }
 
