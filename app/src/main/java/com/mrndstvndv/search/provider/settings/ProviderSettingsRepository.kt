@@ -1081,6 +1081,7 @@ data class AppSearchSettings(
     val hideAppListWhenResultsVisible: Boolean = true,
     val useThemedIcons: Boolean = false,
     val forceThemedIcons: Boolean = false,
+    val selectedIconPack: String = "",
 ) : ProviderSettings {
     override val providerId: String = PROVIDER_ID
 
@@ -1102,6 +1103,7 @@ data class AppSearchSettings(
                 hideAppListWhenResultsVisible = true,
                 useThemedIcons = false,
                 forceThemedIcons = false,
+                selectedIconPack = "",
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
@@ -1139,6 +1141,7 @@ data class AppSearchSettings(
                     ),
                 useThemedIcons = json.optBoolean("useThemedIcons", false),
                 forceThemedIcons = json.optBoolean("forceThemedIcons", false),
+                selectedIconPack = json.optString("selectedIconPack", ""),
             )
         }
     }
@@ -1158,6 +1161,7 @@ data class AppSearchSettings(
             put("hideAppListWhenResultsVisible", hideAppListWhenResultsVisible)
             put("useThemedIcons", useThemedIcons)
             put("forceThemedIcons", forceThemedIcons)
+            put("selectedIconPack", selectedIconPack)
         }
 
     fun toJsonString(): String = toJson().toString()

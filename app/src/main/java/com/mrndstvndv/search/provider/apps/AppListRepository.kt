@@ -90,8 +90,15 @@ class AppListRepository private constructor(
 
     fun getAllApps(): StateFlow<List<AppInfo>> = _apps
 
-    suspend fun getIcon(packageName: String, useThemedIcons: Boolean = false, forceThemedIcons: Boolean = false): Bitmap? {
+    suspend fun getIcon(packageName: String, useThemedIcons: Boolean = false, forceThemedIcons: Boolean = false, selectedIconPack: String = ""): Bitmap? {
         val cacheKey = when {
+            selectedIconPack.isNotEmpty() -> {
+                when {
+                    useThemedIcons && forceThemedIcons -> "$packageName:pack-$selectedIconPack:themed-forced"
+                    useThemedIcons -> "$packageName:pack-$selectedIconPack:themed"
+                    else -> "$packageName:pack-$selectedIconPack"
+                }
+            }
             useThemedIcons && forceThemedIcons -> "$packageName:themed-forced"
             useThemedIcons -> "$packageName:themed"
             else -> packageName
@@ -105,7 +112,7 @@ class AppListRepository private constructor(
 
         val icon =
             withContext(Dispatchers.IO) {
-                loadAppIconBitmap(packageManager, packageName, iconSize, useThemedIcons, forceThemedIcons, context)
+                loadAppIconBitmap(packageManager, packageName, iconSize, useThemedIcons, forceThemedIcons, selectedIconPack, context)
             }
 
         // Store result under mutex (allow other readers while this one loaded)

@@ -1,5 +1,6 @@
 package com.mrndstvndv.search.util
 
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.drawable.AdaptiveIconDrawable
@@ -8,6 +9,8 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.core.graphics.drawable.toBitmap
+import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlPullParserFactory
 
 private fun getForcedMonochromeDrawable(
     original: Drawable,
@@ -72,15 +75,28 @@ fun loadAppIconBitmap(
     iconSize: Int,
     useThemedIcons: Boolean = false,
     forceThemedIcons: Boolean = false,
+    selectedIconPack: String = "",
     context: android.content.Context? = null,
 ): Bitmap? {
     if (!isPackageInstalled(pm, packageName)) return null
     return runCatching {
         val app = pm.getApplicationInfo(packageName, 0)
-        val iconDrawable = app.loadIcon(pm)
+        var loadedFromPack = false
+        val iconDrawable = if (selectedIconPack.isNotEmpty() && context != null) {
+            val pack = getIconPackInstance(context, selectedIconPack)
+            val drawable = pack.getIconDrawable(packageName, pm)
+            if (drawable != null) {
+                loadedFromPack = true
+                drawable
+            } else {
+                app.loadIcon(pm)
+            }
+        } else {
+            app.loadIcon(pm)
+        }
         if (useThemedIcons && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && context != null) {
             val (primaryColor, _, surfaceColor) = getThemeColors(context)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && iconDrawable is AdaptiveIconDrawable) {
+            if (!loadedFromPack && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && iconDrawable is AdaptiveIconDrawable) {
                 val monochrome = iconDrawable.monochrome
                 if (monochrome != null) {
                     val mutatedMonochrome = monochrome.mutate().apply {
@@ -90,7 +106,7 @@ fun loadAppIconBitmap(
                     return themedIcon.toBitmapOrNull(iconSize)
                 }
             }
-            if (forceThemedIcons) {
+            if (forceThemedIcons || loadedFromPack) {
                 val foreground = if (iconDrawable is AdaptiveIconDrawable) {
                     iconDrawable.foreground
                 } else {
@@ -248,5 +264,146 @@ fun createBadgedIcon(
         output
     } catch (e: Exception) {
         baseIcon
+    }
+}
+
+data class IconPackInfo(
+    val packageName: String,
+    val label: String
+)
+
+fun getInstalledIconPacks(context: Context): List<IconPackInfo> {
+    val pm = context.packageManager
+    val iconPacks = mutableMapOf<String, IconPackInfo>()
+    
+    val intentActions = listOf(
+        "org.adw.launcher.THEMES",
+        "com.novalauncher.THEME",
+        "com.gau.go.launcherex.theme",
+        "solo.launcher.THEME"
+    )
+    val intentCategories = listOf(
+        "com.fede.launcher.THEME_ICONPACK",
+        "com.anddoes.launcher.THEME"
+    )
+    
+    for (action in intentActions) {
+        val intent = android.content.Intent(action)
+        val list = pm.queryIntentActivities(intent, PackageManager.GET_META_DATA)
+        for (info in list) {
+            val packageName = info.activityInfo.packageName
+            val label = info.loadLabel(pm).toString()
+            iconPacks[packageName] = IconPackInfo(packageName, label)
+        }
+    }
+    
+    for (category in intentCategories) {
+        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
+            addCategory(category)
+        }
+        val list = pm.queryIntentActivities(intent, PackageManager.GET_META_DATA)
+        for (info in list) {
+            val packageName = info.activityInfo.packageName
+            val label = info.loadLabel(pm).toString()
+            iconPacks[packageName] = IconPackInfo(packageName, label)
+        }
+    }
+    
+    return iconPacks.values.toList().sortedBy { it.label }
+}
+
+class IconPack(private val context: Context, private val packageName: String) {
+    private val iconMap = mutableMapOf<String, String>()
+    private val packRes = try {
+        context.packageManager.getResourcesForApplication(packageName)
+    } catch (e: Exception) {
+        null
+    }
+
+    init {
+        loadAppFilter()
+    }
+
+    private fun loadAppFilter() {
+        val packRes = this.packRes ?: return
+        var parser: XmlPullParser? = null
+        var inputStream: java.io.InputStream? = null
+        try {
+            try {
+                inputStream = packRes.assets.open("appfilter.xml")
+                val factory = XmlPullParserFactory.newInstance()
+                parser = factory.newPullParser()
+                parser.setInput(inputStream, "UTF-8")
+            } catch (e: Exception) {
+                val resId = packRes.getIdentifier("appfilter", "xml", packageName)
+                if (resId != 0) {
+                    parser = packRes.getXml(resId)
+                }
+            }
+
+            if (parser != null) {
+                var eventType = parser.eventType
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG && parser.name == "item") {
+                        val component = parser.getAttributeValue(null, "component")
+                        val drawable = parser.getAttributeValue(null, "drawable")
+                        if (component != null && drawable != null) {
+                            iconMap[component] = drawable
+                        }
+                    }
+                    eventType = parser.next()
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            inputStream?.close()
+        }
+    }
+
+    fun getIconDrawable(appPackageName: String, pm: PackageManager): Drawable? {
+        val packRes = this.packRes ?: return null
+        val launchIntent = pm.getLaunchIntentForPackage(appPackageName)
+        val componentName = launchIntent?.component
+        val componentInfoStr = if (componentName != null) {
+            "ComponentInfo{${componentName.packageName}/${componentName.className}}"
+        } else {
+            null
+        }
+
+        var drawableName: String? = null
+        if (componentInfoStr != null) {
+            drawableName = iconMap[componentInfoStr]
+        }
+        
+        if (drawableName == null) {
+            val keyPrefix = "ComponentInfo{$appPackageName/"
+            val matchingKey = iconMap.keys.firstOrNull { it.startsWith(keyPrefix) }
+            if (matchingKey != null) {
+                drawableName = iconMap[matchingKey]
+            }
+        }
+
+        if (drawableName == null) return null
+
+        val resId = packRes.getIdentifier(drawableName, "drawable", packageName)
+        return if (resId != 0) {
+            try {
+                androidx.core.content.res.ResourcesCompat.getDrawable(packRes, resId, null)
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
+}
+
+private val iconPackCache = mutableMapOf<String, IconPack>()
+
+@Synchronized
+fun getIconPackInstance(context: Context, packageName: String): IconPack {
+    return iconPackCache.getOrPut(packageName) {
+        IconPack(context.applicationContext, packageName)
     }
 }

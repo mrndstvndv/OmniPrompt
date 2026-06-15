@@ -787,7 +787,7 @@ class MainActivity : ComponentActivity() {
                         currentNormalizedQuery = normalizedText
                         val query = Query(normalizedText, originalText = currentText)
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
-                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings, appSearchSettings.useThemedIcons, appSearchSettings.forceThemedIcons) }
+                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings, appSearchSettings.useThemedIcons, appSearchSettings.forceThemedIcons, appSearchSettings.selectedIconPack) }
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
 
@@ -1245,6 +1245,7 @@ class MainActivity : ComponentActivity() {
                                             visible = showAppList,
                                             useThemedIcons = appSearchSettings.useThemedIcons,
                                             forceThemedIcons = appSearchSettings.forceThemedIcons,
+                                            selectedIconPack = appSearchSettings.selectedIconPack,
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -1314,6 +1315,7 @@ class MainActivity : ComponentActivity() {
                                         visible = showAppList,
                                         useThemedIcons = appSearchSettings.useThemedIcons,
                                         forceThemedIcons = appSearchSettings.forceThemedIcons,
+                                        selectedIconPack = appSearchSettings.selectedIconPack,
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
@@ -1517,6 +1519,7 @@ class MainActivity : ComponentActivity() {
         webSearchSettings: WebSearchSettings,
         useThemedIcons: Boolean,
         forceThemedIcons: Boolean,
+        selectedIconPack: String,
     ): ProviderResult? {
         return when (val target = entry.target) {
             is WebSearchAliasTarget -> {
@@ -1564,7 +1567,7 @@ class MainActivity : ComponentActivity() {
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
                     // Load app icon from PackageManager
-                    iconLoader = { loadAppIconBitmap(packageManager, target.packageName, defaultAppIconSize, useThemedIcons, forceThemedIcons, this@MainActivity) },
+                    iconLoader = { loadAppIconBitmap(packageManager, target.packageName, defaultAppIconSize, useThemedIcons, forceThemedIcons, selectedIconPack, this@MainActivity) },
                 )
             }
 

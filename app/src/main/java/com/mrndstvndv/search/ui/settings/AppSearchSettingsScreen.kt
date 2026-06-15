@@ -62,6 +62,7 @@ import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.getInstalledIconPacks
 
 @Composable
 fun AppSearchSettingsScreen(
@@ -71,6 +72,7 @@ fun AppSearchSettingsScreen(
 ) {
     val appSearchSettings by repository.flow.collectAsState()
     var isAddAppDialogOpen by remember { mutableStateOf(false) }
+    var isIconPackDialogOpen by remember { mutableStateOf(false) }
 
     Box(
         modifier =
@@ -139,6 +141,44 @@ fun AppSearchSettingsScreen(
                             onCheckedChange = { newValue ->
                                 repository.update { it.copy(forceThemedIcons = newValue) }
                             },
+                        )
+                    }
+                    SettingsDivider()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isIconPackDialogOpen = true }
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.app_search_icon_pack),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = stringResource(R.string.app_search_icon_pack_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        val context = LocalContext.current
+                        val pm = context.packageManager
+                        val currentLabel = remember(appSearchSettings.selectedIconPack) {
+                            if (appSearchSettings.selectedIconPack.isEmpty()) {
+                                context.getString(R.string.app_search_icon_pack_default)
+                            } else {
+                                runCatching {
+                                    val info = pm.getApplicationInfo(appSearchSettings.selectedIconPack, 0)
+                                    pm.getApplicationLabel(info).toString()
+                                }.getOrDefault(context.getString(R.string.app_search_icon_pack_default))
+                            }
+                        }
+                        Text(
+                            text = currentLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -282,6 +322,7 @@ fun AppSearchSettingsScreen(
                                     enabled = appListEnabled,
                                     useThemedIcons = appSearchSettings.useThemedIcons,
                                     forceThemedIcons = appSearchSettings.forceThemedIcons,
+                                    selectedIconPack = appSearchSettings.selectedIconPack,
                                     onMoveUp = { packageName ->
                                         repository.update {
                                             val currentList = it.pinnedApps.toMutableList()
@@ -446,6 +487,7 @@ fun AppSearchSettingsScreen(
                                     enabled = appListEnabled,
                                     useThemedIcons = appSearchSettings.useThemedIcons,
                                     forceThemedIcons = appSearchSettings.forceThemedIcons,
+                                    selectedIconPack = appSearchSettings.selectedIconPack,
                                     onMoveUp = { packageName ->
                                         repository.update {
                                             val currentList = it.pinnedApps.toMutableList()
@@ -493,19 +535,31 @@ fun AppSearchSettingsScreen(
     }
 
     if (isAddAppDialogOpen) {
-        AddPinnedAppDialog(
-            appListRepository = appListRepository,
-            existingPinnedApps = appSearchSettings.pinnedApps,
-            onDismiss = { isAddAppDialogOpen = false },
-            onAddApp = { packageName ->
-                repository.update { it.copy(pinnedApps = it.pinnedApps + packageName) }
-                isAddAppDialogOpen = false
-            },
-            useThemedIcons = appSearchSettings.useThemedIcons,
-            forceThemedIcons = appSearchSettings.forceThemedIcons,
-        )
-    }
-}
+                                 AddPinnedAppDialog(
+                                     appListRepository = appListRepository,
+                                     existingPinnedApps = appSearchSettings.pinnedApps,
+                                     onDismiss = { isAddAppDialogOpen = false },
+                                     onAddApp = { packageName ->
+                                         repository.update { it.copy(pinnedApps = it.pinnedApps + packageName) }
+                                         isAddAppDialogOpen = false
+                                     },
+                                     useThemedIcons = appSearchSettings.useThemedIcons,
+                                     forceThemedIcons = appSearchSettings.forceThemedIcons,
+                                     selectedIconPack = appSearchSettings.selectedIconPack,
+                                 )
+                             }
+
+                             if (isIconPackDialogOpen) {
+                                 IconPackChooserDialog(
+                                     currentSelected = appSearchSettings.selectedIconPack,
+                                     onDismiss = { isIconPackDialogOpen = false },
+                                     onSelect = { packageName ->
+                                         repository.update { it.copy(selectedIconPack = packageName) }
+                                         isIconPackDialogOpen = false
+                                     }
+                                 )
+                             }
+                         }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -561,6 +615,7 @@ private fun PinnedAppsSection(
     onAddClick: () -> Unit,
     useThemedIcons: Boolean,
     forceThemedIcons: Boolean,
+    selectedIconPack: String,
 ) {
     val disabledAlpha = 0.38f
     val allApps by appListRepository.getAllApps().collectAsState()
@@ -586,8 +641,8 @@ private fun PinnedAppsSection(
             )
         } else {
             pinnedAppInfos.forEachIndexed { index, appInfo ->
-                val appIcon by produceState<Bitmap?>(null, appInfo.packageName, useThemedIcons, forceThemedIcons) {
-                    value = appListRepository.getIcon(appInfo.packageName, useThemedIcons, forceThemedIcons)
+                val appIcon by produceState<Bitmap?>(null, appInfo.packageName, useThemedIcons, forceThemedIcons, selectedIconPack) {
+                    value = appListRepository.getIcon(appInfo.packageName, useThemedIcons, forceThemedIcons, selectedIconPack)
                 }
 
                 PinnedAppItem(
@@ -718,6 +773,7 @@ private fun AddPinnedAppDialog(
     onAddApp: (packageName: String) -> Unit,
     useThemedIcons: Boolean,
     forceThemedIcons: Boolean,
+    selectedIconPack: String,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val allApps by appListRepository.getAllApps().collectAsState()
@@ -786,8 +842,8 @@ private fun AddPinnedAppDialog(
                 Column(modifier = Modifier.heightIn(max = 450.dp)) {
                     LazyColumn(modifier = Modifier.fillMaxWidth()) {
                         items(filteredApps, key = { it.packageName }) { app ->
-                            val appIcon by produceState<Bitmap?>(null, app.packageName, useThemedIcons, forceThemedIcons) {
-                                value = appListRepository.getIcon(app.packageName, useThemedIcons, forceThemedIcons)
+                            val appIcon by produceState<Bitmap?>(null, app.packageName, useThemedIcons, forceThemedIcons, selectedIconPack) {
+                                value = appListRepository.getIcon(app.packageName, useThemedIcons, forceThemedIcons, selectedIconPack)
                             }
 
                             Row(
@@ -829,5 +885,78 @@ private fun AddPinnedAppDialog(
                 }
             }
         },
+    )
+}
+
+@Composable
+private fun IconPackChooserDialog(
+    currentSelected: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    val iconPacks = remember { getInstalledIconPacks(context) }
+
+    ContentDialog(
+        onDismiss = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.app_search_icon_pack_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
+        },
+        buttons = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.cancel))
+            }
+        },
+        content = {
+            Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    // System Default item
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect("") }
+                                .padding(vertical = 16.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.app_search_icon_pack_default),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (currentSelected.isEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+
+                    items(iconPacks) { pack ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(pack.packageName) }
+                                .padding(vertical = 16.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = pack.label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (currentSelected == pack.packageName) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        if (iconPacks.indexOf(pack) < iconPacks.lastIndex) {
+                            HorizontalDivider(
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     )
 }

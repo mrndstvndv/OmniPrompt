@@ -78,6 +78,7 @@ fun RecentAppsList(
     excludePackages: Set<String> = emptySet(),
     useThemedIcons: Boolean = false,
     forceThemedIcons: Boolean = false,
+    selectedIconPack: String = "",
 ) {
     val context = LocalContext.current
     var hasPermission by remember(repository) { mutableStateOf(repository.hasPermission()) }
@@ -120,8 +121,8 @@ fun RecentAppsList(
                     remember(maxItems, excludePackages.size) {
                         (maxItems + excludePackages.size).coerceAtLeast(1)
                     }
-                val recentApps by remember(repository, fetchLimit, useThemedIcons, forceThemedIcons) {
-                    repository.getRecentApps(limit = fetchLimit, useThemedIcons = useThemedIcons, forceThemedIcons = forceThemedIcons)
+                val recentApps by remember(repository, fetchLimit, useThemedIcons, forceThemedIcons, selectedIconPack) {
+                    repository.getRecentApps(limit = fetchLimit, useThemedIcons = useThemedIcons, forceThemedIcons = forceThemedIcons, selectedIconPack = selectedIconPack)
                 }.collectAsState(initial = emptyList())
 
                 val filteredApps =
@@ -390,6 +391,7 @@ fun AppListSection(
     visible: Boolean = true,
     useThemedIcons: Boolean = false,
     forceThemedIcons: Boolean = false,
+    selectedIconPack: String = "",
 ) {
     when (appListType) {
         AppListType.RECENT -> {
@@ -401,6 +403,7 @@ fun AppListSection(
                 visible = visible,
                 useThemedIcons = useThemedIcons,
                 forceThemedIcons = forceThemedIcons,
+                selectedIconPack = selectedIconPack,
             )
         }
 
@@ -475,6 +478,7 @@ fun AppListSection(
                         excludePackages = excludePackages,
                         useThemedIcons = useThemedIcons,
                         forceThemedIcons = forceThemedIcons,
+                        selectedIconPack = selectedIconPack,
                     )
                 }
                 val pinnedContent: @Composable RowScope.() -> Unit = {
