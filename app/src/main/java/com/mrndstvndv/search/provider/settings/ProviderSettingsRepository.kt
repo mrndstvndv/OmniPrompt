@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import com.mrndstvndv.search.util.GitHubUpdateChecker
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -44,6 +45,16 @@ class ProviderSettingsRepository(
         private const val KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED = "first_result_color_animation_enabled"
         private const val KEY_ALWAYS_SHOW_ENTER_BADGE = "always_show_enter_badge"
         private const val KEY_HAS_USED_ENTER = "has_used_enter"
+        private const val KEY_UPDATE_CHECK_INTERVAL = "update_check_interval"
+        private const val KEY_CUSTOM_UPDATE_INTERVAL_DAYS = "custom_update_interval_days"
+        private const val KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time"
+        private const val KEY_DISMISSED_VERSION = "dismissed_version"
+        private const val KEY_LATEST_UPDATE_VERSION = "latest_update_version"
+        private const val KEY_LATEST_UPDATE_CHANGELOG = "latest_update_changelog"
+        private const val KEY_LATEST_UPDATE_DOWNLOAD_URL = "latest_update_download_url"
+        private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
+        private const val KEY_CHECK_PRERELEASE_BUILDS = "check_prerelease_builds"
+
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
@@ -53,6 +64,10 @@ class ProviderSettingsRepository(
         private const val DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS = 1.5f
         private const val MIN_FIRST_RESULT_BORDER_THICKNESS = 0.5f
         private const val MAX_FIRST_RESULT_BORDER_THICKNESS = 3f
+
+        private const val DEFAULT_UPDATE_CHECK_INTERVAL = "weekly"
+        private const val DEFAULT_CUSTOM_UPDATE_INTERVAL_DAYS = 3
+        private const val DEFAULT_CHECK_PRERELEASE_BUILDS = false
     }
 
     private val appContext: Context = context.applicationContext
@@ -103,6 +118,24 @@ class ProviderSettingsRepository(
     private val _hasUsedEnter = MutableStateFlow(loadHasUsedEnter())
     val hasUsedEnter: StateFlow<Boolean> = _hasUsedEnter
 
+    private val _updateCheckInterval = MutableStateFlow(loadUpdateCheckInterval())
+    val updateCheckInterval: StateFlow<String> = _updateCheckInterval
+
+    private val _customUpdateIntervalDays = MutableStateFlow(loadCustomUpdateIntervalDays())
+    val customUpdateIntervalDays: StateFlow<Int> = _customUpdateIntervalDays
+
+    private val _lastUpdateCheckTime = MutableStateFlow(loadLastUpdateCheckTime())
+    val lastUpdateCheckTime: StateFlow<Long> = _lastUpdateCheckTime
+
+    private val _dismissedVersion = MutableStateFlow(loadDismissedVersion())
+    val dismissedVersion: StateFlow<String> = _dismissedVersion
+
+    private val _latestUpdate = MutableStateFlow<GitHubUpdateChecker.UpdateResult?>(null)
+    val latestUpdate: StateFlow<GitHubUpdateChecker.UpdateResult?> = _latestUpdate
+
+    private val _checkPrereleaseBuilds = MutableStateFlow(loadCheckPrereleaseBuilds())
+    val checkPrereleaseBuilds: StateFlow<Boolean> = _checkPrereleaseBuilds
+
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
@@ -121,6 +154,12 @@ class ProviderSettingsRepository(
                 _firstResultColorAnimationEnabled.value = loadFirstResultColorAnimationEnabled()
                 _alwaysShowEnterBadge.value = loadAlwaysShowEnterBadge()
                 _hasUsedEnter.value = loadHasUsedEnter()
+                _updateCheckInterval.value = loadUpdateCheckInterval()
+                _customUpdateIntervalDays.value = loadCustomUpdateIntervalDays()
+                _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
+                _dismissedVersion.value = loadDismissedVersion()
+                _latestUpdate.value = loadLatestUpdate()
+                _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
             }
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
@@ -138,8 +177,15 @@ class ProviderSettingsRepository(
             _firstResultColorAnimationEnabled.value = loadFirstResultColorAnimationEnabled()
             _alwaysShowEnterBadge.value = loadAlwaysShowEnterBadge()
             _hasUsedEnter.value = loadHasUsedEnter()
+            _updateCheckInterval.value = loadUpdateCheckInterval()
+            _customUpdateIntervalDays.value = loadCustomUpdateIntervalDays()
+            _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
+            _dismissedVersion.value = loadDismissedVersion()
+            _latestUpdate.value = loadLatestUpdate()
+            _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
         }
     }
+
 
     fun setTranslucentResultsEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_TRANSLUCENT_RESULTS, enabled) }
@@ -302,7 +348,78 @@ class ProviderSettingsRepository(
     private fun loadAlwaysShowEnterBadge(): Boolean = preferences.getBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, false)
 
     private fun loadHasUsedEnter(): Boolean = preferences.getBoolean(KEY_HAS_USED_ENTER, false)
+
+    fun setUpdateCheckInterval(interval: String) {
+        preferences.edit { putString(KEY_UPDATE_CHECK_INTERVAL, interval) }
+        _updateCheckInterval.value = interval
+    }
+
+    private fun loadUpdateCheckInterval(): String =
+        preferences.getString(KEY_UPDATE_CHECK_INTERVAL, DEFAULT_UPDATE_CHECK_INTERVAL) ?: DEFAULT_UPDATE_CHECK_INTERVAL
+
+    fun setCustomUpdateIntervalDays(days: Int) {
+        val coerced = days.coerceAtLeast(1)
+        preferences.edit { putInt(KEY_CUSTOM_UPDATE_INTERVAL_DAYS, coerced) }
+        _customUpdateIntervalDays.value = coerced
+    }
+
+    private fun loadCustomUpdateIntervalDays(): Int =
+        preferences.getInt(KEY_CUSTOM_UPDATE_INTERVAL_DAYS, DEFAULT_CUSTOM_UPDATE_INTERVAL_DAYS)
+
+    fun setLastUpdateCheckTime(timestamp: Long) {
+        preferences.edit { putLong(KEY_LAST_UPDATE_CHECK_TIME, timestamp) }
+        _lastUpdateCheckTime.value = timestamp
+    }
+
+    private fun loadLastUpdateCheckTime(): Long =
+        preferences.getLong(KEY_LAST_UPDATE_CHECK_TIME, 0L)
+
+    fun setDismissedVersion(version: String) {
+        preferences.edit { putString(KEY_DISMISSED_VERSION, version) }
+        _dismissedVersion.value = version
+    }
+
+    private fun loadDismissedVersion(): String =
+        preferences.getString(KEY_DISMISSED_VERSION, "") ?: ""
+
+    fun setLatestUpdate(update: GitHubUpdateChecker.UpdateResult?) {
+        preferences.edit {
+            if (update == null) {
+                remove(KEY_LATEST_UPDATE_VERSION)
+                remove(KEY_LATEST_UPDATE_CHANGELOG)
+                remove(KEY_LATEST_UPDATE_DOWNLOAD_URL)
+                remove(KEY_LATEST_UPDATE_PRERELEASE)
+            } else {
+                putString(KEY_LATEST_UPDATE_VERSION, update.version)
+                putString(KEY_LATEST_UPDATE_CHANGELOG, update.changelog)
+                putString(KEY_LATEST_UPDATE_DOWNLOAD_URL, update.downloadUrl)
+                putBoolean(KEY_LATEST_UPDATE_PRERELEASE, update.isPrerelease)
+            }
+        }
+        _latestUpdate.value = update
+    }
+
+    private fun loadLatestUpdate(): GitHubUpdateChecker.UpdateResult? {
+        val version = preferences.getString(KEY_LATEST_UPDATE_VERSION, null) ?: return null
+        val changelog = preferences.getString(KEY_LATEST_UPDATE_CHANGELOG, "") ?: ""
+        val downloadUrl = preferences.getString(KEY_LATEST_UPDATE_DOWNLOAD_URL, "") ?: ""
+        val isPrerelease = preferences.getBoolean(KEY_LATEST_UPDATE_PRERELEASE, false)
+        return GitHubUpdateChecker.UpdateResult(version, changelog, downloadUrl, isPrerelease)
+    }
+
+    fun setCheckPrereleaseBuilds(enabled: Boolean) {
+        preferences.edit {
+            putBoolean(KEY_CHECK_PRERELEASE_BUILDS, enabled)
+            putLong(KEY_LAST_UPDATE_CHECK_TIME, 0L)
+        }
+        _checkPrereleaseBuilds.value = enabled
+        _lastUpdateCheckTime.value = 0L
+    }
+
+    private fun loadCheckPrereleaseBuilds(): Boolean =
+        preferences.getBoolean(KEY_CHECK_PRERELEASE_BUILDS, DEFAULT_CHECK_PRERELEASE_BUILDS)
 }
+
 
 data class WebSearchSettings(
     val defaultSiteId: String,

@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.zIndex
@@ -347,7 +348,8 @@ fun ItemsList(
         ) {
             itemsIndexed(
                 items = results,
-                key = { _, item -> item.id }
+                key = { _, item -> item.id },
+                contentType = { _, item -> item.providerId }
             ) { index, item ->
                 val singleItem = results.size == 1
                 val isPrimaryActionItem = index == 0
@@ -609,5 +611,17 @@ fun ItemsList(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
+@Composable
+private fun HighlightedTextPreview() {
+    MaterialTheme {
+        HighlightedText(
+            text = "OmniPrompt Search",
+            matchedIndices = listOf(0, 5, 10),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }

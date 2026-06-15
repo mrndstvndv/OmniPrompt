@@ -238,7 +238,11 @@ private fun FrequencyRankingDialog(
                                     )
                                 }
 
-                                itemsIndexed(sortedResults, key = { _, item -> "${query}:${item.first}" }) { index, (resultId, score) ->
+                                itemsIndexed(
+                                    items = sortedResults,
+                                    key = { _, item -> "${query}:${item.first}" },
+                                    contentType = { _, _ -> "frequency_item" }
+                                ) { index, (resultId, score) ->
                                     FrequencyItem(resultId = resultId, score = score)
                                     if (index < sortedResults.lastIndex) {
                                         HorizontalDivider(

@@ -5,16 +5,10 @@ import android.net.Uri
 import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
-import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
-import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
-import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
-import com.mrndstvndv.search.provider.settings.WebSearchSettings
-import com.mrndstvndv.search.provider.termux.TermuxSettings
-import com.mrndstvndv.search.provider.intent.IntentSettings
+import com.mrndstvndv.search.provider.settings.SettingsRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -47,17 +41,8 @@ class BackupRestoreManager(
         private const val KEY_PROVIDER_RANKINGS = "providerRankings"
         private const val KEY_ALIASES = "aliases"
 
-        // Provider Settings Keys
-        private const val KEY_WEB_SEARCH = "webSearch"
-        private const val KEY_APP_SEARCH = "appSearch"
-        private const val KEY_TEXT_UTILITIES = "textUtilities"
-        private const val KEY_FILE_SEARCH = "fileSearch"
         private const val KEY_APPEARANCE = "appearance"
         private const val KEY_BEHAVIOR = "behavior"
-        private const val KEY_SYSTEM_SETTINGS = "systemSettings"
-        private const val KEY_CONTACTS = "contacts"
-        private const val KEY_TERMUX = "termux"
-        private const val KEY_INTENT = "intent"
         private const val KEY_ENABLED_PROVIDERS = "enabledProviders"
 
         // Appearance Keys
@@ -138,14 +123,6 @@ class BackupRestoreManager(
      */
     suspend fun createBackup(
         settingsRepository: ProviderSettingsRepository,
-        webSearchSettingsRepo: SettingsRepository<WebSearchSettings>,
-        appSearchSettingsRepo: SettingsRepository<AppSearchSettings>,
-        textUtilitiesSettingsRepo: SettingsRepository<TextUtilitiesSettings>,
-        fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
-        systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
-        contactsSettingsRepo: SettingsRepository<ContactsSettings>,
-        termuxSettingsRepo: SettingsRepository<TermuxSettings>,
-        intentSettingsRepo: SettingsRepository<IntentSettings>,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): JSONObject =
@@ -158,16 +135,8 @@ class BackupRestoreManager(
             backup.put(KEY_APP_VERSION_CODE, getAppVersionCode())
             backup.put(KEY_APP_VERSION_NAME, getAppVersionName())
 
-            // Provider Settings
-            val providerSettings = JSONObject()
-            providerSettings.put(KEY_WEB_SEARCH, webSearchSettingsRepo.value.toJson())
-            providerSettings.put(KEY_APP_SEARCH, appSearchSettingsRepo.value.toJson())
-            providerSettings.put(KEY_TEXT_UTILITIES, textUtilitiesSettingsRepo.value.toJson())
-            providerSettings.put(KEY_FILE_SEARCH, JSONObject(fileSearchSettingsRepo.value.toJsonString()))
-            providerSettings.put(KEY_SYSTEM_SETTINGS, systemSettingsSettingsRepo.value.toJson())
-            providerSettings.put(KEY_CONTACTS, contactsSettingsRepo.value.toJson())
-            providerSettings.put(KEY_TERMUX, termuxSettingsRepo.value.toJson())
-            providerSettings.put(KEY_INTENT, intentSettingsRepo.value.toJson())
+            // Provider Settings (dynamically from registry)
+            val providerSettings = SettingsRegistry.exportAll()
 
             // Appearance settings
             val appearance = JSONObject()
@@ -190,22 +159,14 @@ class BackupRestoreManager(
             providerSettings.put(KEY_BEHAVIOR, behavior)
 
             // Enabled providers
-            val enabledProviders = JSONObject()
-            settingsRepository.enabledProviders.value.forEach { (key, value) ->
-                enabledProviders.put(key, value)
-            }
-            providerSettings.put(KEY_ENABLED_PROVIDERS, enabledProviders)
+            providerSettings.put(KEY_ENABLED_PROVIDERS, JSONObject(settingsRepository.enabledProviders.value))
 
             backup.put(KEY_PROVIDER_SETTINGS, providerSettings)
 
             // Provider Rankings
             val rankings = JSONObject()
             rankings.put(KEY_PROVIDER_ORDER, JSONArray(rankingRepository.providerOrder.value))
-            val resultFrequency = JSONObject()
-            rankingRepository.resultFrequency.value.forEach { (key, value) ->
-                resultFrequency.put(key, value)
-            }
-            rankings.put(KEY_RESULT_FREQUENCY, resultFrequency)
+            rankings.put(KEY_RESULT_FREQUENCY, JSONObject(rankingRepository.resultFrequency.value))
             rankings.put(KEY_USE_FREQUENCY_RANKING, rankingRepository.useFrequencyRanking.value)
             backup.put(KEY_PROVIDER_RANKINGS, rankings)
 
@@ -228,13 +189,12 @@ class BackupRestoreManager(
     ): BackupResult =
         withContext(Dispatchers.IO) {
             try {
-                val jsonString = backupJson.toString(2) // Pretty print with 2-space indent
+                val bytes = backupJson.toString(2).toByteArray(Charsets.UTF_8)
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
+                    outputStream.write(bytes)
                 } ?: return@withContext BackupResult.Error("Could not open file for writing")
 
-                val size = jsonString.toByteArray(Charsets.UTF_8).size.toLong()
-                BackupResult.Success(uri, size)
+                BackupResult.Success(uri, bytes.size.toLong())
             } catch (e: IOException) {
                 BackupResult.Error("Failed to save backup: ${e.message}")
             } catch (e: SecurityException) {
@@ -294,12 +254,12 @@ class BackupRestoreManager(
             val providerSettings = backupJson.optJSONObject(KEY_PROVIDER_SETTINGS)
 
             // Web search
-            val webSearch = providerSettings?.optJSONObject(KEY_WEB_SEARCH)
+            val webSearch = providerSettings?.let { SettingsRegistry.getProviderJson(it, "web-search") }
             val sitesCount = webSearch?.optJSONArray("sites")?.length() ?: 0
             val quicklinksCount = webSearch?.optJSONArray("quicklinks")?.length() ?: 0
 
             // File search
-            val fileSearch = providerSettings?.optJSONObject(KEY_FILE_SEARCH)
+            val fileSearch = providerSettings?.let { SettingsRegistry.getProviderJson(it, "file-search") }
             val rootsCount = fileSearch?.optJSONArray("roots")?.length() ?: 0
 
             // Enabled providers
@@ -307,7 +267,7 @@ class BackupRestoreManager(
             val enabledCount = enabledProviders?.length() ?: 0
 
             // Termux commands
-            val termux = providerSettings?.optJSONObject(KEY_TERMUX)
+            val termux = providerSettings?.let { SettingsRegistry.getProviderJson(it, "termux") }
             val termuxCount = termux?.optJSONArray("commands")?.length() ?: 0
 
             // Appearance and behavior
@@ -340,14 +300,6 @@ class BackupRestoreManager(
     suspend fun restoreFromBackup(
         backupJson: JSONObject,
         settingsRepository: ProviderSettingsRepository,
-        webSearchSettingsRepo: SettingsRepository<WebSearchSettings>,
-        appSearchSettingsRepo: SettingsRepository<AppSearchSettings>,
-        textUtilitiesSettingsRepo: SettingsRepository<TextUtilitiesSettings>,
-        fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
-        systemSettingsSettingsRepo: SettingsRepository<SystemSettingsSettings>,
-        contactsSettingsRepo: SettingsRepository<ContactsSettings>,
-        termuxSettingsRepo: SettingsRepository<TermuxSettings>,
-        intentSettingsRepo: SettingsRepository<IntentSettings>,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): RestoreResult =
@@ -359,59 +311,23 @@ class BackupRestoreManager(
             try {
                 val providerSettings = backupJson.optJSONObject(KEY_PROVIDER_SETTINGS)
 
-                // Restore Web Search Settings
-                providerSettings?.optJSONObject(KEY_WEB_SEARCH)?.let { webSearchJson ->
-                    try {
-                        val settings = WebSearchSettings.fromJson(webSearchJson)
-                        if (settings != null) {
-                            webSearchSettingsRepo.replace(settings)
+                // Restore generic provider settings dynamically via registry
+                if (providerSettings != null) {
+                    val importResults = SettingsRegistry.importAll(providerSettings)
+                    importResults.forEach { (id, success) ->
+                        if (success) {
                             settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore web search settings")
-                    }
-                }
-
-                // Restore App Search Settings
-                providerSettings?.optJSONObject(KEY_APP_SEARCH)?.let { appSearchJson ->
-                    try {
-                        val settings = AppSearchSettings.fromJson(appSearchJson)
-                        if (settings != null) {
-                            appSearchSettingsRepo.replace(settings)
-                            settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore app search settings")
-                    }
-                }
-
-                // Restore Text Utilities Settings
-                providerSettings?.optJSONObject(KEY_TEXT_UTILITIES)?.let { textUtilsJson ->
-                    try {
-                        val settings = TextUtilitiesSettings.fromJson(textUtilsJson)
-                        if (settings != null) {
-                            textUtilitiesSettingsRepo.replace(settings)
-                            settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore text utilities settings")
-                    }
-                }
-
-                // Restore File Search Settings
-                providerSettings?.optJSONObject(KEY_FILE_SEARCH)?.let { fileSearchJson ->
-                    try {
-                        val settings = FileSearchSettings.fromJson(fileSearchJson)
-                        if (settings != null) {
-                            fileSearchSettingsRepo.replace(settings)
-                            // Note: File roots may need permission re-grant
-                            if (settings.roots.isNotEmpty()) {
-                                warnings.add("${settings.roots.size} file search folder(s) may need permission")
+                            if (id == "file-search") {
+                                val fileSearchRepo = SettingsRegistry.get("file-search") as? SettingsRepository<FileSearchSettings>
+                                fileSearchRepo?.value?.roots?.takeIf { it.isNotEmpty() }?.let { roots ->
+                                    warnings.add("${roots.size} file search folder(s) may need permission")
+                                }
                             }
-                            settingsRestored++
+                        } else {
+                            if (SettingsRegistry.getProviderJson(providerSettings, id) != null) {
+                                warnings.add("Failed to restore settings for provider: $id")
+                            }
                         }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore file search settings")
                     }
                 }
 
@@ -473,58 +389,6 @@ class BackupRestoreManager(
                         settingsRestored++
                     } catch (e: Exception) {
                         warnings.add("Failed to restore behavior settings")
-                    }
-                }
-
-                // Restore System Settings
-                providerSettings?.optJSONObject(KEY_SYSTEM_SETTINGS)?.let { systemJson ->
-                    try {
-                        val settings = SystemSettingsSettings.fromJson(systemJson)
-                        if (settings != null) {
-                            systemSettingsSettingsRepo.replace(settings)
-                            settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore system settings")
-                    }
-                }
-
-                // Restore Contacts Settings
-                providerSettings?.optJSONObject(KEY_CONTACTS)?.let { contactsJson ->
-                    try {
-                        val settings = ContactsSettings.fromJson(contactsJson)
-                        if (settings != null) {
-                            contactsSettingsRepo.replace(settings)
-                            settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore contacts settings")
-                    }
-                }
-
-                // Restore Termux Settings
-                providerSettings?.optJSONObject(KEY_TERMUX)?.let { termuxJson ->
-                    try {
-                        val settings = TermuxSettings.fromJson(termuxJson)
-                        if (settings != null) {
-                            termuxSettingsRepo.replace(settings)
-                            settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore Termux settings")
-                    }
-                }
-
-                // Restore Intent Settings
-                providerSettings?.optJSONObject(KEY_INTENT)?.let { intentJson ->
-                    try {
-                        val settings = IntentSettings.fromJson(intentJson)
-                        if (settings != null) {
-                            intentSettingsRepo.replace(settings)
-                            settingsRestored++
-                        }
-                    } catch (e: Exception) {
-                        warnings.add("Failed to restore Intent settings")
                     }
                 }
 
@@ -604,6 +468,7 @@ class BackupRestoreManager(
                 RestoreResult.Error("Failed to restore backup: ${e.message}")
             }
         }
+
 
     /**
      * Generates a suggested filename for the backup.

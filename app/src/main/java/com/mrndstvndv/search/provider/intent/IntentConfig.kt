@@ -40,6 +40,8 @@ data class IntentConfig(
     val packageName: String,                 // Target app
     val action: String = Intent.ACTION_SEND, // SEND, VIEW, SENDTO, etc.
     val type: String? = null,                // MIME type (null = any/not set)
+    val className: String? = null,           // Specific activity class name to launch
+    val customIconPath: String? = null,      // Path to custom imported icon
     
     // Payload customization
     val payloadTemplate: String? = null,     // "yabai $query" or null for raw
@@ -72,6 +74,8 @@ data class IntentConfig(
                     packageName = json.optString("packageName", ""),
                     action = json.optString("action", Intent.ACTION_SEND),
                     type = json.optString("type").takeIf { it.isNotEmpty() },
+                    className = json.optString("className").takeIf { it.isNotEmpty() },
+                    customIconPath = json.optString("customIconPath").takeIf { it.isNotEmpty() },
                     payloadTemplate = json.optString("payloadTemplate").takeIf { it.isNotEmpty() },
                     extras = extras
                 )
@@ -87,6 +91,8 @@ data class IntentConfig(
         put("packageName", packageName)
         put("action", action)
         type?.let { put("type", it) }
+        className?.let { put("className", it) }
+        customIconPath?.let { put("customIconPath", it) }
         payloadTemplate?.let { put("payloadTemplate", it) }
         
         val extrasArray = JSONArray()
