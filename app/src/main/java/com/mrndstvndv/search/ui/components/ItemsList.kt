@@ -40,8 +40,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.mrndstvndv.search.SearchApplication
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -271,6 +274,12 @@ fun ItemsList(
     animateFirstResultColorPulse: Boolean = false,
 ) {
     if (results.isEmpty()) return
+
+    val context = LocalContext.current
+    val appSearchSettingsRepo = remember(context) {
+        (context.applicationContext as SearchApplication).container.appSearchSettingsRepo
+    }
+    val appSettings by appSearchSettingsRepo.flow.collectAsState()
 
     val listState = rememberLazyListState()
     val motionPreferences = LocalMotionPreferences.current
@@ -530,8 +539,11 @@ fun ItemsList(
 
                 val iconBitmap by produceState<Bitmap?>(
                     initialValue = item.icon,
-                    key1 = item.id,
-                    key2 = item.iconLoader,
+                    item.id,
+                    item.iconLoader,
+                    appSettings.themedIconsEnabled,
+                    appSettings.themeAllIcons,
+                    appSettings.iconPackPackageName,
                 ) {
                     if (value != null) return@produceState
                     val loader = item.iconLoader ?: return@produceState
