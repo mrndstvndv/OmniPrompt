@@ -1079,6 +1079,9 @@ data class AppSearchSettings(
     val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
     val hideAppListWhenResultsVisible: Boolean = true,
+    val themedIconsEnabled: Boolean = false,
+    val themeAllIcons: Boolean = false,
+    val iconPackPackageName: String = "",
 ) : ProviderSettings {
     override val providerId: String = PROVIDER_ID
 
@@ -1098,6 +1101,9 @@ data class AppSearchSettings(
                 centerAppList = false,
                 pinnedApps = emptyList(),
                 hideAppListWhenResultsVisible = true,
+                themedIconsEnabled = false,
+                themeAllIcons = false,
+                iconPackPackageName = "",
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
@@ -1133,6 +1139,9 @@ data class AppSearchSettings(
                         "hideAppListWhenResultsVisible",
                         true,
                     ),
+                themedIconsEnabled = json.optBoolean("themedIconsEnabled", false),
+                themeAllIcons = json.optBoolean("themeAllIcons", false),
+                iconPackPackageName = json.optString("iconPackPackageName", ""),
             )
         }
     }
@@ -1150,6 +1159,9 @@ data class AppSearchSettings(
             put("centerAppList", centerAppList)
             put("pinnedApps", JSONArray(pinnedApps))
             put("hideAppListWhenResultsVisible", hideAppListWhenResultsVisible)
+            put("themedIconsEnabled", themedIconsEnabled)
+            put("themeAllIcons", themeAllIcons)
+            put("iconPackPackageName", iconPackPackageName)
         }
 
     fun toJsonString(): String = toJson().toString()
