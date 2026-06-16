@@ -5,17 +5,21 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import com.mrndstvndv.search.SearchApplication
 import com.mrndstvndv.search.provider.apps.models.AppInfo
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.util.loadAppIconBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 class AppListRepository private constructor(
     private val context: Context,
@@ -24,9 +28,15 @@ class AppListRepository private constructor(
     private val packageManager = context.packageManager
     private val cacheMutex = Mutex()
     private var cachedApps: List<AppInfo>? = null
-    private val iconCache = mutableMapOf<String, Bitmap?>()
+    private val iconCache = ConcurrentHashMap<String, Bitmap>()
     private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
     val apps: StateFlow<List<AppInfo>> = _apps
+
+    // ponytail: reads theme settings internally so iconLoader lambdas stay parameterless.
+    private val settingsRepository by lazy {
+        (context.applicationContext as SearchApplication).container.appSearchSettingsRepo
+    }
+    private var currentSettings: AppSearchSettings? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -59,28 +69,32 @@ class AppListRepository private constructor(
                 addDataScheme("package")
             }
         context.registerReceiver(packageChangeReceiver, filter)
+
+        // Watch theme settings to invalidate icon cache without full app list refresh.
+        scope.launch {
+            settingsRepository.flow.collectLatest { settings ->
+                val prev = currentSettings
+                currentSettings = settings
+                if (prev != null &&
+                    (prev.themedIconsEnabled != settings.themedIconsEnabled ||
+                     prev.themeAllIcons != settings.themeAllIcons ||
+                     prev.iconPackPackageName != settings.iconPackPackageName)
+                ) {
+                    iconCache.clear()
+                }
+            }
+        }
     }
 
-    /**
-     * Cleans up resources. Call this method when the repository is no longer needed.
-     * Note: For singleton usage with applicationContext, this is typically not needed
-     * as the repository lives for the app's entire lifecycle.
-     */
     fun dispose() {
         if (isReceiverRegistered) {
             try {
                 context.unregisterReceiver(packageChangeReceiver)
                 isReceiverRegistered = false
-            } catch (_: IllegalArgumentException) {
-                // Receiver was not registered or already unregistered
-            }
+            } catch (_: IllegalArgumentException) { }
         }
     }
 
-    /**
-     * Initializes the repository by loading apps if not already cached.
-     * Thread-safe for cache updates; concurrent calls may result in duplicate loading.
-     */
     suspend fun initialize() {
         val needsLoad = cacheMutex.withLock { cachedApps == null }
         if (needsLoad) {
@@ -90,28 +104,46 @@ class AppListRepository private constructor(
 
     fun getAllApps(): StateFlow<List<AppInfo>> = _apps
 
+    /** Loads icon for the given package using current theme settings. */
     suspend fun getIcon(packageName: String): Bitmap? {
-        // Fast path: check cache without holding the mutex during IO
-        cacheMutex.withLock {
-            iconCache[packageName]?.let { return it }
+        val s = currentSettings ?: settingsRepository.value
+        return getIcon(packageName, s.themedIconsEnabled, s.themeAllIcons, s.iconPackPackageName)
+    }
+
+    /** Loads icon with explicit theme settings. Used by composables that need to key on settings. */
+    suspend fun getIcon(
+        packageName: String,
+        themedIconsEnabled: Boolean,
+        themeAllIcons: Boolean,
+        iconPackPackageName: String,
+    ): Bitmap? {
+        // ponytail: composite cache key so toggling themes doesn't serve stale icons.
+        val cacheKey = buildString {
+            append(packageName)
+            if (iconPackPackageName.isNotEmpty()) append(":pack=$iconPackPackageName")
+            if (themedIconsEnabled) {
+                append(":themed")
+                if (themeAllIcons) append(":all")
+            }
         }
+
+        val cached = iconCache[cacheKey]
+        if (cached != null) return cached
 
         val icon =
             withContext(Dispatchers.IO) {
-                loadAppIconBitmap(packageManager, packageName, iconSize)
+                loadAppIconBitmap(
+                    context, packageName, iconSize,
+                    themedIconsEnabled, themeAllIcons, iconPackPackageName,
+                )
             }
 
-        // Store result under mutex (allow other readers while this one loaded)
-        cacheMutex.withLock {
-            iconCache[packageName] = icon
+        if (icon != null) {
+            iconCache[cacheKey] = icon
         }
         return icon
     }
 
-    /**
-     * Refreshes the app list and clears the icon cache.
-     * Thread-safe: all cache operations are protected by mutex.
-     */
     suspend fun refresh() {
         cacheMutex.withLock {
             cachedApps = null

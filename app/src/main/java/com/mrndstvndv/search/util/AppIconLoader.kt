@@ -2,9 +2,14 @@ package com.mrndstvndv.search.util
 
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.graphics.drawable.toBitmap
+
+// ponytail: simple extractAlpha + PorterDuff forced theme, no ScaledDrawable wrapper.
+// Upgrade to per-pixel luminance analysis if specific icons look off.
 
 fun loadAppIconBitmap(
     pm: PackageManager,
@@ -15,6 +20,109 @@ fun loadAppIconBitmap(
     return runCatching {
         val app = pm.getApplicationInfo(packageName, 0)
         app.loadIcon(pm).toBitmapOrNull(iconSize)
+    }.getOrNull()
+}
+
+fun loadAppIconBitmap(
+    context: android.content.Context,
+    packageName: String,
+    iconSize: Int,
+    themedIconsEnabled: Boolean,
+    themeAllIcons: Boolean,
+    iconPackPackageName: String,
+): Bitmap? {
+    val pm = context.packageManager
+    val launcherActivity = pm.getLaunchIntentForPackage(packageName)?.component?.className
+    var drawable = if (iconPackPackageName.isNotEmpty()) {
+        IconPackManager.getIconFromPack(context, iconPackPackageName, packageName, launcherActivity)
+    } else {
+        null
+    }
+
+    if (drawable == null) {
+        if (!isPackageInstalled(pm, packageName)) return null
+        drawable = runCatching {
+            val app = pm.getApplicationInfo(packageName, 0)
+            app.loadIcon(pm)
+        }.getOrNull()
+    }
+
+    if (drawable == null) return null
+
+    var themedBitmap: Bitmap? = null
+    if (themedIconsEnabled) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && drawable is AdaptiveIconDrawable) {
+            val monochrome = drawable.monochrome
+            if (monochrome != null) {
+                val (primaryColor, _, surfaceColor) = getThemeColors(context)
+                themedBitmap = createThemedAdaptiveIcon(monochrome, primaryColor, surfaceColor, iconSize)
+            }
+        }
+
+        if (themedBitmap == null && themeAllIcons) {
+            val (primaryColor, _, surfaceColor) = getThemeColors(context)
+            val originalBitmap = drawable.toBitmapOrNull(iconSize)
+            if (originalBitmap != null) {
+                themedBitmap = createForcedThemedIcon(originalBitmap, primaryColor, surfaceColor, iconSize)
+            }
+        }
+    }
+
+    return themedBitmap ?: drawable.toBitmapOrNull(iconSize)
+}
+
+private fun createThemedAdaptiveIcon(
+    monochrome: Drawable,
+    primaryColor: Int,
+    surfaceColor: Int,
+    iconSize: Int,
+): Bitmap? {
+    return runCatching {
+        val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(output)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = surfaceColor
+            style = android.graphics.Paint.Style.FILL
+        }
+        canvas.drawCircle(iconSize / 2f, iconSize / 2f, iconSize / 2f, paint)
+
+        val tintedMonochrome = monochrome.mutate()
+        DrawableCompat.setTint(tintedMonochrome, primaryColor)
+
+        // Native monochrome layer of an adaptive icon already has safety margins built-in.
+        tintedMonochrome.setBounds(0, 0, iconSize, iconSize)
+        tintedMonochrome.draw(canvas)
+        output
+    }.getOrNull()
+}
+
+private fun createForcedThemedIcon(
+    originalBitmap: Bitmap,
+    primaryColor: Int,
+    surfaceColor: Int,
+    iconSize: Int,
+): Bitmap? {
+    return runCatching {
+        val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(output)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = surfaceColor
+            style = android.graphics.Paint.Style.FILL
+        }
+        canvas.drawCircle(iconSize / 2f, iconSize / 2f, iconSize / 2f, paint)
+
+        val alphaBitmap = originalBitmap.extractAlpha()
+        val paintTint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            colorFilter = android.graphics.PorterDuffColorFilter(primaryColor, android.graphics.PorterDuff.Mode.SRC_IN)
+        }
+        // Scale non-adaptive icons slightly down to fit inside the background circle.
+        val targetSize = (iconSize * 0.72f).toInt()
+        val offset = (iconSize - targetSize) / 2f
+        val srcRect = android.graphics.Rect(0, 0, alphaBitmap.width, alphaBitmap.height)
+        val destRect = android.graphics.RectF(offset, offset, offset + targetSize, offset + targetSize)
+        canvas.drawBitmap(alphaBitmap, srcRect, destRect, paintTint)
+        alphaBitmap.recycle()
+        output
     }.getOrNull()
 }
 
@@ -60,7 +168,7 @@ fun saveCustomIcon(
             }
         }
         file.absolutePath
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 }
@@ -84,9 +192,7 @@ fun getThemeColors(context: android.content.Context): Triple<Int, Int, Int> {
                     if (isDark) android.R.color.system_neutral1_900 else android.R.color.system_neutral1_100,
                 )
             return Triple(primary, onPrimary, surface)
-        } catch (_: Exception) {
-            // fallback
-        }
+        } catch (_: Exception) { }
     }
 
     return if (isDark) {
@@ -108,46 +214,33 @@ fun createBadgedIcon(
         val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(output)
 
-        // Draw base app icon
         canvas.drawBitmap(baseIcon, 0f, 0f, null)
 
-        // Draw badge in the bottom left
         val badgeDrawable = androidx.core.content.ContextCompat.getDrawable(context, badgeResId)
         if (badgeDrawable != null) {
             val badgeSize = (width * 0.35f).toInt()
-
-            // Offset from bottom and left edges to avoid clipping
-            // "+1 up and +1 left" relative to 0.05f
             val left = (width * 0.02f).toInt()
             val top = height - badgeSize - (width * 0.08f).toInt()
-
-            // Get dynamic theme colors
             val (primaryColor, onPrimaryColor, surfaceColor) = getThemeColors(context)
 
             val centerX = left + badgeSize / 2f
             val centerY = top + badgeSize / 2f
             val innerRadius = badgeSize / 2f
 
-            // Draw background circle following dynamic Material You theme colorSurface
-            val bgPaint =
-                android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    color = surfaceColor
-                    style = android.graphics.Paint.Style.FILL
-                }
+            val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = surfaceColor
+                style = android.graphics.Paint.Style.FILL
+            }
             val bgRadius = innerRadius * 1.25f
             canvas.drawCircle(centerX, centerY, bgRadius, bgPaint)
 
-            // Draw primary circle
-            val innerPaint =
-                android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    color = primaryColor
-                    style = android.graphics.Paint.Style.FILL
-                }
+            val innerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = primaryColor
+                style = android.graphics.Paint.Style.FILL
+            }
             canvas.drawCircle(centerX, centerY, innerRadius, innerPaint)
 
-            // Draw white/onPrimary tinted share drawable inside the primary circle
-            androidx.core.graphics.drawable.DrawableCompat.setTint(badgeDrawable, onPrimaryColor)
-
+            DrawableCompat.setTint(badgeDrawable, onPrimaryColor)
             val padding = (badgeSize * 0.20f).toInt()
             badgeDrawable.setBounds(
                 (centerX - innerRadius + padding).toInt(),
@@ -159,7 +252,7 @@ fun createBadgedIcon(
         }
 
         output
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         baseIcon
     }
 }

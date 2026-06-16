@@ -176,7 +176,19 @@ fun AppIconItem(
     onClick: () -> Unit,
     visible: Boolean = true,
 ) {
-    val icon by produceState<android.graphics.Bitmap?>(initialValue = null, app.packageName) {
+    val context = LocalContext.current
+    val settingsRepo = remember(context) {
+        (context.applicationContext as com.mrndstvndv.search.SearchApplication).container.appSearchSettingsRepo
+    }
+    val settings by settingsRepo.flow.collectAsState()
+
+    val icon by produceState<android.graphics.Bitmap?>(
+        initialValue = null,
+        app.packageName,
+        settings.themedIconsEnabled,
+        settings.themeAllIcons,
+        settings.iconPackPackageName,
+    ) {
         value = app.iconLoader()
     }
 
