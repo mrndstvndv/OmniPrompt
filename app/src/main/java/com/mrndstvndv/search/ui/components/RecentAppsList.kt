@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -192,32 +193,36 @@ fun AppIconItem(
         value = app.iconLoader()
     }
 
-    if (icon != null) {
-        val animationDelay = (index * 30).coerceAtMost(150)
-        val alpha by rememberMotionAwareFloat(
-            targetValue = if (visible) 1f else 0f,
-            durationMillis = 300,
-            delayMillis = animationDelay,
-            label = "appIconAlpha_${app.packageName}",
-        )
-        val scale by rememberMotionAwareFloat(
-            targetValue = if (visible) 1f else 0f,
-            durationMillis = 300,
-            delayMillis = animationDelay,
-            label = "appIconScale_${app.packageName}",
-        )
+    val iconLoaded = icon != null
+    val animationDelay = (index * 30).coerceAtMost(150)
+    val alpha by rememberMotionAwareFloat(
+        targetValue = if (visible && iconLoaded) 1f else 0f,
+        durationMillis = 300,
+        delayMillis = animationDelay,
+        label = "appIconAlpha_${app.packageName}",
+    )
+    val scale by rememberMotionAwareFloat(
+        targetValue = if (visible && iconLoaded) 1f else 0f,
+        durationMillis = 300,
+        delayMillis = animationDelay,
+        label = "appIconScale_${app.packageName}",
+    )
 
-        Image(
-            bitmap = icon!!.asImageBitmap(),
-            contentDescription = app.label,
-            modifier =
-                Modifier
-                    .size(iconSizeDp)
-                    .clip(CircleShape)
-                    .alpha(alpha)
-                    .scale(scale)
-                    .clickable(onClick = onClick),
-        )
+    Box(
+        modifier =
+            Modifier
+                .size(iconSizeDp)
+                .clip(CircleShape)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (icon != null) {
+            Image(
+                bitmap = icon!!.asImageBitmap(),
+                contentDescription = app.label,
+                modifier = Modifier.fillMaxSize().alpha(alpha).scale(scale),
+            )
+        }
     }
 }
 

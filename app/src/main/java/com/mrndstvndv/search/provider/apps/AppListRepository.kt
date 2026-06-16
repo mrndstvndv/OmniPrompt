@@ -1,13 +1,16 @@
 package com.mrndstvndv.search.provider.apps
 
 import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import com.mrndstvndv.search.SearchApplication
 import com.mrndstvndv.search.provider.apps.models.AppInfo
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
+import com.mrndstvndv.search.util.getThemeColors
 import com.mrndstvndv.search.util.loadAppIconBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +40,16 @@ class AppListRepository private constructor(
         (context.applicationContext as SearchApplication).container.appSearchSettingsRepo
     }
     private var currentSettings: AppSearchSettings? = null
+
+    private val componentCallbacks = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            iconCache.clear()
+        }
+
+        override fun onLowMemory() {
+            iconCache.clear()
+        }
+    }
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -69,6 +82,7 @@ class AppListRepository private constructor(
                 addDataScheme("package")
             }
         context.registerReceiver(packageChangeReceiver, filter)
+        context.registerComponentCallbacks(componentCallbacks)
 
         // Watch theme settings to invalidate icon cache without full app list refresh.
         scope.launch {
@@ -93,6 +107,9 @@ class AppListRepository private constructor(
                 isReceiverRegistered = false
             } catch (_: IllegalArgumentException) { }
         }
+        try {
+            context.unregisterComponentCallbacks(componentCallbacks)
+        } catch (_: Exception) { }
     }
 
     suspend fun initialize() {
@@ -107,7 +124,25 @@ class AppListRepository private constructor(
     /** Loads icon for the given package using current theme settings. */
     suspend fun getIcon(packageName: String): Bitmap? {
         val s = currentSettings ?: settingsRepository.value
-        return getIcon(packageName, s.themedIconsEnabled, s.themeAllIcons, s.iconPackPackageName)
+        val colors = getThemeColors(context)
+        val cacheKey = buildString {
+            append(packageName)
+            append(":c=${colors.first}_${colors.third}")
+            if (s.iconPackPackageName.isNotEmpty()) append(":pack=${s.iconPackPackageName}")
+            if (s.themedIconsEnabled) {
+                append(":themed")
+                if (s.themeAllIcons) append(":all")
+            }
+        }
+
+        val cached = iconCache[cacheKey]
+        if (cached != null) return cached
+
+        val icon = getIcon(packageName, s.themedIconsEnabled, s.themeAllIcons, s.iconPackPackageName)
+        if (icon != null) {
+            iconCache[cacheKey] = icon
+        }
+        return icon
     }
 
     /** Loads icon with explicit theme settings. Used by composables that need to key on settings. */
@@ -118,8 +153,10 @@ class AppListRepository private constructor(
         iconPackPackageName: String,
     ): Bitmap? {
         // ponytail: composite cache key so toggling themes doesn't serve stale icons.
+        val colors = getThemeColors(context)
         val cacheKey = buildString {
             append(packageName)
+            append(":c=${colors.first}_${colors.third}")
             if (iconPackPackageName.isNotEmpty()) append(":pack=$iconPackPackageName")
             if (themedIconsEnabled) {
                 append(":themed")

@@ -103,6 +103,71 @@ private fun createForcedThemedIcon(
     iconSize: Int,
 ): Bitmap? {
     return runCatching {
+        val targetSize = (iconSize * 0.72f).toInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(originalBitmap, targetSize, targetSize, true)
+        val mutableScaled = if (scaled.isMutable) scaled else scaled.copy(Bitmap.Config.ARGB_8888, true)
+        if (mutableScaled != scaled) {
+            scaled.recycle()
+        }
+
+        val width = mutableScaled.width
+        val height = mutableScaled.height
+        val pixels = IntArray(width * height)
+        mutableScaled.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        var totalLuminance = 0f
+        var visiblePixelCount = 0
+        for (pixel in pixels) {
+            val a = (pixel ushr 24) and 0xFF
+            if (a > 0) {
+                val r = (pixel ushr 16) and 0xFF
+                val g = (pixel ushr 8) and 0xFF
+                val b = pixel and 0xFF
+                val luminance = 0.299f * r + 0.587f * g + 0.114f * b
+                totalLuminance += luminance
+                visiblePixelCount++
+            }
+        }
+
+        val coverage = visiblePixelCount.toFloat() / pixels.size
+        val avgLuminance = if (visiblePixelCount > 0) totalLuminance / visiblePixelCount else 0f
+
+        val invert = (avgLuminance > 140f && coverage > 0.60f) || (avgLuminance < 80f)
+        val startColor = if (invert) surfaceColor else primaryColor
+        val endColor = if (invert) primaryColor else surfaceColor
+
+        val aStart = (startColor ushr 24) and 0xFF
+        val rStart = (startColor ushr 16) and 0xFF
+        val gStart = (startColor ushr 8) and 0xFF
+        val bStart = startColor and 0xFF
+
+        val aEnd = (endColor ushr 24) and 0xFF
+        val rEnd = (endColor ushr 16) and 0xFF
+        val gEnd = (endColor ushr 8) and 0xFF
+        val bEnd = endColor and 0xFF
+
+        for (i in pixels.indices) {
+            val pixel = pixels[i]
+            val aOriginal = (pixel ushr 24) and 0xFF
+            if (aOriginal > 0) {
+                val rOriginal = (pixel ushr 16) and 0xFF
+                val gOriginal = (pixel ushr 8) and 0xFF
+                val bOriginal = pixel and 0xFF
+                val luminance = 0.299f * rOriginal + 0.587f * gOriginal + 0.114f * bOriginal
+                val t = luminance / 255f
+
+                val a = (aOriginal * (aStart + (aEnd - aStart) * t) / 255f).toInt().coerceIn(0, 255)
+                val r = (rStart + (rEnd - rStart) * t).toInt().coerceIn(0, 255)
+                val g = (gStart + (gEnd - gStart) * t).toInt().coerceIn(0, 255)
+                val b = (bStart + (bEnd - bStart) * t).toInt().coerceIn(0, 255)
+
+                pixels[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
+            } else {
+                pixels[i] = 0
+            }
+        }
+        mutableScaled.setPixels(pixels, 0, width, 0, 0, width, height)
+
         val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(output)
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -111,17 +176,11 @@ private fun createForcedThemedIcon(
         }
         canvas.drawCircle(iconSize / 2f, iconSize / 2f, iconSize / 2f, paint)
 
-        val alphaBitmap = originalBitmap.extractAlpha()
-        val paintTint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            colorFilter = android.graphics.PorterDuffColorFilter(primaryColor, android.graphics.PorterDuff.Mode.SRC_IN)
-        }
-        // Scale non-adaptive icons slightly down to fit inside the background circle.
-        val targetSize = (iconSize * 0.72f).toInt()
         val offset = (iconSize - targetSize) / 2f
-        val srcRect = android.graphics.Rect(0, 0, alphaBitmap.width, alphaBitmap.height)
-        val destRect = android.graphics.RectF(offset, offset, offset + targetSize, offset + targetSize)
-        canvas.drawBitmap(alphaBitmap, srcRect, destRect, paintTint)
-        alphaBitmap.recycle()
+        val paintTint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
+        canvas.drawBitmap(mutableScaled, offset, offset, paintTint)
+
+        mutableScaled.recycle()
         output
     }.getOrNull()
 }
