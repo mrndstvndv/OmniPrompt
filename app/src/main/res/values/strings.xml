@@ -123,6 +123,18 @@
     <string name="app_search_ai_queries">AI Assistant queries</string>
     <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using &quot;ask gemini &lt;query&gt;&quot;.</string>
 
+    <!-- Icon theme settings -->
+    <string name="settings_icon_theme_section_title">Icon Theme</string>
+    <string name="settings_icon_theme_section_subtitle">Configure themed icons and custom icon packs.</string>
+    <string name="settings_themed_icons_title">Themed icons</string>
+    <string name="settings_themed_icons_subtitle">Apply Material You style colors to app icons</string>
+    <string name="settings_theme_all_icons_title">Theme all icons</string>
+    <string name="settings_theme_all_icons_subtitle">Force themed colors on apps that do not natively support them</string>
+    <string name="settings_icon_pack_title">Icon pack</string>
+    <string name="settings_icon_pack_subtitle">Choose an installed icon pack app</string>
+    <string name="settings_icon_pack_default">Default</string>
+    <string name="settings_icon_pack_select_title">Select icon pack</string>
+
     <!-- App list settings -->
     <string name="app_list_section_title">App List</string>
     <string name="app_list_section_subtitle">Configure the app list on the home screen.</string>
