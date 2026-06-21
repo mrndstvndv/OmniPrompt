@@ -19,6 +19,9 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 /**
  * Provider for launching Android intents based on fuzzy-matched titles.
  *
@@ -173,7 +176,7 @@ class IntentProvider(
         }
     }
 
-    private fun executeIntent(
+    private suspend fun executeIntent(
         config: IntentConfig,
         rawPayload: String,
     ) {
@@ -228,22 +231,26 @@ class IntentProvider(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
-        try {
-            activity.startActivity(intent)
-        } catch (e: Exception) {
-            // Fallback for ACTION_SEND with URL
-            if (config.action == Intent.ACTION_SEND && resolvedPayload.isNotEmpty() &&
-                (resolvedPayload.startsWith("http://") || resolvedPayload.startsWith("https://"))
-            ) {
-                val fallbackIntent =
-                    Intent(Intent.ACTION_VIEW).apply {
-                        data = android.net.Uri.parse(resolvedPayload)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        withContext(Dispatchers.Main) {
+            try {
+                activity.startActivity(intent)
+                activity.finish()
+            } catch (e: Exception) {
+                // Fallback for ACTION_SEND with URL
+                if (config.action == Intent.ACTION_SEND && resolvedPayload.isNotEmpty() &&
+                    (resolvedPayload.startsWith("http://") || resolvedPayload.startsWith("https://"))
+                ) {
+                    val fallbackIntent =
+                        Intent(Intent.ACTION_VIEW).apply {
+                            data = android.net.Uri.parse(resolvedPayload)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                    try {
+                        activity.startActivity(fallbackIntent)
+                        activity.finish()
+                    } catch (e2: Exception) {
+                        // Both failed
                     }
-                try {
-                    activity.startActivity(fallbackIntent)
-                } catch (e2: Exception) {
-                    // Both failed
                 }
             }
         }

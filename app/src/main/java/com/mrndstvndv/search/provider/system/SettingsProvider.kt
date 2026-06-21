@@ -379,6 +379,7 @@ class SettingsProvider(
                                             activity.startActivity(intent)
                                         }
                                     }
+                                    activity.finish()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 }
