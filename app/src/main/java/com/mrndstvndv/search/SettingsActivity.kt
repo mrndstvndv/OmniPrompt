@@ -1,5 +1,7 @@
 package com.mrndstvndv.search
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -78,6 +80,7 @@ class SettingsActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         setContent {
             val container = (application as SearchApplication).container

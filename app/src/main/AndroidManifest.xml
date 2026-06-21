@@ -56,7 +56,7 @@
             android:name=".SettingsActivity"
             android:exported="true"
             android:taskAffinity="${applicationId}.settings"
-            android:theme="@style/Theme.OmniPrompt.Splash">
+            android:theme="@style/Theme.OmniPrompt.Settings.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
