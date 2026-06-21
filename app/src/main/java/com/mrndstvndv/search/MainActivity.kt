@@ -3,11 +3,13 @@ package com.mrndstvndv.search
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
+import android.os.UserManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Patterns
@@ -1542,10 +1544,26 @@ class MainActivity : ComponentActivity() {
             is AppLaunchAliasTarget -> {
                 val action: suspend () -> Unit = {
                     withContext(Dispatchers.Main) {
-                        val launchIntent = packageManager.getLaunchIntentForPackage(target.packageName)
-                        if (launchIntent != null) {
-                            startActivity(launchIntent)
+                        val userManager = getSystemService(Context.USER_SERVICE) as UserManager
+                        val userHandle = userManager.getUserForSerialNumber(target.userSerialNumber)
+                            ?: android.os.Process.myUserHandle()
+                        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                        val activities = launcherApps.getActivityList(target.packageName, userHandle)
+                        val activityInfo = activities.firstOrNull()
+                        if (activityInfo != null) {
+                            launcherApps.startMainActivity(
+                                activityInfo.componentName,
+                                userHandle,
+                                intent.sourceBounds,
+                                null
+                            )
                             finish()
+                        } else {
+                            val launchIntent = packageManager.getLaunchIntentForPackage(target.packageName)
+                            if (launchIntent != null) {
+                                startActivity(launchIntent)
+                                finish()
+                            }
                         }
                     }
                 }
@@ -1557,8 +1575,8 @@ class MainActivity : ComponentActivity() {
                     onSelect = action,
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
-                    // Load app icon from PackageManager
-                    iconLoader = { loadAppIconBitmap(packageManager, target.packageName, defaultAppIconSize) },
+                    // Load app icon from PackageManager with profile badging
+                    iconLoader = { loadAppIconBitmap(this@MainActivity, target.packageName, defaultAppIconSize, target.userSerialNumber) },
                 )
             }
 
