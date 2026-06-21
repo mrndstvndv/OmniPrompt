@@ -45,9 +45,11 @@ class AppDiscovery(
             )
 
         val filteredApps = mutableListOf<AppInfo>()
+        val seenPackages = mutableSetOf<String>()
 
         for (app in allApps) {
-            if (appHasAnyTargetIntent(app.packageName, targetActions)) {
+            if (app.packageName !in seenPackages && appHasAnyTargetIntent(app.packageName, targetActions)) {
+                seenPackages.add(app.packageName)
                 val icon = appListRepository.getIcon(app.packageName)
                 filteredApps.add(AppInfo(app.packageName, app.label, icon))
             }
