@@ -105,6 +105,7 @@ data class WebSearchAliasTarget(
 data class AppLaunchAliasTarget(
     val packageName: String,
     val label: String,
+    val userSerialNumber: Long = 0L,
 ) : AliasTarget {
     override val providerId: String = "app-list"
     override val summary: String
@@ -115,6 +116,7 @@ data class AppLaunchAliasTarget(
             put("type", TYPE)
             put("packageName", packageName)
             put("label", label)
+            put("userSerialNumber", userSerialNumber)
         }
     }
 
@@ -125,7 +127,8 @@ data class AppLaunchAliasTarget(
             if (json == null) return null
             val packageName = json.optString("packageName").takeIf { it.isNotBlank() } ?: return null
             val label = json.optString("label").takeIf { it.isNotBlank() } ?: return null
-            return AppLaunchAliasTarget(packageName, label)
+            val userSerialNumber = json.optLong("userSerialNumber", 0L)
+            return AppLaunchAliasTarget(packageName, label, userSerialNumber)
         }
     }
 }
