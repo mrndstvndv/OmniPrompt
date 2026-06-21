@@ -717,6 +717,7 @@ private fun AddPinnedAppDialog(
         remember(searchQuery, existingPinnedApps, allApps) {
             val query = searchQuery.trim()
             allApps
+                .distinctBy { it.packageName }
                 .filter { it.packageName !in existingPinnedApps }
                 .let { apps ->
                     if (query.isBlank()) {
