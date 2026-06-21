@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -58,12 +60,13 @@ fun TextUtilitiesSettingsScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
     ) {
+        val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                    .fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {

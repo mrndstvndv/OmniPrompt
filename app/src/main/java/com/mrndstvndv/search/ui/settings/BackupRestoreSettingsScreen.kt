@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -266,15 +268,15 @@ fun BackupRestoreSettingsScreen(
         )
     }
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     // Main UI
     LazyColumn(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {

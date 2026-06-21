@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -75,6 +77,8 @@ fun AppSearchSettingsScreen(
     val appSearchSettings by repository.flow.collectAsState()
     var isAddAppDialogOpen by remember { mutableStateOf(false) }
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     Box(
         modifier =
             Modifier
@@ -84,9 +88,8 @@ fun AppSearchSettingsScreen(
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                    .fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
