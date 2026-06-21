@@ -27,12 +27,45 @@ fun loadAppIconBitmap(
     context: android.content.Context,
     packageName: String,
     iconSize: Int,
+    userSerialNumber: Long = 0L,
+): Bitmap? {
+    val pm = context.packageManager
+    val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
+    val userHandle = userManager.getUserForSerialNumber(userSerialNumber) ?: android.os.Process.myUserHandle()
+    val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+    val activities = launcherApps.getActivityList(packageName, userHandle)
+    val activityInfo = activities.firstOrNull()
+    val drawable = if (activityInfo != null) {
+        activityInfo.getIcon(0)
+    } else {
+        if (!isPackageInstalled(pm, packageName)) return null
+        runCatching {
+            val app = pm.getApplicationInfo(packageName, 0)
+            app.loadIcon(pm)
+        }.getOrNull()
+    }
+    if (drawable == null) return null
+    val badgedDrawable = pm.getUserBadgedIcon(drawable, userHandle)
+    return badgedDrawable.toBitmapOrNull(iconSize)
+}
+
+fun loadAppIconBitmap(
+    context: android.content.Context,
+    packageName: String,
+    iconSize: Int,
     themedIconsEnabled: Boolean,
     themeAllIcons: Boolean,
     iconPackPackageName: String,
+    userSerialNumber: Long = 0L,
 ): Bitmap? {
     val pm = context.packageManager
-    val launcherActivity = pm.getLaunchIntentForPackage(packageName)?.component?.className
+    val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
+    val userHandle = userManager.getUserForSerialNumber(userSerialNumber) ?: android.os.Process.myUserHandle()
+    val launcherApps = context.getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+    val activities = launcherApps.getActivityList(packageName, userHandle)
+    val activityInfo = activities.firstOrNull()
+    val launcherActivity = activityInfo?.componentName?.className
+
     var drawable = if (iconPackPackageName.isNotEmpty()) {
         IconPackManager.getIconFromPack(context, iconPackPackageName, packageName, launcherActivity)
     } else {
@@ -40,11 +73,15 @@ fun loadAppIconBitmap(
     }
 
     if (drawable == null) {
-        if (!isPackageInstalled(pm, packageName)) return null
-        drawable = runCatching {
-            val app = pm.getApplicationInfo(packageName, 0)
-            app.loadIcon(pm)
-        }.getOrNull()
+        drawable = if (activityInfo != null) {
+            activityInfo.getIcon(0)
+        } else {
+            if (!isPackageInstalled(pm, packageName)) return null
+            runCatching {
+                val app = pm.getApplicationInfo(packageName, 0)
+                app.loadIcon(pm)
+            }.getOrNull()
+        }
     }
 
     if (drawable == null) return null
@@ -68,7 +105,14 @@ fun loadAppIconBitmap(
         }
     }
 
-    return themedBitmap ?: drawable.toBitmapOrNull(iconSize)
+    val finalDrawable = if (themedBitmap != null) {
+        android.graphics.drawable.BitmapDrawable(context.resources, themedBitmap)
+    } else {
+        drawable
+    }
+
+    val badgedDrawable = pm.getUserBadgedIcon(finalDrawable, userHandle)
+    return badgedDrawable.toBitmapOrNull(iconSize)
 }
 
 private fun createThemedAdaptiveIcon(
