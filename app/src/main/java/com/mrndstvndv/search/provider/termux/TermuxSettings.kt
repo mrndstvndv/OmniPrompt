@@ -12,7 +12,6 @@ import org.json.JSONObject
 data class TermuxSettings(
     val commands: List<TermuxCommand>,
 ) : ProviderSettings {
-
     override val providerId = PROVIDER_ID
 
     companion object {
@@ -42,8 +41,7 @@ data class TermuxSettings(
         /**
          * Parse from JSON string (for repository).
          */
-        fun fromJsonString(jsonString: String): TermuxSettings? =
-            fromJson(JSONObject(jsonString))
+        fun fromJsonString(jsonString: String): TermuxSettings? = fromJson(JSONObject(jsonString))
     }
 
     /**
@@ -72,6 +70,6 @@ fun createTermuxSettingsRepository(context: Context): SettingsRepository<TermuxS
         providerId = TermuxSettings.PROVIDER_ID,
         default = { TermuxSettings.default() },
         deserializer = { jsonString -> TermuxSettings.fromJsonString(jsonString) },
-        serializer = { settings -> settings.toJsonString() }
+        serializer = { settings -> settings.toJsonString() },
     )
 }

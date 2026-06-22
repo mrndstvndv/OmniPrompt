@@ -1,0 +1,5 @@
+{
+  "packages": [
+    "git:github.com/DietrichGebert/ponytail"
+  ]
+}

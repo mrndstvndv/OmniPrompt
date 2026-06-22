@@ -2,13 +2,17 @@ package com.mrndstvndv.search.util
 
 sealed class MarkdownBlock {
     data class Heading(val level: Int, val content: List<MarkdownInline>) : MarkdownBlock()
+
     data class ListItem(val content: List<MarkdownInline>) : MarkdownBlock()
+
     data class Paragraph(val content: List<MarkdownInline>) : MarkdownBlock()
 }
 
 sealed class MarkdownInline {
     data class Text(val text: String) : MarkdownInline()
+
     data class Bold(val text: String) : MarkdownInline()
+
     data class Link(val text: String, val url: String) : MarkdownInline()
 }
 

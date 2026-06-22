@@ -60,7 +60,11 @@ class ProviderRankingRepository private constructor(
             }
     }
 
-    private val preferences: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+    private val preferences: SharedPreferences =
+        context.getSharedPreferences(
+            PREF_NAME,
+            Context.MODE_PRIVATE,
+        )
 
     // Initialize with defaults; actual values loaded async in init block
     private val _providerOrder = MutableStateFlow(DEFAULT_PROVIDER_ORDER)
@@ -108,7 +112,8 @@ class ProviderRankingRepository private constructor(
      * Get the rank/position of a provider (for provider-level sorting).
      * Provider ranking is always based on manual order, not frequency.
      */
-    fun getProviderRank(providerId: String): Int = _providerOrder.value.indexOf(providerId).takeIf { it >= 0 } ?: Int.MAX_VALUE
+    fun getProviderRank(providerId: String): Int =
+        _providerOrder.value.indexOf(providerId).takeIf { it >= 0 } ?: Int.MAX_VALUE
 
     /**
      * Get the frequency rank of a result (for result-level sorting when frequency mode is enabled).
@@ -367,7 +372,11 @@ class ProviderRankingRepository private constructor(
         }
     }
 
-    private fun loadUseFrequencyRanking(): Boolean = preferences.getBoolean(KEY_USE_FREQUENCY_RANKING, true)
+    private fun loadUseFrequencyRanking(): Boolean =
+        preferences.getBoolean(
+            KEY_USE_FREQUENCY_RANKING,
+            true,
+        )
 
     private fun saveUseFrequencyRanking(enabled: Boolean) {
         preferences.edit {
@@ -375,7 +384,11 @@ class ProviderRankingRepository private constructor(
         }
     }
 
-    private fun loadQueryBasedRankingEnabled(): Boolean = preferences.getBoolean(KEY_QUERY_BASED_RANKING, true)
+    private fun loadQueryBasedRankingEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_QUERY_BASED_RANKING,
+            true,
+        )
 
     private fun saveQueryBasedRankingEnabled(enabled: Boolean) {
         preferences.edit {

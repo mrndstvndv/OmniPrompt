@@ -14,7 +14,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
-import com.mrndstvndv.search.ui.components.ContentDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,16 +25,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.sp
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSite
+import com.mrndstvndv.search.ui.components.ContentDialog
 
 @Composable
 fun WebSearchProviderSettingsDialog(
     initialSettings: WebSearchSettings,
     onDismiss: () -> Unit,
-    onSave: (WebSearchSettings) -> Unit
+    onSave: (WebSearchSettings) -> Unit,
 ) {
     var sites by remember { mutableStateOf(initialSettings.sites) }
     var defaultSiteId by remember { mutableStateOf(initialSettings.defaultSiteId) }
@@ -52,7 +52,10 @@ fun WebSearchProviderSettingsDialog(
 
     val allTemplatesValid = sites.all { it.urlTemplate.contains(placeholder) }
 
-    fun updateSite(index: Int, updater: (WebSearchSite) -> WebSearchSite) {
+    fun updateSite(
+        index: Int,
+        updater: (WebSearchSite) -> WebSearchSite,
+    ) {
         val mutable = sites.toMutableList()
         mutable[index] = updater(mutable[index])
         sites = mutable
@@ -79,10 +82,11 @@ fun WebSearchProviderSettingsDialog(
             errorMessage = context.getString(R.string.web_search_template_must_include, placeholder)
             return
         }
-        val candidateId = name.lowercase()
-            .replace("[^a-z0-9]+".toRegex(), "-")
-            .trim('-')
-            .ifBlank { name.lowercase() }
+        val candidateId =
+            name.lowercase()
+                .replace("[^a-z0-9]+".toRegex(), "-")
+                .trim('-')
+                .ifBlank { name.lowercase() }
         if (sites.any { it.id == candidateId }) {
             errorMessage = context.getString(R.string.web_search_duplicate_site_name)
             return
@@ -102,7 +106,7 @@ fun WebSearchProviderSettingsDialog(
         title = {
             Text(
                 text = stringResource(R.string.web_search_sites),
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge,
             )
         },
         buttons = {
@@ -112,14 +116,15 @@ fun WebSearchProviderSettingsDialog(
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    val resolvedDefault = sites.firstOrNull { it.id == defaultSiteId }?.id
-                        ?: sites.firstOrNull()?.id
-                        ?: ""
+                    val resolvedDefault =
+                        sites.firstOrNull { it.id == defaultSiteId }?.id
+                            ?: sites.firstOrNull()?.id
+                            ?: ""
                     if (resolvedDefault.isNotBlank()) {
                         onSave(WebSearchSettings(resolvedDefault, sites))
                     }
                 },
-                enabled = isSaveEnabled
+                enabled = isSaveEnabled,
             ) {
                 Text(text = stringResource(R.string.save))
             }
@@ -127,7 +132,7 @@ fun WebSearchProviderSettingsDialog(
         content = {
             Text(
                 text = stringResource(R.string.web_search_pick_engine),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -136,12 +141,12 @@ fun WebSearchProviderSettingsDialog(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
                                 selected = defaultSiteId == site.id,
-                                onClick = { defaultSiteId = site.id }
+                                onClick = { defaultSiteId = site.id },
                             )
                             Text(text = stringResource(R.string.default_label), fontSize = 12.sp)
                         }
@@ -159,7 +164,7 @@ fun WebSearchProviderSettingsDialog(
                         },
                         label = { Text(stringResource(R.string.web_search_label_display_name)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     TextField(
@@ -171,40 +176,55 @@ fun WebSearchProviderSettingsDialog(
                         supportingText = {
                             Text(text = stringResource(R.string.web_search_example_url))
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     if (!site.urlTemplate.contains(placeholder)) {
                         Text(
-                            text = stringResource(R.string.web_search_missing_placeholder, placeholder),
+                            text =
+                                stringResource(
+                                    R.string.web_search_missing_placeholder,
+                                    placeholder,
+                                ),
                             color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                     Text(
-                        text = stringResource(R.string.web_search_preview, site.buildUrl("compose")),
-                        style = MaterialTheme.typography.bodySmall
+                        text =
+                            stringResource(
+                                R.string.web_search_preview,
+                                site.buildUrl("compose"),
+                            ),
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = stringResource(R.string.web_search_add_custom), style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = stringResource(R.string.web_search_add_custom),
+                style = MaterialTheme.typography.titleSmall,
+            )
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = newSiteName,
                 onValueChange = { newSiteName = it },
                 label = { Text(stringResource(R.string.web_search_label_display_name)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = newSiteTemplate,
                 onValueChange = { newSiteTemplate = it },
                 label = { Text(stringResource(R.string.web_search_label_url_template)) },
-                supportingText = { Text(text = stringResource(R.string.web_search_supporting_template)) },
-                modifier = Modifier.fillMaxWidth()
+                supportingText = {
+                    Text(
+                        text = stringResource(R.string.web_search_supporting_template),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -217,14 +237,14 @@ fun WebSearchProviderSettingsDialog(
                 Text(
                     text = stringResource(R.string.web_search_every_template_needs),
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
             errorMessage?.let { message ->
                 Text(
                     text = message,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         },

@@ -1,7 +1,9 @@
 package com.mrndstvndv.search.provider.apps
 
+import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
+import android.content.pm.LauncherApps
+import android.os.UserManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
@@ -55,7 +57,14 @@ class AppListProvider(
         val matches: List<ScoredApp> =
             if (normalized.isBlank()) {
                 // No query - return all apps with zero score
-                appListRepository.getAllApps().value.map { ScoredApp(it, 0, emptyList(), emptyList()) }
+                appListRepository.getAllApps().value.map {
+                    ScoredApp(
+                        it,
+                        0,
+                        emptyList(),
+                        emptyList(),
+                    )
+                }
             } else if (askMatch != null) {
                 // When "ask <assistant>" is detected, only show that assistant's app
                 appListRepository
@@ -148,10 +157,26 @@ class AppListProvider(
                 subtitle = entry.packageName
                 action = {
                     withContext(Dispatchers.Main) {
-                        val launchIntent = packageManager.getLaunchIntentForPackage(entry.packageName)
-                        if (launchIntent != null) {
-                            activity.startActivity(launchIntent)
+                        val userManager = activity.getSystemService(Context.USER_SERVICE) as UserManager
+                        val userHandle = userManager.getUserForSerialNumber(entry.userSerialNumber)
+                            ?: android.os.Process.myUserHandle()
+                        val launcherApps = activity.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                        val activities = launcherApps.getActivityList(entry.packageName, userHandle)
+                        val activityInfo = activities.firstOrNull()
+                        if (activityInfo != null) {
+                            launcherApps.startMainActivity(
+                                activityInfo.componentName,
+                                userHandle,
+                                activity.intent.sourceBounds,
+                                null
+                            )
                             activity.finish()
+                        } else {
+                            val launchIntent = packageManager.getLaunchIntentForPackage(entry.packageName)
+                            if (launchIntent != null) {
+                                activity.startActivity(launchIntent)
+                                activity.finish()
+                            }
                         }
                     }
                 }
@@ -159,16 +184,16 @@ class AppListProvider(
 
             results +=
                 ProviderResult(
-                    id = "$id:${entry.packageName}",
+                    id = "$id:${entry.packageName}:${entry.userSerialNumber}",
                     title = title,
                     subtitle = subtitle,
                     icon = null,
                     defaultVectorIcon = Icons.Outlined.Android,
-                    iconLoader = { appListRepository.getIcon(entry.packageName) },
+                    iconLoader = { appListRepository.getIcon(entry.packageName, entry.userSerialNumber) },
                     providerId = id,
                     extras = mapOf(EXTRA_PACKAGE_NAME to entry.packageName),
                     onSelect = action,
-                    aliasTarget = AppLaunchAliasTarget(entry.packageName, entry.label),
+                    aliasTarget = AppLaunchAliasTarget(entry.packageName, entry.label, entry.userSerialNumber),
                     keepOverlayUntilExit = true,
                     matchedTitleIndices = if (isAiQueryResult) emptyList() else scoredApp.matchedTitleIndices,
                     matchedSubtitleIndices = if (isAiQueryResult) emptyList() else scoredApp.matchedSubtitleIndices,

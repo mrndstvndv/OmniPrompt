@@ -7,7 +7,7 @@ package com.mrndstvndv.search.util
  */
 data class FuzzyMatchResult(
     val score: Int,
-    val matchedIndices: List<Int>
+    val matchedIndices: List<Int>,
 )
 
 /**
@@ -20,7 +20,6 @@ data class FuzzyMatchResult(
  * - Length bonuses (shorter matches are more relevant)
  */
 object FuzzyMatcher {
-
     /**
      * Performs fuzzy matching of query against target.
      *
@@ -36,7 +35,10 @@ object FuzzyMatcher {
      * - Gap penalty: -1 per skipped character (max -3)
      * - Length bonus: up to +10 for shorter targets
      */
-    fun match(query: String, target: String): FuzzyMatchResult? {
+    fun match(
+        query: String,
+        target: String,
+    ): FuzzyMatchResult? {
         if (query.isEmpty()) return FuzzyMatchResult(0, emptyList())
         if (target.isEmpty()) return null
 
@@ -58,12 +60,13 @@ object FuzzyMatcher {
                 val isWordBoundary = targetIdx > 0 && isWordBoundary(target, targetIdx)
                 val isConsecutive = prevMatchIdx != -1 && targetIdx == prevMatchIdx + 1
 
-                score += when {
-                    isFirstChar -> 15
-                    isWordBoundary -> 10
-                    isConsecutive -> 5
-                    else -> 1
-                }
+                score +=
+                    when {
+                        isFirstChar -> 15
+                        isWordBoundary -> 10
+                        isConsecutive -> 5
+                        else -> 1
+                    }
 
                 // Gap penalty for non-consecutive matches
                 if (prevMatchIdx != -1 && !isConsecutive) {
@@ -92,13 +95,16 @@ object FuzzyMatcher {
      * - camelCase transitions (lowercase to uppercase)
      * - Digit-to-letter and letter-to-digit transitions
      */
-    private fun isWordBoundary(text: String, index: Int): Boolean {
+    private fun isWordBoundary(
+        text: String,
+        index: Int,
+    ): Boolean {
         if (index == 0) return true
         val prev = text[index - 1]
         val curr = text[index]
-        return !prev.isLetterOrDigit() ||              // After separator
-                (prev.isLowerCase() && curr.isUpperCase()) ||  // camelCase
-                (prev.isDigit() && curr.isLetter()) ||         // digit to letter
-                (prev.isLetter() && curr.isDigit())            // letter to digit
+        return !prev.isLetterOrDigit() || // After separator
+            (prev.isLowerCase() && curr.isUpperCase()) || // camelCase
+            (prev.isDigit() && curr.isLetter()) || // digit to letter
+            (prev.isLetter() && curr.isDigit()) // letter to digit
     }
 }

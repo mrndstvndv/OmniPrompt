@@ -16,7 +16,7 @@ import com.mrndstvndv.search.R
 fun TermuxPermissionDialog(
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     ContentDialog(
         onDismiss = onDismiss,

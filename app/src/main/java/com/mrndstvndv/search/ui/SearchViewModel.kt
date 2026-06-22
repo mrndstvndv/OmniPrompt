@@ -7,8 +7,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.mrndstvndv.search.alias.AliasCreationCandidate
 import com.mrndstvndv.search.alias.AliasEntry
-import com.mrndstvndv.search.di.AppContainer
 import com.mrndstvndv.search.alias.AliasRepository
+import com.mrndstvndv.search.di.AppContainer
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -35,9 +35,8 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
 class SearchViewModel(
-    private val container: AppContainer
+    private val container: AppContainer,
 ) : ViewModel() {
-
     private val settingsRepository = container.settingsRepository
     private val aliasRepository = container.aliasRepository
     private val rankingRepository = container.rankingRepository
@@ -60,7 +59,7 @@ class SearchViewModel(
         val aliasDialogValue: String = "",
         val aliasDialogError: String? = null,
         val contactActionData: ContactActionData? = null,
-        val matchedAlias: Pair<AliasEntry, String>? = null
+        val matchedAlias: Pair<AliasEntry, String>? = null,
     )
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -116,94 +115,113 @@ class SearchViewModel(
         val activeProviders = providers.filter { enabledProviders[it.id] ?: true }
         val useFrequencyRanking = rankingRepository.useFrequencyRanking.value
 
-        pendingQueryJob = viewModelScope.launch {
-            delay(50)
+        pendingQueryJob =
+            viewModelScope.launch {
+                delay(50)
 
-            if (currentTriggerState != null) {
-                val triggerFrequencyQuery = dynamicTriggerFrequencyQuery(currentTriggerState.matchedToken)
-                _uiState.update { it.copy(currentNormalizedQuery = triggerFrequencyQuery) }
-                try {
-                    val triggerResults = withContext(Dispatchers.IO) {
-                        currentTriggerState.trigger.execute(currentTriggerState.matchedToken, currentTriggerState.payload)
-                    }
-                    val payloadQuery = Query(
-                        text = currentTriggerState.payload,
-                        originalText = buildTriggerText(currentTriggerState.matchedToken, currentTriggerState.payload),
-                    )
-                    val supplementalProviders = when (currentTriggerState.trigger.resultPolicy) {
-                        TriggerResultPolicy.EXCLUSIVE -> emptyList()
-                        TriggerResultPolicy.INCLUDE_OWNER_RESULTS -> {
-                            val ownerProvider = providersById[currentTriggerState.trigger.ownerProviderId]
-                            if (ownerProvider != null && (enabledProviders[ownerProvider.id] ?: true) && ownerProvider.canHandle(payloadQuery)) {
-                                listOf(ownerProvider)
-                            } else {
-                                emptyList()
+                if (currentTriggerState != null) {
+                    val triggerFrequencyQuery =
+                        dynamicTriggerFrequencyQuery(currentTriggerState.matchedToken)
+                    _uiState.update { it.copy(currentNormalizedQuery = triggerFrequencyQuery) }
+                    try {
+                        val triggerResults =
+                            withContext(Dispatchers.IO) {
+                                currentTriggerState.trigger.execute(currentTriggerState.matchedToken, currentTriggerState.payload)
                             }
+                        val payloadQuery =
+                            Query(
+                                text = currentTriggerState.payload,
+                                originalText = buildTriggerText(currentTriggerState.matchedToken, currentTriggerState.payload),
+                            )
+                        val supplementalProviders =
+                            when (currentTriggerState.trigger.resultPolicy) {
+                                TriggerResultPolicy.EXCLUSIVE -> emptyList()
+                                TriggerResultPolicy.INCLUDE_OWNER_RESULTS -> {
+                                    val ownerProvider = providersById[currentTriggerState.trigger.ownerProviderId]
+                                    if (ownerProvider != null && (enabledProviders[ownerProvider.id] ?: true) && ownerProvider.canHandle(payloadQuery)) {
+                                        listOf(ownerProvider)
+                                    } else {
+                                        emptyList()
+                                    }
+                                }
+                                TriggerResultPolicy.INCLUDE_ALL_RESULTS -> {
+                                    activeProviders.filter {
+                                            provider ->
+                                        provider.canHandle(payloadQuery)
+                                    }
+                                }
+                            }
+                        val supplementalResults =
+                            sortResults(queryProviders(payloadQuery, supplementalProviders), triggerFrequencyQuery, useFrequencyRanking)
+                        val mergedResults = deduplicateResults(triggerResults + supplementalResults)
+                        _uiState.update {
+                            it.copy(
+                                providerResults = mergedResults,
+                                shouldShowResults = mergedResults.isNotEmpty(),
+                                matchedAlias = null,
+                            )
                         }
-                        TriggerResultPolicy.INCLUDE_ALL_RESULTS -> {
-                            activeProviders.filter { provider -> provider.canHandle(payloadQuery) }
+                    } catch (e: Exception) {
+                        _uiState.update {
+                            it.copy(
+                                providerResults = emptyList(),
+                                shouldShowResults = false,
+                                matchedAlias = null,
+                            )
                         }
                     }
-                    val supplementalResults = sortResults(queryProviders(payloadQuery, supplementalProviders), triggerFrequencyQuery, useFrequencyRanking)
-                    val mergedResults = deduplicateResults(triggerResults + supplementalResults)
-                    _uiState.update {
-                        it.copy(
-                            providerResults = mergedResults,
-                            shouldShowResults = mergedResults.isNotEmpty(),
-                            matchedAlias = null
-                        )
-                    }
-                } catch (e: Exception) {
-                    _uiState.update {
-                        it.copy(
-                            providerResults = emptyList(),
-                            shouldShowResults = false,
-                            matchedAlias = null
-                        )
-                    }
+                    return@launch
                 }
-                return@launch
+
+                val match = aliasRepository.matchAlias(currentQueryText)
+                val normalizedText = match?.remainingQuery ?: currentQueryText
+                _uiState.update { it.copy(currentNormalizedQuery = normalizedText) }
+
+                val query = Query(normalizedText, originalText = currentQueryText)
+                val matchingProviders =
+                    activeProviders.filter {
+                            provider ->
+                        provider.canHandle(query)
+                    }
+                val aggregated = queryProviders(query, matchingProviders)
+                val filtered =
+                    match?.entry?.target?.let { aliasTarget ->
+                        aggregated.filterNot { it.aliasTarget == aliasTarget }
+                    } ?: aggregated
+                val sortedResults = sortResults(filtered, normalizedText, useFrequencyRanking)
+
+                _uiState.update {
+                    it.copy(
+                        providerResults = sortedResults,
+                        shouldShowResults = normalizedText.isNotBlank() || match != null,
+                        matchedAlias = match?.let { Pair(it.entry, normalizedText) },
+                    )
+                }
             }
-
-            val match = aliasRepository.matchAlias(currentQueryText)
-            val normalizedText = match?.remainingQuery ?: currentQueryText
-            _uiState.update { it.copy(currentNormalizedQuery = normalizedText) }
-
-            val query = Query(normalizedText, originalText = currentQueryText)
-            val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
-            val aggregated = queryProviders(query, matchingProviders)
-            val filtered = match?.entry?.target?.let { aliasTarget ->
-                aggregated.filterNot { it.aliasTarget == aliasTarget }
-            } ?: aggregated
-            val sortedResults = sortResults(filtered, normalizedText, useFrequencyRanking)
-
-            _uiState.update {
-                it.copy(
-                    providerResults = sortedResults,
-                    shouldShowResults = normalizedText.isNotBlank() || match != null,
-                    matchedAlias = match?.let { Pair(it.entry, normalizedText) }
-                )
-            }
-        }
     }
 
     fun onSearchChange(newValue: TextFieldValue) {
         val activeTrigger = _uiState.value.triggerState
         if (activeTrigger != null) {
             val activationEchoToken = pendingActivationEchoToken
-            val normalizedValue = when {
-                activationEchoToken == null -> newValue
-                newValue.text == activationEchoToken || newValue.text == "$activationEchoToken " -> {
-                    pendingActivationEchoToken = null
-                    newValue.copy(text = "", selection = TextRange.Zero)
+            val normalizedValue =
+                when {
+                    activationEchoToken == null -> newValue
+                    newValue.text == activationEchoToken || newValue.text == "$activationEchoToken " -> {
+                        pendingActivationEchoToken = null
+                        newValue.copy(text = "", selection = TextRange.Zero)
+                    }
+                    else -> {
+                        pendingActivationEchoToken = null
+                        newValue
+                    }
                 }
-                else -> {
-                    pendingActivationEchoToken = null
-                    newValue
-                }
-            }
 
-            _uiState.update { it.copy(triggerState = activeTrigger.copy(payload = normalizedValue.text)) }
+            _uiState.update {
+                it.copy(
+                    triggerState = activeTrigger.copy(payload = normalizedValue.text),
+                )
+            }
             _textState.value = normalizedValue
             executeSearch()
             return
@@ -221,18 +239,20 @@ class SearchViewModel(
             val match = findTriggerMatch(firstToken, availableTriggers)
             if (match != null) {
                 val suppressed = suppressedTriggerMatch
-                val isSuppressed = suppressed?.triggerId == match.trigger.id &&
+                val isSuppressed =
+                    suppressed?.triggerId == match.trigger.id &&
                         suppressed?.matchedToken?.equals(firstToken, ignoreCase = true) == true
                 if (!isSuppressed) {
                     suppressedTriggerMatch = null
                     pendingActivationEchoToken = firstToken
                     _uiState.update {
                         it.copy(
-                            triggerState = TriggerState(
-                                trigger = match.trigger,
-                                matchedToken = firstToken,
-                                payload = payload,
-                            )
+                            triggerState =
+                                TriggerState(
+                                    trigger = match.trigger,
+                                    matchedToken = firstToken,
+                                    payload = payload,
+                                ),
                         )
                     }
                     _textState.value = textFieldValueAtEnd(payload)
@@ -251,10 +271,11 @@ class SearchViewModel(
         val activeTrigger = _uiState.value.triggerState ?: return
         val restoredText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload)
 
-        suppressedTriggerMatch = SuppressedTriggerMatch(
-            triggerId = activeTrigger.trigger.id,
-            matchedToken = activeTrigger.matchedToken,
-        )
+        suppressedTriggerMatch =
+            SuppressedTriggerMatch(
+                triggerId = activeTrigger.trigger.id,
+                matchedToken = activeTrigger.matchedToken,
+            )
         pendingActivationEchoToken = null
         _uiState.update { it.copy(triggerState = null) }
         _textState.value = textFieldValueAtEnd(restoredText)
@@ -264,20 +285,22 @@ class SearchViewModel(
     fun applyPrefillQuery(prefillQuery: String) {
         val completedPrefill = ensureTrailingSpace(prefillQuery)
         val parsedTrigger = TriggerParser.parse(completedPrefill)
-        val match = if (parsedTrigger.hasPayloadSeparator && parsedTrigger.firstToken.isNotBlank()) {
-            findTriggerMatch(parsedTrigger.firstToken, availableTriggers)
-        } else {
-            null
-        }
+        val match =
+            if (parsedTrigger.hasPayloadSeparator && parsedTrigger.firstToken.isNotBlank()) {
+                findTriggerMatch(parsedTrigger.firstToken, availableTriggers)
+            } else {
+                null
+            }
 
         if (match != null) {
             suppressedTriggerMatch = null
             pendingActivationEchoToken = parsedTrigger.firstToken
-            val newTriggerState = TriggerState(
-                trigger = match.trigger,
-                matchedToken = parsedTrigger.firstToken,
-                payload = parsedTrigger.payload,
-            )
+            val newTriggerState =
+                TriggerState(
+                    trigger = match.trigger,
+                    matchedToken = parsedTrigger.firstToken,
+                    payload = parsedTrigger.payload,
+                )
             _uiState.update { it.copy(triggerState = newTriggerState) }
             _textState.value = textFieldValueAtEnd(parsedTrigger.payload)
             executeSearch()
@@ -301,7 +324,7 @@ class SearchViewModel(
             it.copy(
                 aliasDialogCandidate = candidate,
                 aliasDialogValue = candidate.suggestion,
-                aliasDialogError = null
+                aliasDialogError = null,
             )
         }
     }
@@ -315,7 +338,7 @@ class SearchViewModel(
             it.copy(
                 aliasDialogCandidate = null,
                 aliasDialogValue = "",
-                aliasDialogError = null
+                aliasDialogError = null,
             )
         }
     }
@@ -389,42 +412,45 @@ class SearchViewModel(
         providersToQuery: List<Provider>,
     ): List<ProviderResult> {
         if (providersToQuery.isEmpty()) return emptyList()
-        val allResults = supervisorScope {
-            providersToQuery.map { provider ->
-                async {
-                    try {
-                        withContext(Dispatchers.IO) { provider.query(query) }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        emptyList()
+        val allResults =
+            supervisorScope {
+                providersToQuery.map { provider ->
+                    async {
+                        try {
+                            withContext(Dispatchers.IO) { provider.query(query) }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            emptyList()
+                        }
                     }
-                }
-            }.awaitAll()
-        }
+                }.awaitAll()
+            }
         return deduplicateResults(allResults.flatten())
     }
 
     private fun sortResults(
         results: List<ProviderResult>,
         normalizedText: String,
-        useFrequencyRanking: Boolean
+        useFrequencyRanking: Boolean,
     ): List<ProviderResult> {
-        val sortMetadata = results.map { result ->
-            val providerRank = rankingRepository.getProviderRank(result.providerId)
-            val frequencyQuery = result.frequencyQuery ?: normalizedText
-            val frequencyScore = if (useFrequencyRanking) {
-                rankingRepository.getResultFrequency(result.frequencyKey, frequencyQuery)
-            } else {
-                0f
+        val sortMetadata =
+            results.map { result ->
+                val providerRank = rankingRepository.getProviderRank(result.providerId)
+                val frequencyQuery = result.frequencyQuery ?: normalizedText
+                val frequencyScore =
+                    if (useFrequencyRanking) {
+                        rankingRepository.getResultFrequency(result.frequencyKey, frequencyQuery)
+                    } else {
+                        0f
+                    }
+                ResultSortMetadata(
+                    result = result,
+                    providerRank = providerRank,
+                    frequencyScore = frequencyScore,
+                )
             }
-            ResultSortMetadata(
-                result = result,
-                providerRank = providerRank,
-                frequencyScore = frequencyScore,
-            )
-        }
 
         if (!useFrequencyRanking) {
             return sortMetadata

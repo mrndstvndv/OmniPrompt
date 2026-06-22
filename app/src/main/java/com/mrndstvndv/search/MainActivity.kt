@@ -3,11 +3,13 @@ package com.mrndstvndv.search
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
+import android.os.UserManager
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Patterns
@@ -21,6 +23,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -32,30 +35,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,21 +65,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import com.mrndstvndv.search.util.GitHubUpdateChecker
-import com.mrndstvndv.search.util.VersionComparator
-import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.alias.AliasCreationCandidate
 import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
@@ -103,35 +92,27 @@ import com.mrndstvndv.search.provider.files.FileSearchProvider
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
+import com.mrndstvndv.search.provider.intent.IntentProvider
+import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.AppListType
-import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.ContactsSettings
-import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
-import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
-import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.system.SettingsProvider
 import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
-import com.mrndstvndv.search.provider.termux.TermuxSettings
 import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
-import com.mrndstvndv.search.provider.intent.IntentProvider
-import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
 import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
 import com.mrndstvndv.search.provider.web.WebSearchProvider
 import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
-import com.mrndstvndv.search.util.FaviconLoader
-import com.mrndstvndv.search.util.loadAppIconBitmap
 import com.mrndstvndv.search.ui.components.AppListContainer
 import com.mrndstvndv.search.ui.components.AppListSection
 import com.mrndstvndv.search.ui.components.ContactActionData
@@ -144,7 +125,9 @@ import com.mrndstvndv.search.ui.components.findTriggerMatch
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
-import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
+import com.mrndstvndv.search.util.FaviconLoader
+import com.mrndstvndv.search.util.GitHubUpdateChecker
+import com.mrndstvndv.search.util.loadAppIconBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -432,13 +415,14 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 val now = System.currentTimeMillis()
-                val intervalMillis = when (updateCheckInterval) {
-                    "daily" -> 24 * 60 * 60 * 1000L
-                    "weekly" -> 7 * 24 * 60 * 60 * 1000L
-                    "monthly" -> 30 * 24 * 60 * 60 * 1000L
-                    "custom" -> customUpdateIntervalDays * 24 * 60 * 60 * 1000L
-                    else -> 7 * 24 * 60 * 60 * 1000L
-                }
+                val intervalMillis =
+                    when (updateCheckInterval) {
+                        "daily" -> 24 * 60 * 60 * 1000L
+                        "weekly" -> 7 * 24 * 60 * 60 * 1000L
+                        "monthly" -> 30 * 24 * 60 * 60 * 1000L
+                        "custom" -> customUpdateIntervalDays * 24 * 60 * 60 * 1000L
+                        else -> 7 * 24 * 60 * 60 * 1000L
+                    }
 
                 if (now - lastUpdateCheckTime >= intervalMillis) {
                     val result = GitHubUpdateChecker.checkForUpdates(BuildConfig.VERSION_NAME, checkPrereleaseBuilds)
@@ -720,9 +704,10 @@ class MainActivity : ComponentActivity() {
                             val triggerFrequencyQuery = dynamicTriggerFrequencyQuery(activeTrigger.matchedToken)
                             currentNormalizedQuery = triggerFrequencyQuery
                             try {
-                                val triggerResults = withContext(Dispatchers.IO) {
-                                    activeTrigger.trigger.execute(activeTrigger.matchedToken, activeTrigger.payload)
-                                }
+                                val triggerResults =
+                                    withContext(Dispatchers.IO) {
+                                        activeTrigger.trigger.execute(activeTrigger.matchedToken, activeTrigger.payload)
+                                    }
                                 val payloadQuery =
                                     Query(
                                         text = activeTrigger.payload,
@@ -753,19 +738,20 @@ class MainActivity : ComponentActivity() {
 
                                 // 1. Query fast supplemental providers concurrently
                                 if (fastSupplemental.isNotEmpty()) {
-                                    val fastResults = supervisorScope {
-                                        fastSupplemental.map { provider ->
-                                            async {
-                                                try {
-                                                    withContext(Dispatchers.IO) { provider.query(payloadQuery) }
-                                                } catch (e: CancellationException) {
-                                                    throw e
-                                                } catch (_: Exception) {
-                                                    emptyList()
+                                    val fastResults =
+                                        supervisorScope {
+                                            fastSupplemental.map { provider ->
+                                                async {
+                                                    try {
+                                                        withContext(Dispatchers.IO) { provider.query(payloadQuery) }
+                                                    } catch (e: CancellationException) {
+                                                        throw e
+                                                    } catch (_: Exception) {
+                                                        emptyList()
+                                                    }
                                                 }
-                                            }
-                                        }.awaitAll()
-                                    }
+                                            }.awaitAll()
+                                        }
                                     fastSupplemental.forEachIndexed { index, provider ->
                                         supplementalMap[provider.id] = fastResults[index]
                                     }
@@ -812,19 +798,20 @@ class MainActivity : ComponentActivity() {
 
                         // 1. Query fast providers concurrently
                         if (fastProviders.isNotEmpty()) {
-                            val fastResults = supervisorScope {
-                                fastProviders.map { provider ->
-                                    async {
-                                        try {
-                                            withContext(Dispatchers.IO) { provider.query(query) }
-                                        } catch (e: CancellationException) {
-                                            throw e
-                                        } catch (_: Exception) {
-                                            emptyList()
+                            val fastResults =
+                                supervisorScope {
+                                    fastProviders.map { provider ->
+                                        async {
+                                            try {
+                                                withContext(Dispatchers.IO) { provider.query(query) }
+                                            } catch (e: CancellationException) {
+                                                throw e
+                                            } catch (_: Exception) {
+                                                emptyList()
+                                            }
                                         }
-                                    }
-                                }.awaitAll()
-                            }
+                                    }.awaitAll()
+                                }
                             fastProviders.forEachIndexed { index, provider ->
                                 resultsMap[provider.id] = fastResults[index]
                             }
@@ -835,10 +822,11 @@ class MainActivity : ComponentActivity() {
                                 resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
                             } ?: resultsMap.values.flatten()
                         val initialSorted = sortResults(initialFiltered, normalizedText)
-                        val initialResults = buildList {
-                            aliasResult?.let { add(it) }
-                            addAll(initialSorted)
-                        }
+                        val initialResults =
+                            buildList {
+                                aliasResult?.let { add(it) }
+                                addAll(initialSorted)
+                            }
                         if (providerResults != initialResults) {
                             providerResults = initialResults
                         }
@@ -901,11 +889,12 @@ class MainActivity : ComponentActivity() {
                 result: GitHubUpdateChecker.UpdateResult,
                 onDismiss: () -> Unit,
                 onDownload: () -> Unit,
-                modifier: Modifier = Modifier
+                modifier: Modifier = Modifier,
             ) {
-                val dismissState = rememberSwipeToDismissBoxState(
-                    positionalThreshold = { totalDistance -> totalDistance * 0.6f },
-                )
+                val dismissState =
+                    rememberSwipeToDismissBoxState(
+                        positionalThreshold = { totalDistance -> totalDistance * 0.6f },
+                    )
 
                 LaunchedEffect(dismissState.currentValue) {
                     if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
@@ -919,63 +908,68 @@ class MainActivity : ComponentActivity() {
                     state = dismissState,
                     backgroundContent = {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(androidx.compose.ui.graphics.Color.Transparent)
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(androidx.compose.ui.graphics.Color.Transparent),
                         )
                     },
-                    modifier = modifier
+                    modifier = modifier,
                 ) {
-                    val borderStroke = if (firstResultHighlightEnabled) {
-                        val borderColor = MaterialTheme.colorScheme.primary.copy(
-                            alpha = if (translucentResultsEnabled) 0.5f else 0.22f
-                        )
-                        BorderStroke(firstResultBorderThickness.dp, borderColor)
-                    } else {
-                        null
-                    }
+                    val borderStroke =
+                        if (firstResultHighlightEnabled) {
+                            val borderColor =
+                                MaterialTheme.colorScheme.primary.copy(
+                                    alpha = if (translucentResultsEnabled) 0.5f else 0.22f,
+                                )
+                            BorderStroke(firstResultBorderThickness.dp, borderColor)
+                        } else {
+                            null
+                        }
 
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .clickable(
-                                onClick = onDownload
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .clickable(
+                                    onClick = onDownload,
+                                ),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
                             ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-                        ),
                         shape = RoundedCornerShape(12.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = borderStroke
+                        border = borderStroke,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.SystemUpdate,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Update available: ${result.version}",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
                             }
                             Icon(
                                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                                 contentDescription = "Download Update",
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp),
                             )
                         }
                     }
@@ -992,14 +986,15 @@ class MainActivity : ComponentActivity() {
                                 .focusRequester(focusRequester),
                         value = textState.value,
                         onValueChange = ::onSearchChange,
-                        triggerChip = triggerState?.let { activeTrigger ->
-                            {
-                                TriggerChip(
-                                    item = activeTrigger.trigger,
-                                    onDismiss = ::dismissTrigger,
-                                )
-                            }
-                        },
+                        triggerChip =
+                            triggerState?.let { activeTrigger ->
+                                {
+                                    TriggerChip(
+                                        item = activeTrigger.trigger,
+                                        onDismiss = ::dismissTrigger,
+                                    )
+                                }
+                            },
                         placeholder = { Text(stringResource(R.string.search_placeholder)) },
                         trailingIcon = {
                             if (settingsIconPosition == SettingsIconPosition.INSIDE) {
@@ -1197,7 +1192,7 @@ class MainActivity : ComponentActivity() {
                                                     val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
                                                     browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                     startActivity(browserIntent)
-                                                }
+                                                },
                                             )
                                         }
                                     }
@@ -1225,8 +1220,9 @@ class MainActivity : ComponentActivity() {
                                         shouldCenter = shouldCenterAppList,
                                         showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                         onSettingsClick = {
-                                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            val intent =
+                                                Intent(this@MainActivity, SettingsActivity::class.java)
+                                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                             startActivity(intent)
                                             finish()
                                         },
@@ -1268,7 +1264,7 @@ class MainActivity : ComponentActivity() {
                                                 val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
                                                 browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                 startActivity(browserIntent)
-                                            }
+                                            },
                                         )
                                     }
                                 }
@@ -1291,8 +1287,9 @@ class MainActivity : ComponentActivity() {
                                     shouldCenter = shouldCenterAppList,
                                     showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                     onSettingsClick = {
-                                        val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        val intent =
+                                            Intent(this@MainActivity, SettingsActivity::class.java)
+                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         startActivity(intent)
                                         finish()
                                     },
@@ -1547,10 +1544,26 @@ class MainActivity : ComponentActivity() {
             is AppLaunchAliasTarget -> {
                 val action: suspend () -> Unit = {
                     withContext(Dispatchers.Main) {
-                        val launchIntent = packageManager.getLaunchIntentForPackage(target.packageName)
-                        if (launchIntent != null) {
-                            startActivity(launchIntent)
+                        val userManager = getSystemService(Context.USER_SERVICE) as UserManager
+                        val userHandle = userManager.getUserForSerialNumber(target.userSerialNumber)
+                            ?: android.os.Process.myUserHandle()
+                        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                        val activities = launcherApps.getActivityList(target.packageName, userHandle)
+                        val activityInfo = activities.firstOrNull()
+                        if (activityInfo != null) {
+                            launcherApps.startMainActivity(
+                                activityInfo.componentName,
+                                userHandle,
+                                intent.sourceBounds,
+                                null
+                            )
                             finish()
+                        } else {
+                            val launchIntent = packageManager.getLaunchIntentForPackage(target.packageName)
+                            if (launchIntent != null) {
+                                startActivity(launchIntent)
+                                finish()
+                            }
                         }
                     }
                 }
@@ -1562,8 +1575,8 @@ class MainActivity : ComponentActivity() {
                     onSelect = action,
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
-                    // Load app icon from PackageManager
-                    iconLoader = { loadAppIconBitmap(packageManager, target.packageName, defaultAppIconSize) },
+                    // Load app icon from PackageManager with profile badging
+                    iconLoader = { loadAppIconBitmap(this@MainActivity, target.packageName, defaultAppIconSize, target.userSerialNumber) },
                 )
             }
 

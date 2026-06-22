@@ -1,5 +1,9 @@
 package com.mrndstvndv.search.ui.settings
 
+import android.graphics.Bitmap
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,14 +14,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -54,38 +59,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
-import android.graphics.Bitmap
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import com.mrndstvndv.search.provider.apps.AppListRepository
+import com.mrndstvndv.search.provider.intent.ActivityOption
 import com.mrndstvndv.search.provider.intent.AppDiscovery
 import com.mrndstvndv.search.provider.intent.AppInfo
 import com.mrndstvndv.search.provider.intent.IntentConfig
 import com.mrndstvndv.search.provider.intent.IntentExtra
 import com.mrndstvndv.search.provider.intent.IntentOption
-import com.mrndstvndv.search.provider.intent.ActivityOption
 import com.mrndstvndv.search.provider.intent.IntentSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
-import com.mrndstvndv.search.util.FuzzyMatcher
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsSection
+import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.UUID
 
 private enum class AddDialogStep {
     AppSelection,
     IntentSelection,
     ActivitySelection,
-    Configuration
+    Configuration,
 }
 
 @Composable
@@ -126,7 +126,8 @@ fun IntentSettingsScreen(
         config.customIconPath?.let { path ->
             try {
                 java.io.File(path).delete()
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+            }
         }
         configs = configs.toMutableList().apply { removeAt(index) }
         saveSettings()
@@ -161,6 +162,8 @@ fun IntentSettingsScreen(
         )
     }
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     Box(
         modifier =
             Modifier
@@ -170,16 +173,15 @@ fun IntentSettingsScreen(
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                    .fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
                 SettingsHeader(
                     title = stringResource(R.string.provider_intent_launcher),
                     subtitle = stringResource(R.string.intent_header_subtitle),
-                    onBack = onBack
+                    onBack = onBack,
                 )
             }
 
@@ -202,7 +204,7 @@ fun IntentSettingsScreen(
                                 IntentConfigRow(
                                     appListRepository = appListRepository,
                                     config = config,
-                                    onClick = { editingConfig = index to config }
+                                    onClick = { editingConfig = index to config },
                                 )
                                 if (index < configs.lastIndex) {
                                     SettingsDivider()
@@ -288,26 +290,32 @@ private fun IntentConfigRow(
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val iconBitmap by produceState<Bitmap?>(initialValue = null, key1 = config.customIconPath, key2 = config.packageName) {
+    val iconBitmap by produceState<Bitmap?>(
+        initialValue = null,
+        key1 = config.customIconPath,
+        key2 = config.packageName,
+    ) {
         withContext(Dispatchers.IO) {
-            val baseBitmap = when {
-                !config.customIconPath.isNullOrEmpty() -> {
-                    try {
-                        android.graphics.BitmapFactory.decodeFile(config.customIconPath)
-                    } catch (e: Exception) {
-                        null
+            val baseBitmap =
+                when {
+                    !config.customIconPath.isNullOrEmpty() -> {
+                        try {
+                            android.graphics.BitmapFactory.decodeFile(config.customIconPath)
+                        } catch (e: Exception) {
+                            null
+                        }
                     }
+                    config.packageName.isNotEmpty() -> {
+                        appListRepository.getIcon(config.packageName)
+                    }
+                    else -> null
                 }
-                config.packageName.isNotEmpty() -> {
-                    appListRepository.getIcon(config.packageName)
+            value =
+                if (baseBitmap != null) {
+                    com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
+                } else {
+                    null
                 }
-                else -> null
-            }
-            value = if (baseBitmap != null) {
-                com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
-            } else {
-                null
-            }
         }
     }
 
@@ -323,9 +331,10 @@ private fun IntentConfigRow(
             Image(
                 bitmap = iconBitmap!!.asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(MaterialTheme.shapes.small)
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(MaterialTheme.shapes.small),
             )
         } else {
             Box(
@@ -356,17 +365,19 @@ private fun IntentConfigRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(modifier = Modifier.height(4.dp))
-            val actionOrClassLabel = if (!config.className.isNullOrEmpty()) {
-                config.className.substringAfterLast(".")
-            } else {
-                config.action.substringAfterLast(".")
-            }
+            val actionOrClassLabel =
+                if (!config.className.isNullOrEmpty()) {
+                    config.className.substringAfterLast(".")
+                } else {
+                    config.action.substringAfterLast(".")
+                }
             Text(
-                text = stringResource(
-                    R.string.intent_action_package,
-                    actionOrClassLabel,
-                    config.packageName.ifEmpty { stringResource(R.string.intent_system) },
-                ),
+                text =
+                    stringResource(
+                        R.string.intent_action_package,
+                        actionOrClassLabel,
+                        config.packageName.ifEmpty { stringResource(R.string.intent_system) },
+                    ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -385,11 +396,11 @@ private fun IntentConfigAddDialog(
     val context = LocalContext.current
     val discovery = remember { AppDiscovery(context, appListRepository) }
     var currentStep by remember { mutableStateOf(AddDialogStep.AppSelection) }
-    
+
     var selectedApp by remember { mutableStateOf<AppInfo?>(null) }
     var selectedIntent by remember { mutableStateOf<IntentOption?>(null) }
     var selectedActivity by remember { mutableStateOf<ActivityOption?>(null) }
-    
+
     // Configuration fields
     var title by remember { mutableStateOf("") }
     var mimeType by remember { mutableStateOf<String?>(null) }
@@ -402,7 +413,8 @@ private fun IntentConfigAddDialog(
         customIconPath?.let { path ->
             try {
                 java.io.File(path).delete()
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+            }
         }
         onDismiss()
     }
@@ -423,7 +435,7 @@ private fun IntentConfigAddDialog(
                         currentStep = AddDialogStep.IntentSelection
                     }
                 },
-                onDismiss = handleDismiss
+                onDismiss = handleDismiss,
             )
         }
         AddDialogStep.IntentSelection -> {
@@ -441,7 +453,7 @@ private fun IntentConfigAddDialog(
                     currentStep = AddDialogStep.ActivitySelection
                 },
                 onBack = { currentStep = AddDialogStep.AppSelection },
-                onDismiss = handleDismiss
+                onDismiss = handleDismiss,
             )
         }
         AddDialogStep.ActivitySelection -> {
@@ -456,7 +468,7 @@ private fun IntentConfigAddDialog(
                     currentStep = AddDialogStep.Configuration
                 },
                 onBack = { currentStep = AddDialogStep.IntentSelection },
-                onDismiss = handleDismiss
+                onDismiss = handleDismiss,
             )
         }
         AddDialogStep.Configuration -> {
@@ -464,13 +476,23 @@ private fun IntentConfigAddDialog(
             var actionState by remember {
                 mutableStateOf(
                     selectedIntent?.action
-                        ?: if (selectedActivity != null) "android.intent.action.MAIN"
-                        else "android.intent.action.SEND"
+                        ?: if (selectedActivity != null) {
+                            "android.intent.action.MAIN"
+                        } else {
+                            "android.intent.action.SEND"
+                        },
                 )
             }
 
             IntentConfigDialogContent(
-                title = if (selectedApp!!.packageName.isEmpty()) stringResource(R.string.intent_manual_intent) else stringResource(R.string.intent_configure),
+                title =
+                    if (selectedApp!!.packageName.isEmpty()) {
+                        stringResource(
+                            R.string.intent_manual_intent,
+                        )
+                    } else {
+                        stringResource(R.string.intent_configure)
+                    },
                 title_ = title,
                 onTitleChange = { title = it },
                 packageName = selectedApp!!.packageName.ifEmpty { manualPackageName },
@@ -493,25 +515,28 @@ private fun IntentConfigAddDialog(
                 showRemove = false,
                 onRemove = {},
                 onBack = {
-                    currentStep = when {
-                        selectedApp!!.packageName.isEmpty() -> AddDialogStep.AppSelection
-                        selectedActivity != null -> AddDialogStep.ActivitySelection
-                        else -> AddDialogStep.IntentSelection
-                    }
+                    currentStep =
+                        when {
+                            selectedApp!!.packageName.isEmpty() -> AddDialogStep.AppSelection
+                            selectedActivity != null -> AddDialogStep.ActivitySelection
+                            else -> AddDialogStep.IntentSelection
+                        }
                 },
                 onDismiss = handleDismiss,
                 onSave = {
-                    onAdd(IntentConfig(
-                        title = title.trim(),
-                        packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
-                        action = actionState,
-                        className = selectedActivity?.name,
-                        customIconPath = customIconPath,
-                        type = mimeType?.takeIf { it != anyMimeTypeLabel },
-                        payloadTemplate = payloadTemplate?.trim(),
-                        extras = extras
-                    ))
-                }
+                    onAdd(
+                        IntentConfig(
+                            title = title.trim(),
+                            packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
+                            action = actionState,
+                            className = selectedActivity?.name,
+                            customIconPath = customIconPath,
+                            type = mimeType?.takeIf { it != anyMimeTypeLabel },
+                            payloadTemplate = payloadTemplate?.trim(),
+                            extras = extras,
+                        ),
+                    )
+                },
             )
         }
     }
@@ -525,29 +550,34 @@ private fun AppSelectionStep(
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    
+
     val appsState by produceState<List<AppInfo>?>(initialValue = null) {
-        value = withContext(Dispatchers.IO) {
-            val apps = discovery.getTargetApps()
-            Log.d("IntentSetup", "Discovered ${apps.size} apps")
-            apps.forEach { Log.d("IntentSetup", "App: ${it.name} (${it.packageName})") }
-            apps
-        }
+        value =
+            withContext(Dispatchers.IO) {
+                val apps = discovery.getTargetApps()
+                Log.d("IntentSetup", "Discovered ${apps.size} apps")
+                apps.forEach { Log.d("IntentSetup", "App: ${it.name} (${it.packageName})") }
+                apps
+            }
     }
 
-    val filteredApps = remember(searchQuery, appsState) {
-        val apps = appsState ?: emptyList()
-        if (searchQuery.isBlank()) apps
-        else apps
-            .mapNotNull { app ->
-                val nameMatch = FuzzyMatcher.match(searchQuery, app.name)
-                val pkgMatch = FuzzyMatcher.match(searchQuery, app.packageName)
-                val bestScore = listOfNotNull(nameMatch?.score, pkgMatch?.score).maxOrNull()
-                if (bestScore != null) app to bestScore else null
+    val filteredApps =
+        remember(searchQuery, appsState) {
+            val apps = appsState ?: emptyList()
+            if (searchQuery.isBlank()) {
+                apps
+            } else {
+                apps
+                    .mapNotNull { app ->
+                        val nameMatch = FuzzyMatcher.match(searchQuery, app.name)
+                        val pkgMatch = FuzzyMatcher.match(searchQuery, app.packageName)
+                        val bestScore = listOfNotNull(nameMatch?.score, pkgMatch?.score).maxOrNull()
+                        if (bestScore != null) app to bestScore else null
+                    }
+                    .sortedByDescending { it.second }
+                    .map { it.first }
             }
-            .sortedByDescending { it.second }
-            .map { it.first }
-    }
+        }
 
     ContentDialog(
         onDismiss = onDismiss,
@@ -582,18 +612,36 @@ private fun AppSelectionStep(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 )
-                
+
                 if (appsState == null) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.intent_searching_apps), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            stringResource(R.string.intent_searching_apps),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 } else if (filteredApps.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(stringResource(R.string.intent_no_compatible_apps), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                stringResource(R.string.intent_no_compatible_apps),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
-                            TextButton(onClick = { 
-                                onAppSelected(AppInfo("", context.getString(R.string.intent_manual_entry), null))
+                            TextButton(onClick = {
+                                val appInfo =
+                                    AppInfo(
+                                        "",
+                                        context.getString(R.string.intent_manual_entry),
+                                        null,
+                                    )
+                                onAppSelected(appInfo)
                             }) {
                                 Text(stringResource(R.string.intent_configure_manually))
                             }
@@ -604,38 +652,59 @@ private fun AppSelectionStep(
                         LazyColumn(modifier = Modifier.fillMaxWidth()) {
                             items(filteredApps, key = { it.packageName }) { app ->
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onAppSelected(app) }
-                                        .padding(vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onAppSelected(app) }
+                                            .padding(vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     if (app.icon != null) {
                                         Image(
                                             bitmap = app.icon.asImageBitmap(),
                                             contentDescription = null,
-                                            modifier = Modifier.size(40.dp)
+                                            modifier = Modifier.size(40.dp),
                                         )
                                     } else {
-                                        Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                                            Icon(Icons.Outlined.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                                        Box(
+                                            modifier =
+                                                Modifier.size(
+                                                    40.dp,
+                                                ).background(
+                                                    MaterialTheme.colorScheme.surfaceVariant,
+                                                ),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.Share,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(20.dp),
+                                            )
                                         }
                                     }
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
                                         Text(app.name, style = MaterialTheme.typography.bodyLarge)
-                                        Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            app.packageName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                 }
                                 if (filteredApps.indexOf(app) < filteredApps.lastIndex) {
-                                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                    HorizontalDivider(
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
-        }
+        },
     )
 }
 
@@ -656,7 +725,10 @@ private fun IntentSelectionStep(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
+                    Icon(
+                        Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                    )
                 }
                 Text(
                     text = app.name,
@@ -675,9 +747,9 @@ private fun IntentSelectionStep(
             Text(
                 text = stringResource(R.string.intent_select_supported_intent),
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
-            
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 intents.forEach { intent ->
                     Surface(
@@ -685,39 +757,61 @@ private fun IntentSelectionStep(
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.extraLarge,
                         tonalElevation = 32.dp,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        border =
+                            androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant,
+                            ),
                         color = MaterialTheme.colorScheme.surface,
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
                         ) {
                             Text(intent.label, style = MaterialTheme.typography.titleMedium)
-                            Text(intent.action.substringAfterLast("."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                intent.action.substringAfterLast("."),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
-                
+
                 Surface(
                     onClick = onActivityLauncherSelected,
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.extraLarge,
                     tonalElevation = 32.dp,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    border =
+                        androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant,
+                        ),
                     color = MaterialTheme.colorScheme.surface,
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     ) {
-                        Text(stringResource(R.string.intent_activity_launcher), style = MaterialTheme.typography.titleMedium)
-                        Text("MAIN", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            stringResource(R.string.intent_activity_launcher),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            "MAIN",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
 
                 if (intents.isEmpty()) {
-                    Text(stringResource(R.string.intent_no_compatible_intents), color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.intent_no_compatible_intents),
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             }
-        }
+        },
     )
 }
 
@@ -733,24 +827,33 @@ private fun ActivitySelectionStep(
     var searchQuery by remember { mutableStateOf("") }
 
     val activitiesState by produceState<List<ActivityOption>?>(initialValue = null) {
-        value = withContext(Dispatchers.IO) {
-            discovery.getActivitiesForApp(app.packageName)
-        }
+        value =
+            withContext(Dispatchers.IO) {
+                discovery.getActivitiesForApp(app.packageName)
+            }
     }
 
-    val filteredActivities = remember(searchQuery, activitiesState) {
-        val activities = activitiesState ?: emptyList()
-        if (searchQuery.isBlank()) activities
-        else activities
-            .mapNotNull { activity ->
-                val labelMatch = FuzzyMatcher.match(searchQuery, activity.label)
-                val nameMatch = FuzzyMatcher.match(searchQuery, activity.name)
-                val bestScore = listOfNotNull(labelMatch?.score, nameMatch?.score).maxOrNull()
-                if (bestScore != null) activity to bestScore else null
+    val filteredActivities =
+        remember(searchQuery, activitiesState) {
+            val activities = activitiesState ?: emptyList()
+            if (searchQuery.isBlank()) {
+                activities
+            } else {
+                activities
+                    .mapNotNull { activity ->
+                        val labelMatch = FuzzyMatcher.match(searchQuery, activity.label)
+                        val nameMatch = FuzzyMatcher.match(searchQuery, activity.name)
+                        val bestScore =
+                            listOfNotNull(
+                                labelMatch?.score,
+                                nameMatch?.score,
+                            ).maxOrNull()
+                        if (bestScore != null) activity to bestScore else null
+                    }
+                    .sortedByDescending { it.second }
+                    .map { it.first }
             }
-            .sortedByDescending { it.second }
-            .map { it.first }
-    }
+        }
 
     ContentDialog(
         onDismiss = onDismiss,
@@ -758,7 +861,10 @@ private fun ActivitySelectionStep(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
+                    Icon(
+                        Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                    )
                 }
                 Column {
                     Text(
@@ -792,35 +898,55 @@ private fun ActivitySelectionStep(
                 )
 
                 if (activitiesState == null) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.intent_searching_activities), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            stringResource(R.string.intent_searching_activities),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 } else if (filteredActivities.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.intent_no_activities_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            stringResource(R.string.intent_no_activities_found),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 } else {
                     Column(modifier = Modifier.heightIn(max = 400.dp)) {
                         LazyColumn(modifier = Modifier.fillMaxWidth()) {
                             items(filteredActivities, key = { it.name }) { activity ->
                                 Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onActivitySelected(activity) }
-                                        .padding(vertical = 12.dp)
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onActivitySelected(activity) }
+                                            .padding(vertical = 12.dp),
                                 ) {
                                     Text(activity.label, style = MaterialTheme.typography.bodyLarge)
-                                    Text(activity.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        activity.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                                 if (filteredActivities.indexOf(activity) < filteredActivities.lastIndex) {
-                                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                    HorizontalDivider(
+                                        thickness = 0.5.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
-        }
+        },
     )
 }
 
@@ -834,13 +960,14 @@ private fun IntentConfigEditDialog(
 ) {
     val context = LocalContext.current
     val discovery = remember { AppDiscovery(context, appListRepository) }
-    val intentOptions = remember(config.packageName) {
-        if (config.packageName.isNotEmpty()) {
-            discovery.getIntentsForApp(config.packageName)
-        } else {
-            emptyList()
+    val intentOptions =
+        remember(config.packageName) {
+            if (config.packageName.isNotEmpty()) {
+                discovery.getIntentsForApp(config.packageName)
+            } else {
+                emptyList()
+            }
         }
-    }
     val currentIntentOption = intentOptions.find { it.action == config.action }
 
     var title by remember { mutableStateOf(config.title) }
@@ -851,7 +978,7 @@ private fun IntentConfigEditDialog(
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
-    
+
     val initialCustomIconPath = remember { config.customIconPath }
 
     val canSave = title.isNotBlank()
@@ -866,12 +993,13 @@ private fun IntentConfigEditDialog(
                 className = className.takeIf { it.isNotBlank() },
                 customIconPath = customIconPath,
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
-                extras = extras
+                extras = extras,
             )
         if (initialCustomIconPath != null && initialCustomIconPath != customIconPath) {
             try {
                 java.io.File(initialCustomIconPath).delete()
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+            }
         }
         onSave(updated)
     }
@@ -881,7 +1009,8 @@ private fun IntentConfigEditDialog(
             customIconPath?.let { path ->
                 try {
                     java.io.File(path).delete()
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                }
             }
         }
         onDismiss()
@@ -946,13 +1075,14 @@ private fun IntentConfigDialogContent(
 ) {
     var typeExpanded by remember { mutableStateOf(false) }
     var actionExpanded by remember { mutableStateOf(false) }
-    
-    val standardActions = listOf(
-        "android.intent.action.MAIN",
-        "android.intent.action.SEND",
-        "android.intent.action.VIEW",
-        "android.intent.action.SENDTO",
-    )
+
+    val standardActions =
+        listOf(
+            "android.intent.action.MAIN",
+            "android.intent.action.SEND",
+            "android.intent.action.VIEW",
+            "android.intent.action.SENDTO",
+        )
 
     ContentDialog(
         onDismiss = onDismiss,
@@ -961,7 +1091,10 @@ private fun IntentConfigDialogContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.back),
+                        )
                     }
                 }
                 Text(
@@ -1008,75 +1141,79 @@ private fun IntentConfigDialogContent(
             ) {
                 val context = LocalContext.current
                 var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
-                
+
                 LaunchedEffect(customIconPath, packageName) {
                     withContext(Dispatchers.IO) {
-                        val baseBitmap = when {
-                            !customIconPath.isNullOrEmpty() -> {
-                                try {
-                                    android.graphics.BitmapFactory.decodeFile(customIconPath)
-                                } catch (e: Exception) {
-                                    null
+                        val baseBitmap =
+                            when {
+                                !customIconPath.isNullOrEmpty() -> {
+                                    try {
+                                        android.graphics.BitmapFactory.decodeFile(customIconPath)
+                                    } catch (e: Exception) {
+                                        null
+                                    }
                                 }
+                                packageName.isNotEmpty() -> {
+                                    appListRepository.getIcon(packageName)
+                                }
+                                else -> null
                             }
-                            packageName.isNotEmpty() -> {
-                                appListRepository.getIcon(packageName)
+                        previewBitmap =
+                            if (baseBitmap != null) {
+                                com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
+                            } else {
+                                null
                             }
-                            else -> null
-                        }
-                        previewBitmap = if (baseBitmap != null) {
-                            com.mrndstvndv.search.util.createBadgedIcon(context, baseBitmap, R.drawable.ic_share)
-                        } else {
-                            null
-                        }
-                    }
-                }
-                
-                val iconPickerLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.GetContent()
-                ) { uri: android.net.Uri? ->
-                    if (uri != null) {
-                        val savedPath = com.mrndstvndv.search.util.saveCustomIcon(context, uri)
-                        if (savedPath != null) {
-                            onCustomIconPathChange(savedPath)
-                        }
                     }
                 }
 
+                val iconPickerLauncher =
+                    rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.GetContent(),
+                    ) { uri: android.net.Uri? ->
+                        if (uri != null) {
+                            val savedPath = com.mrndstvndv.search.util.saveCustomIcon(context, uri)
+                            if (savedPath != null) {
+                                onCustomIconPathChange(savedPath)
+                            }
+                        }
+                    }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(MaterialTheme.shapes.medium)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { iconPickerLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier
+                                .size(64.dp)
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { iconPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center,
                     ) {
                         if (previewBitmap != null) {
                             Image(
                                 bitmap = previewBitmap!!.asImageBitmap(),
                                 contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Outlined.Share,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(32.dp),
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.width(16.dp))
-                    
+
                     Column {
                         Text(
                             text = stringResource(R.string.intent_icon_label),
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { iconPickerLauncher.launch("image/*") }) {
@@ -1086,7 +1223,7 @@ private fun IntentConfigDialogContent(
                                 TextButton(onClick = { onCustomIconPathChange(null) }) {
                                     Text(
                                         text = stringResource(R.string.intent_reset_icon),
-                                        color = MaterialTheme.colorScheme.error
+                                        color = MaterialTheme.colorScheme.error,
                                     )
                                 }
                             }
@@ -1144,14 +1281,19 @@ private fun IntentConfigDialogContent(
                             onValueChange = {},
                             readOnly = true,
                             label = { Text(stringResource(R.string.intent_label_action)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = actionExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = actionExpanded,
+                                )
+                            },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                         )
                         ExposedDropdownMenu(
                             expanded = actionExpanded,
-                            onDismissRequest = { actionExpanded = false }
+                            onDismissRequest = { actionExpanded = false },
                         ) {
                             standardActions.forEach { option ->
                                 DropdownMenuItem(
@@ -1159,7 +1301,7 @@ private fun IntentConfigDialogContent(
                                     onClick = {
                                         onActionChange(option)
                                         actionExpanded = false
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -1175,14 +1317,19 @@ private fun IntentConfigDialogContent(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.intent_label_mime_type)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = typeExpanded,
+                            )
+                        },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                     )
                     ExposedDropdownMenu(
                         expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
+                        onDismissRequest = { typeExpanded = false },
                     ) {
                         val options = (typeOptions + listOf("text/plain", "text/*", "*/*", anyMimeTypeLabel)).distinct()
                         options.forEach { option ->
@@ -1191,7 +1338,7 @@ private fun IntentConfigDialogContent(
                                 onClick = {
                                     onTypeChange(option)
                                     typeExpanded = false
-                                }
+                                },
                             )
                         }
                     }
@@ -1207,53 +1354,74 @@ private fun IntentConfigDialogContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Text(stringResource(R.string.intent_custom_extras_label), style = MaterialTheme.typography.titleSmall)
-                
+                Text(
+                    stringResource(R.string.intent_custom_extras_label),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     extras.forEachIndexed { index, extra ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 OutlinedTextField(
                                     value = extra.key,
                                     onValueChange = { key ->
-                                        val newExtras = extras.toMutableList().apply {
-                                            this[index] = extra.copy(key = key)
-                                        }
+                                        val newExtras =
+                                            extras.toMutableList().apply {
+                                                this[index] = extra.copy(key = key)
+                                            }
                                         onExtrasChange(newExtras)
                                     },
-                                    label = { Text(stringResource(R.string.intent_label_extra_key)) },
+                                    label = {
+                                        Text(
+                                            stringResource(R.string.intent_label_extra_key),
+                                        )
+                                    },
                                     singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 OutlinedTextField(
                                     value = extra.value,
                                     onValueChange = { value ->
-                                        val newExtras = extras.toMutableList().apply {
-                                            this[index] = extra.copy(value = value)
-                                        }
+                                        val newExtras =
+                                            extras.toMutableList().apply {
+                                                this[index] = extra.copy(value = value)
+                                            }
                                         onExtrasChange(newExtras)
                                     },
-                                    label = { Text(stringResource(R.string.intent_label_extra_value)) },
+                                    label = {
+                                        Text(
+                                            stringResource(R.string.intent_label_extra_value),
+                                        )
+                                    },
                                     singleLine = true,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
                             IconButton(onClick = {
                                 onExtrasChange(extras.toMutableList().apply { removeAt(index) })
                             }) {
-                                Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.cd_remove_extra), tint = MaterialTheme.colorScheme.error)
+                                Icon(
+                                    Icons.Outlined.Delete,
+                                    contentDescription = stringResource(R.string.cd_remove_extra),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
                             }
                         }
                     }
-                    
+
                     TextButton(onClick = {
                         onExtrasChange(extras + IntentExtra("", ""))
                     }) {
-                        Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Outlined.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.intent_add_extra))
                     }

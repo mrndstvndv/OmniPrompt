@@ -23,16 +23,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -55,12 +52,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.mrndstvndv.search.R
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
@@ -108,9 +105,12 @@ fun FileSearchSettingsScreen(
             repository.update { it.copy(includeDownloads = true) }
             FileSearchRoot.downloadsRoot(context)?.let { root ->
                 repository.update { settings ->
-                    settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
-                        set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
-                    })
+                    settings.copy(
+                        scanMetadata =
+                            settings.scanMetadata.toMutableMap().apply {
+                                set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                            },
+                    )
                 }
                 fileSearchRepository.scheduleFullIndex(root)
             }
@@ -128,9 +128,12 @@ fun FileSearchSettingsScreen(
         coroutineScope.launch(Dispatchers.Default) {
             FileSearchRoot.downloadsRoot(context)?.let { root ->
                 repository.update { settings ->
-                    settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
-                        set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
-                    })
+                    settings.copy(
+                        scanMetadata =
+                            settings.scanMetadata.toMutableMap().apply {
+                                set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                            },
+                    )
                 }
                 fileSearchRepository.scheduleFullIndex(root)
             }
@@ -180,6 +183,8 @@ fun FileSearchSettingsScreen(
             }
         }
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     Box(
         modifier =
             Modifier
@@ -189,9 +194,8 @@ fun FileSearchSettingsScreen(
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                    .fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
@@ -255,9 +259,12 @@ fun FileSearchSettingsScreen(
                         },
                         onRescanRoot = { root ->
                             repository.update { settings ->
-                                settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
-                                    set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
-                                })
+                                settings.copy(
+                                    scanMetadata =
+                                        settings.scanMetadata.toMutableMap().apply {
+                                            set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                                        },
+                                )
                             }
                             fileSearchRepository.scheduleFullIndex(root)
                         },
@@ -937,9 +944,12 @@ private fun handleFolderSelection(
         )
     repository.update { it.copy(roots = it.roots + root) }
     repository.update { settings ->
-        settings.copy(scanMetadata = settings.scanMetadata.toMutableMap().apply {
-            set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
-        })
+        settings.copy(
+            scanMetadata =
+                settings.scanMetadata.toMutableMap().apply {
+                    set(root.id, FileSearchScanMetadata(state = FileSearchScanState.INDEXING, indexedItemCount = 0, errorMessage = null, updatedAtMillis = System.currentTimeMillis()))
+                },
+        )
     }
     fileSearchRepository.scheduleFullIndex(root)
 }

@@ -4,7 +4,10 @@ object VersionComparator {
     /**
      * Returns true if candidate is newer than current.
      */
-    fun isNewer(current: String, candidate: String): Boolean {
+    fun isNewer(
+        current: String,
+        candidate: String,
+    ): Boolean {
         val cleanCurrent = current.trim().removePrefix("v")
         val cleanCandidate = candidate.trim().removePrefix("v")
 
