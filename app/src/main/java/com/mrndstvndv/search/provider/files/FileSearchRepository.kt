@@ -18,10 +18,8 @@ import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.FileSearchSortMode
 import com.mrndstvndv.search.util.FuzzyMatcher
 import java.util.concurrent.TimeUnit
-import kotlin.math.min
 
 class FileSearchRepository private constructor(context: Context) {
-
     private val appContext = context.applicationContext
     private val database: FileSearchDatabase = FileSearchDatabase.get(appContext)
     private val workManager = WorkManager.getInstance(appContext)
@@ -40,7 +38,7 @@ class FileSearchRepository private constructor(context: Context) {
         rootIds: List<String>,
         sortMode: FileSearchSortMode,
         sortAscending: Boolean,
-        limit: Int = MAX_RESULTS
+        limit: Int = MAX_RESULTS,
     ): List<FileSearchMatch> {
         val cleaned = queryText.trim()
         if (cleaned.isEmpty() || rootIds.isEmpty()) return emptyList()
@@ -49,62 +47,67 @@ class FileSearchRepository private constructor(context: Context) {
         val fetchLimit = limit * 3 // Fetch more candidates for fuzzy re-ranking
 
         // Choose search strategy based on query length
-        val candidates = if (cleaned.length >= 2) {
-            // Use FTS for 2+ character queries (more effective)
-            val ftsQuery = buildFtsQuery(cleaned)
-            try {
-                dao.searchFts(rootIds, ftsQuery, fetchLimit)
-            } catch (e: Exception) {
-                // Fall back to LIKE if FTS fails (e.g., special characters)
+        val candidates =
+            if (cleaned.length >= 2) {
+                // Use FTS for 2+ character queries (more effective)
+                val ftsQuery = buildFtsQuery(cleaned)
+                try {
+                    dao.searchFts(rootIds, ftsQuery, fetchLimit)
+                } catch (e: Exception) {
+                    // Fall back to LIKE if FTS fails (e.g., special characters)
+                    val likeQuery = "%${escapeLikeWildcards(cleaned)}%"
+                    dao.searchLike(rootIds, likeQuery, fetchLimit)
+                }
+            } else {
+                // Fall back to LIKE for single characters
                 val likeQuery = "%${escapeLikeWildcards(cleaned)}%"
                 dao.searchLike(rootIds, likeQuery, fetchLimit)
             }
-        } else {
-            // Fall back to LIKE for single characters
-            val likeQuery = "%${escapeLikeWildcards(cleaned)}%"
-            dao.searchLike(rootIds, likeQuery, fetchLimit)
-        }
 
         // Apply fuzzy scoring and filter
-        val scored = candidates.mapNotNull { entity ->
-            val displayNameMatch = FuzzyMatcher.match(cleaned, entity.displayName)
-            val relativePathMatch = FuzzyMatcher.match(cleaned, entity.relativePath)
+        val scored =
+            candidates.mapNotNull { entity ->
+                val displayNameMatch = FuzzyMatcher.match(cleaned, entity.displayName)
+                val relativePathMatch = FuzzyMatcher.match(cleaned, entity.relativePath)
 
-            // Take the best match between displayName and relativePath for ranking
-            val bestMatch = listOfNotNull(displayNameMatch, relativePathMatch)
-                .maxByOrNull { it.score }
+                // Take the best match between displayName and relativePath for ranking
+                val bestMatch =
+                    listOfNotNull(displayNameMatch, relativePathMatch)
+                        .maxByOrNull { it.score }
 
-            bestMatch?.let { match ->
-                ScoredMatch(
-                    entity = entity,
-                    score = match.score,
-                    // Highlight displayName if it matched
-                    matchedTitleIndices = displayNameMatch?.matchedIndices ?: emptyList(),
-                    // Highlight path if it matched
-                    matchedSubtitleIndices = relativePathMatch?.matchedIndices ?: emptyList()
-                )
+                bestMatch?.let { match ->
+                    ScoredMatch(
+                        entity = entity,
+                        score = match.score,
+                        // Highlight displayName if it matched
+                        matchedTitleIndices = displayNameMatch?.matchedIndices ?: emptyList(),
+                        // Highlight path if it matched
+                        matchedSubtitleIndices = relativePathMatch?.matchedIndices ?: emptyList(),
+                    )
+                }
             }
-        }
 
         // Sort by fuzzy score (descending) first, then take top results
-        val fuzzyRanked = scored
-            .sortedByDescending { it.score }
-            .take(limit)
+        val fuzzyRanked =
+            scored
+                .sortedByDescending { it.score }
+                .take(limit)
 
-        val mapped = fuzzyRanked.map { scoredMatch ->
-            FileSearchMatch(
-                documentUri = scoredMatch.entity.documentUri,
-                displayName = scoredMatch.entity.displayName,
-                relativePath = scoredMatch.entity.relativePath,
-                rootDisplayName = scoredMatch.entity.rootDisplayName,
-                mimeType = scoredMatch.entity.mimeType,
-                isDirectory = scoredMatch.entity.isDirectory,
-                lastModified = scoredMatch.entity.lastModified,
-                sizeBytes = scoredMatch.entity.sizeBytes,
-                matchedTitleIndices = scoredMatch.matchedTitleIndices,
-                matchedSubtitleIndices = scoredMatch.matchedSubtitleIndices
-            )
-        }
+        val mapped =
+            fuzzyRanked.map { scoredMatch ->
+                FileSearchMatch(
+                    documentUri = scoredMatch.entity.documentUri,
+                    displayName = scoredMatch.entity.displayName,
+                    relativePath = scoredMatch.entity.relativePath,
+                    rootDisplayName = scoredMatch.entity.rootDisplayName,
+                    mimeType = scoredMatch.entity.mimeType,
+                    isDirectory = scoredMatch.entity.isDirectory,
+                    lastModified = scoredMatch.entity.lastModified,
+                    sizeBytes = scoredMatch.entity.sizeBytes,
+                    matchedTitleIndices = scoredMatch.matchedTitleIndices,
+                    matchedSubtitleIndices = scoredMatch.matchedSubtitleIndices,
+                )
+            }
 
         return sortMatches(mapped, sortMode, sortAscending)
     }
@@ -119,11 +122,12 @@ class FileSearchRepository private constructor(context: Context) {
     }
 
     private fun buildIndexRequest(root: FileSearchRoot): OneTimeWorkRequest {
-        val input = workDataOf(
-            FileSearchIndexWorker.KEY_ROOT_ID to root.id,
-            FileSearchIndexWorker.KEY_ROOT_URI to root.uri.toString(),
-            FileSearchIndexWorker.KEY_ROOT_DISPLAY_NAME to root.displayName
-        )
+        val input =
+            workDataOf(
+                FileSearchIndexWorker.KEY_ROOT_ID to root.id,
+                FileSearchIndexWorker.KEY_ROOT_URI to root.uri.toString(),
+                FileSearchIndexWorker.KEY_ROOT_DISPLAY_NAME to root.displayName,
+            )
         return OneTimeWorkRequestBuilder<FileSearchIndexWorker>()
             .setInputData(input)
             .addTag(indexTag(root.id))
@@ -137,12 +141,13 @@ class FileSearchRepository private constructor(context: Context) {
     private fun sortMatches(
         matches: List<FileSearchMatch>,
         sortMode: FileSearchSortMode,
-        sortAscending: Boolean
+        sortAscending: Boolean,
     ): List<FileSearchMatch> {
-        val comparator = when (sortMode) {
-            FileSearchSortMode.DATE -> compareBy<FileSearchMatch> { it.lastModified }
-            FileSearchSortMode.NAME -> compareBy<FileSearchMatch> { it.displayName.lowercase() }
-        }
+        val comparator =
+            when (sortMode) {
+                FileSearchSortMode.DATE -> compareBy<FileSearchMatch> { it.lastModified }
+                FileSearchSortMode.NAME -> compareBy<FileSearchMatch> { it.displayName.lowercase() }
+            }
         val effectiveComparator = if (sortAscending) comparator else comparator.reversed()
         val directories = matches.filter { it.isDirectory }.sortedWith(effectiveComparator)
         val files = matches.filterNot { it.isDirectory }.sortedWith(effectiveComparator)
@@ -204,20 +209,22 @@ class FileSearchRepository private constructor(context: Context) {
             return
         }
 
-        val request = PeriodicWorkRequestBuilder<IncrementalFileSyncWorker>(
-            intervalMinutes.toLong(), TimeUnit.MINUTES
-        )
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiresBatteryNotLow(true)
-                    .build()
+        val request =
+            PeriodicWorkRequestBuilder<IncrementalFileSyncWorker>(
+                intervalMinutes.toLong(),
+                TimeUnit.MINUTES,
             )
-            .build()
+                .setConstraints(
+                    Constraints.Builder()
+                        .setRequiresBatteryNotLow(true)
+                        .build(),
+                )
+                .build()
 
         workManager.enqueueUniquePeriodicWork(
             PERIODIC_SYNC_WORK_NAME,
             ExistingPeriodicWorkPolicy.UPDATE,
-            request
+            request,
         )
     }
 
@@ -233,9 +240,10 @@ class FileSearchRepository private constructor(context: Context) {
      * Uses expedited work when possible for faster execution.
      */
     fun triggerImmediateSync() {
-        val request = OneTimeWorkRequestBuilder<IncrementalFileSyncWorker>()
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .build()
+        val request =
+            OneTimeWorkRequestBuilder<IncrementalFileSyncWorker>()
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
         workManager.enqueue(request)
     }
 
@@ -246,7 +254,7 @@ class FileSearchRepository private constructor(context: Context) {
         val entity: IndexedDocumentEntity,
         val score: Int,
         val matchedTitleIndices: List<Int>,
-        val matchedSubtitleIndices: List<Int>
+        val matchedSubtitleIndices: List<Int>,
     )
 
     companion object {
@@ -274,5 +282,5 @@ data class FileSearchMatch(
     val lastModified: Long,
     val sizeBytes: Long,
     val matchedTitleIndices: List<Int> = emptyList(),
-    val matchedSubtitleIndices: List<Int> = emptyList()
+    val matchedSubtitleIndices: List<Int> = emptyList(),
 )

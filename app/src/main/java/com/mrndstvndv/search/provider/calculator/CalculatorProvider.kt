@@ -12,9 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class CalculatorProvider(
-    private val activity: ComponentActivity
+    private val activity: ComponentActivity,
 ) : Provider {
-
     override val id: String = "calculator"
     override val displayName: String = activity.getString(R.string.provider_calculator)
 
@@ -42,7 +41,7 @@ class CalculatorProvider(
                 onSelect = action,
                 frequencyKey = id,
                 frequencyQuery = id,
-            )
+            ),
         )
     }
 

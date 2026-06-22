@@ -13,11 +13,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -59,25 +60,39 @@ fun TextUtilitiesSettingsScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
     ) {
+        val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                    .fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             item {
-                SettingsHeader(title = stringResource(R.string.provider_text_utilities), subtitle = stringResource(R.string.text_utilities_header_subtitle), onBack = onBack)
+                SettingsHeader(
+                    title = stringResource(R.string.provider_text_utilities),
+                    subtitle = stringResource(R.string.text_utilities_header_subtitle),
+                    onBack = onBack,
+                )
             }
 
             item {
                 SettingsGroup {
                     SettingsSwitch(
                         title = stringResource(R.string.text_utilities_open_decoded_urls),
-                        subtitle = stringResource(R.string.text_utilities_open_decoded_urls_subtitle),
+                        subtitle =
+                            stringResource(
+                                R.string.text_utilities_open_decoded_urls_subtitle,
+                            ),
                         checked = textUtilitiesSettings.openDecodedUrls,
-                        onCheckedChange = { enabled -> repository.update { settings -> settings.copy(openDecodedUrls = enabled) } },
+                        onCheckedChange = {
+                                enabled ->
+                            repository.update {
+                                    settings ->
+                                settings.copy(openDecodedUrls = enabled)
+                            }
+                        },
                     )
                 }
             }
@@ -95,7 +110,10 @@ fun TextUtilitiesSettingsScreen(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = stringResource(R.string.text_utilities_available_utilities_subtitle),
+                            text =
+                                stringResource(
+                                    R.string.text_utilities_available_utilities_subtitle,
+                                ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

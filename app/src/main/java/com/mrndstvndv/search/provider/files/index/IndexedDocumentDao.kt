@@ -8,7 +8,6 @@ import androidx.room.Upsert
 
 @Dao
 interface IndexedDocumentDao {
-
     @Query("DELETE FROM indexed_documents WHERE rootId = :rootId")
     suspend fun deleteForRoot(rootId: String)
 
@@ -36,9 +35,13 @@ interface IndexedDocumentDao {
         AND d.rootId IN (:rootIds)
         ORDER BY d.isDirectory DESC, d.lastModified DESC
         LIMIT :limit
-        """
+        """,
     )
-    suspend fun searchFts(rootIds: List<String>, ftsQuery: String, limit: Int): List<IndexedDocumentEntity>
+    suspend fun searchFts(
+        rootIds: List<String>,
+        ftsQuery: String,
+        limit: Int,
+    ): List<IndexedDocumentEntity>
 
     /**
      * Fallback LIKE search for single-character or special queries where FTS isn't effective.
@@ -50,15 +53,22 @@ interface IndexedDocumentDao {
         AND (displayName LIKE :query ESCAPE '\' OR relativePath LIKE :query ESCAPE '\')
         ORDER BY isDirectory DESC, lastModified DESC
         LIMIT :limit
-        """
+        """,
     )
-    suspend fun searchLike(rootIds: List<String>, query: String, limit: Int): List<IndexedDocumentEntity>
+    suspend fun searchLike(
+        rootIds: List<String>,
+        query: String,
+        limit: Int,
+    ): List<IndexedDocumentEntity>
 
     /**
      * Legacy search method - kept for compatibility.
      * @deprecated Use searchFts or searchLike instead.
      */
-    @Deprecated("Use searchFts or searchLike for better performance", ReplaceWith("searchLike(rootIds, query, limit)"))
+    @Deprecated(
+        "Use searchFts or searchLike for better performance",
+        ReplaceWith("searchLike(rootIds, query, limit)"),
+    )
     @Query(
         """
         SELECT * FROM indexed_documents
@@ -66,7 +76,11 @@ interface IndexedDocumentDao {
         AND (displayName LIKE :query ESCAPE '\' OR relativePath LIKE :query ESCAPE '\')
         ORDER BY isDirectory DESC, lastModified DESC
         LIMIT :limit
-        """
+        """,
     )
-    suspend fun search(rootIds: List<String>, query: String, limit: Int): List<IndexedDocumentEntity>
+    suspend fun search(
+        rootIds: List<String>,
+        query: String,
+        limit: Int,
+    ): List<IndexedDocumentEntity>
 }

@@ -20,6 +20,6 @@ fun createAppSearchSettingsRepository(context: Context): SettingsRepository<AppS
                 null
             }
         },
-        serializer = { settings -> settings.toJson().toString() }
+        serializer = { settings -> settings.toJson().toString() },
     )
 }

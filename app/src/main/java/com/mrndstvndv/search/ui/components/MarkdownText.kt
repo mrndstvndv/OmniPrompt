@@ -37,42 +37,45 @@ fun MarkdownText(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         blocks.forEach { block ->
             when (block) {
                 is MarkdownBlock.Heading -> {
-                    val headingStyle = when (block.level) {
-                        1 -> MaterialTheme.typography.titleLarge
-                        2 -> MaterialTheme.typography.titleMedium
-                        else -> MaterialTheme.typography.titleSmall
-                    }
+                    val headingStyle =
+                        when (block.level) {
+                            1 -> MaterialTheme.typography.titleLarge
+                            2 -> MaterialTheme.typography.titleMedium
+                            else -> MaterialTheme.typography.titleSmall
+                        }
                     val annotatedString = block.content.toAnnotatedString(linkColor)
                     Text(
                         text = annotatedString,
-                        style = headingStyle.copy(
-                            color = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
+                        style =
+                            headingStyle.copy(
+                                color = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
+                            ),
                     )
                 }
                 is MarkdownBlock.ListItem -> {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.Top,
                     ) {
                         Text(
                             text = "•",
-                            style = style.copy(
-                                color = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            modifier = Modifier.padding(end = 8.dp)
+                            style =
+                                style.copy(
+                                    color = if (color != Color.Unspecified) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                            modifier = Modifier.padding(end = 8.dp),
                         )
                         val annotatedString = block.content.toAnnotatedString(linkColor)
                         Text(
                             text = annotatedString,
-                            style = style.copy(color = color)
+                            style = style.copy(color = color),
                         )
                     }
                 }
@@ -80,7 +83,7 @@ fun MarkdownText(
                     val annotatedString = block.content.toAnnotatedString(linkColor)
                     Text(
                         text = annotatedString,
-                        style = style.copy(color = color)
+                        style = style.copy(color = color),
                     )
                 }
             }
@@ -101,16 +104,19 @@ private fun List<MarkdownInline>.toAnnotatedString(linkColor: Color): AnnotatedS
                     }
                 }
                 is MarkdownInline.Link -> {
-                    val linkAnnotation = LinkAnnotation.Url(
-                        url = inline.url,
-                        styles = TextLinkStyles(
-                            style = SpanStyle(
-                                color = linkColor,
-                                textDecoration = TextDecoration.Underline,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                    val linkAnnotation =
+                        LinkAnnotation.Url(
+                            url = inline.url,
+                            styles =
+                                TextLinkStyles(
+                                    style =
+                                        SpanStyle(
+                                            color = linkColor,
+                                            textDecoration = TextDecoration.Underline,
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                ),
                         )
-                    )
                     pushLink(linkAnnotation)
                     append(inline.text)
                     pop()

@@ -78,7 +78,7 @@ class WebSearchProvider(
                 triggerId = site.id,
                 onSelect = action,
                 aliasTarget = WebSearchAliasTarget(site.id, site.displayName),
-            )
+            ),
         )
     }
 
@@ -234,11 +234,12 @@ class WebSearchProvider(
                     activity.finish()
                 }
             }
-            val frequencyQuery = if (site.id != defaultSite.id && parsedTrigger.hasPayloadSeparator) {
-                dynamicTriggerFrequencyQuery(triggerToken)
-            } else {
-                triggerToken
-            }
+            val frequencyQuery =
+                if (site.id != defaultSite.id && parsedTrigger.hasPayloadSeparator) {
+                    dynamicTriggerFrequencyQuery(triggerToken)
+                } else {
+                    triggerToken
+                }
             ProviderResult(
                 id = "$id:${site.id}:${actualQuery.hashCode()}",
                 title = activity.getString(R.string.web_search_result_title, actualQuery),

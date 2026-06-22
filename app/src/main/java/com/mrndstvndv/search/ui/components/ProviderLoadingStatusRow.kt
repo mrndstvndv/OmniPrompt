@@ -22,13 +22,13 @@ data class ProviderLoadingStatus(
     val id: String,
     val displayName: String,
     val isLoading: Boolean,
-    val showAfterDelay: Boolean
+    val showAfterDelay: Boolean,
 )
 
 @Composable
 fun ProviderLoadingStatusRow(
     modifier: Modifier = Modifier,
-    statuses: List<ProviderLoadingStatus>
+    statuses: List<ProviderLoadingStatus>,
 ) {
     val loadingStatuses = statuses.filter { it.isLoading && it.showAfterDelay }
     if (loadingStatuses.isEmpty()) return
@@ -37,33 +37,34 @@ fun ProviderLoadingStatusRow(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 1.dp,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(R.string.loading_providers),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             loadingStatuses.forEach { status ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
                     )
                     Text(
                         text = status.displayName,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }

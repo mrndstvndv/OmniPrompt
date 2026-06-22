@@ -8,9 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,13 +33,12 @@ import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
 
 @Composable
-fun OpenSourceLicensesScreen(
-    onBack: () -> Unit,
-) {
+fun OpenSourceLicensesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val licenses = remember(context) {
-        runCatching { OpenSourceLicensesParser.load(context) }.getOrDefault(emptyList())
-    }
+    val licenses =
+        remember(context) {
+            runCatching { OpenSourceLicensesParser.load(context) }.getOrDefault(emptyList())
+        }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val normalizedSearch = searchQuery.trim()
     val filteredLicenses =
@@ -50,14 +50,14 @@ fun OpenSourceLicensesScreen(
             }
         }
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     LazyColumn(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item {
@@ -97,7 +97,9 @@ fun OpenSourceLicensesScreen(
                         title = license.libraryName,
                         subtitle = license.displayUrl,
                         onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(license.licenseUrl)))
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(license.licenseUrl)),
+                            )
                         },
                     )
                     if (index < filteredLicenses.lastIndex) {
@@ -154,9 +156,10 @@ private object OpenSourceLicensesParser {
         val chunkStart = (offset - 2).coerceAtLeast(0)
         val chunkEnd = (offset + length).coerceAtMost(licensesText.length)
         val licenseChunk = licensesText.substring(chunkStart, chunkEnd)
-        val resolvedUrl = urlPattern.find(licenseChunk)?.value?.trimEnd(')', ']', ';', ',', '.')
-            ?: manualLicenseUrls[libraryName]
-            ?: return null
+        val resolvedUrl =
+            urlPattern.find(licenseChunk)?.value?.trimEnd(')', ']', ';', ',', '.')
+                ?: manualLicenseUrls[libraryName]
+                ?: return null
 
         return OpenSourceLicenseItem(
             libraryName = libraryName,

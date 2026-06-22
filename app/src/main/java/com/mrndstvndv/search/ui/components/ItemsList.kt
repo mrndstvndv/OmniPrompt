@@ -40,8 +40,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.mrndstvndv.search.SearchApplication
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,19 +58,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.zIndex
@@ -91,7 +94,7 @@ fun HighlightedText(
     modifier: Modifier = Modifier,
     highlightColor: Color = MaterialTheme.colorScheme.primary,
     style: TextStyle = LocalTextStyle.current,
-    maxLines: Int = 1
+    maxLines: Int = 1,
 ) {
     if (matchedIndices.isEmpty()) {
         Text(
@@ -100,33 +103,34 @@ fun HighlightedText(
             style = style,
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
-            modifier = modifier
+            modifier = modifier,
         )
     } else {
         val matchedSet = matchedIndices.toSet()
         Text(
-            text = buildAnnotatedString {
-                text.forEachIndexed { index, char ->
-                    if (index in matchedSet) {
-                        withStyle(
-                            SpanStyle(
-                                color = highlightColor,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        ) {
-                            append(char)
-                        }
-                    } else {
-                        withStyle(SpanStyle(color = color)) {
-                            append(char)
+            text =
+                buildAnnotatedString {
+                    text.forEachIndexed { index, char ->
+                        if (index in matchedSet) {
+                            withStyle(
+                                SpanStyle(
+                                    color = highlightColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                            ) {
+                                append(char)
+                            }
+                        } else {
+                            withStyle(SpanStyle(color = color)) {
+                                append(char)
+                            }
                         }
                     }
-                }
-            },
+                },
             style = style,
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
-            modifier = modifier
+            modifier = modifier,
         )
     }
 }
@@ -210,23 +214,25 @@ private fun Modifier.verticalEdgeFade(
         drawWithContent {
             val fadeHeightPx = fadeHeight.toPx()
             val horizontalOverflowPx = horizontalOverflowAllowance.toPx()
-            val layerBounds = Rect(
-                left = -horizontalOverflowPx,
-                top = 0f,
-                right = size.width + horizontalOverflowPx,
-                bottom = size.height,
-            )
+            val layerBounds =
+                Rect(
+                    left = -horizontalOverflowPx,
+                    top = 0f,
+                    right = size.width + horizontalOverflowPx,
+                    bottom = size.height,
+                )
 
             drawContext.canvas.saveLayer(layerBounds, Paint())
             drawContent()
 
             if (showTop) {
                 drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black),
-                        startY = 0f,
-                        endY = fadeHeightPx,
-                    ),
+                    brush =
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black),
+                            startY = 0f,
+                            endY = fadeHeightPx,
+                        ),
                     topLeft = Offset(-horizontalOverflowPx, 0f),
                     size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
                     blendMode = BlendMode.DstIn,
@@ -234,11 +240,12 @@ private fun Modifier.verticalEdgeFade(
             }
             if (showBottom) {
                 drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black, Color.Transparent),
-                        startY = size.height - fadeHeightPx,
-                        endY = size.height,
-                    ),
+                    brush =
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Black, Color.Transparent),
+                            startY = size.height - fadeHeightPx,
+                            endY = size.height,
+                        ),
                     topLeft = Offset(-horizontalOverflowPx, size.height - fadeHeightPx),
                     size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
                     blendMode = BlendMode.DstIn,
@@ -268,13 +275,20 @@ fun ItemsList(
 ) {
     if (results.isEmpty()) return
 
+    val context = LocalContext.current
+    val appSearchSettingsRepo = remember(context) {
+        (context.applicationContext as SearchApplication).container.appSearchSettingsRepo
+    }
+    val appSettings by appSearchSettingsRepo.flow.collectAsState()
+
     val listState = rememberLazyListState()
     val motionPreferences = LocalMotionPreferences.current
-    val tapFeedbackDelayMillis = if (motionPreferences.animationsEnabled) {
-        tappedResultFeedbackDelayMillis
-    } else {
-        0L
-    }
+    val tapFeedbackDelayMillis =
+        if (motionPreferences.animationsEnabled) {
+            tappedResultFeedbackDelayMillis
+        } else {
+            0L
+        }
     val primaryActionResultId = results.firstOrNull()?.id
     val primaryActionCue = remember { Animatable(0f) }
     var previousPrimaryActionResultId by remember { mutableStateOf(primaryActionResultId) }
@@ -327,16 +341,18 @@ fun ItemsList(
     val fadeModifier = Modifier.verticalEdgeFade(showTop = showTopFade, showBottom = showBottomFade)
     // LazyColumn clips on its scroll axis. Keep a tiny outer buffer so the
     // first-result cue grows into the viewport instead of into the clip edge.
-    val primaryActionContentPadding = if (animateFirstResultChanges) {
-        primaryActionViewportBreathingRoom
-    } else {
-        0.dp
-    }
-    val contentPadding = when {
-        results.size == 1 -> PaddingValues(vertical = primaryActionContentPadding)
-        reverseOrder -> PaddingValues(bottom = primaryActionContentPadding)
-        else -> PaddingValues(top = primaryActionContentPadding)
-    }
+    val primaryActionContentPadding =
+        if (animateFirstResultChanges) {
+            primaryActionViewportBreathingRoom
+        } else {
+            0.dp
+        }
+    val contentPadding =
+        when {
+            results.size == 1 -> PaddingValues(vertical = primaryActionContentPadding)
+            reverseOrder -> PaddingValues(bottom = primaryActionContentPadding)
+            else -> PaddingValues(top = primaryActionContentPadding)
+        }
 
     Box(modifier = modifier.then(fadeModifier)) {
         LazyColumn(
@@ -349,7 +365,7 @@ fun ItemsList(
             itemsIndexed(
                 items = results,
                 key = { _, item -> item.id },
-                contentType = { _, item -> item.providerId }
+                contentType = { _, item -> item.providerId },
             ) { index, item ->
                 val singleItem = results.size == 1
                 val isPrimaryActionItem = index == 0
@@ -357,127 +373,177 @@ fun ItemsList(
                 val isVisualTopItem = if (reverseOrder) index == results.lastIndex else index == 0
                 val isVisualBottomItem = if (reverseOrder) index == 0 else index == results.lastIndex
 
-                val targetTopStart = when {
-                    singleItem || isVisualTopItem -> 20.dp
-                    else -> 5.dp
-                }
-                val targetTopEnd = when {
-                    singleItem || isVisualTopItem -> 20.dp
-                    else -> 5.dp
-                }
-                val targetBottomStart = when {
-                    singleItem || isVisualBottomItem -> 20.dp
-                    else -> 5.dp
-                }
-                val targetBottomEnd = when {
-                    singleItem || isVisualBottomItem -> 20.dp
-                    else -> 5.dp
-                }
+                val targetTopStart =
+                    when {
+                        singleItem || isVisualTopItem -> 20.dp
+                        else -> 5.dp
+                    }
+                val targetTopEnd =
+                    when {
+                        singleItem || isVisualTopItem -> 20.dp
+                        else -> 5.dp
+                    }
+                val targetBottomStart =
+                    when {
+                        singleItem || isVisualBottomItem -> 20.dp
+                        else -> 5.dp
+                    }
+                val targetBottomEnd =
+                    when {
+                        singleItem || isVisualBottomItem -> 20.dp
+                        else -> 5.dp
+                    }
 
                 val interactionSource = remember { MutableInteractionSource() }
                 val itemCoroutineScope = rememberCoroutineScope()
                 var tapFeedbackActive by remember { mutableStateOf(false) }
                 val isPressed by interactionSource.collectIsPressedAsState()
                 val showTapShapeFeedback = isPressed || tapFeedbackActive
-                val primaryActionCueProgress = if (isPrimaryActionItem && item.id == primaryActionResultId) {
-                    primaryActionCue.value
-                } else {
-                    0f
-                }
-                val colorPulseProgress = if (animateFirstResultColorPulse && showPrimaryActionHighlight) {
-                    primaryActionCueProgress
-                } else {
-                    0f
-                }
+                val primaryActionCueProgress =
+                    if (isPrimaryActionItem && item.id == primaryActionResultId) {
+                        primaryActionCue.value
+                    } else {
+                        0f
+                    }
+                val colorPulseProgress =
+                    if (animateFirstResultColorPulse && showPrimaryActionHighlight) {
+                        primaryActionCueProgress
+                    } else {
+                        0f
+                    }
                 val itemScaleX = 1f + (primaryActionCueProgress * 0.008f)
                 val itemScaleY = 1f + (primaryActionCueProgress * 0.018f)
-                val itemTransformOrigin = when {
-                    singleItem -> TransformOrigin.Center
-                    isVisualBottomItem -> TransformOrigin(0.5f, 0f)
-                    isVisualTopItem -> TransformOrigin(0.5f, 1f)
-                    else -> TransformOrigin.Center
-                }
+                val itemTransformOrigin =
+                    when {
+                        singleItem -> TransformOrigin.Center
+                        isVisualBottomItem -> TransformOrigin(0.5f, 0f)
+                        isVisualTopItem -> TransformOrigin(0.5f, 1f)
+                        else -> TransformOrigin.Center
+                    }
                 val pressedShapeProgress by animateFloatAsState(
                     targetValue = if (showTapShapeFeedback) 1f else 0f,
-                    animationSpec = motionAwareTween(
-                        durationMillis = if (showTapShapeFeedback) 120 else 180,
-                    ),
+                    animationSpec =
+                        motionAwareTween(
+                            durationMillis = if (showTapShapeFeedback) 120 else 180,
+                        ),
                     label = "resultItemPressedShapeProgress",
                 )
 
                 // Edge corner ownership still snaps from the current visual slot.
                 // Only the press progress animates, so slot-derived corners never trail.
-                val shape = RoundedCornerShape(
-                    topStart = lerp(targetTopStart, maxOf(targetTopStart, pressedResultCornerRadius), pressedShapeProgress),
-                    topEnd = lerp(targetTopEnd, maxOf(targetTopEnd, pressedResultCornerRadius), pressedShapeProgress),
-                    bottomEnd = lerp(targetBottomEnd, maxOf(targetBottomEnd, pressedResultCornerRadius), pressedShapeProgress),
-                    bottomStart = lerp(targetBottomStart, maxOf(targetBottomStart, pressedResultCornerRadius), pressedShapeProgress),
-                )
-
-                val baseContainerColor = if (translucentItems) {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
-                val highlightedContainerColor = if (showPrimaryActionHighlight) {
-                    primaryActionContainerColor(
-                        highlightMode = firstResultHighlightMode,
-                        translucentItems = translucentItems,
+                val shape =
+                    RoundedCornerShape(
+                        topStart =
+                            lerp(
+                                targetTopStart,
+                                maxOf(targetTopStart, pressedResultCornerRadius),
+                                pressedShapeProgress,
+                            ),
+                        topEnd =
+                            lerp(
+                                targetTopEnd,
+                                maxOf(targetTopEnd, pressedResultCornerRadius),
+                                pressedShapeProgress,
+                            ),
+                        bottomEnd =
+                            lerp(
+                                targetBottomEnd,
+                                maxOf(targetBottomEnd, pressedResultCornerRadius),
+                                pressedShapeProgress,
+                            ),
+                        bottomStart =
+                            lerp(
+                                targetBottomStart,
+                                maxOf(targetBottomStart, pressedResultCornerRadius),
+                                pressedShapeProgress,
+                            ),
                     )
-                } else {
-                    baseContainerColor
-                }
-                val cueTargetContainerColor = if (showPrimaryActionHighlight) {
+
+                val baseContainerColor =
                     if (translucentItems) {
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f)
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
                     } else {
-                        lerp(highlightedContainerColor, MaterialTheme.colorScheme.primaryContainer, 0.35f)
+                        MaterialTheme.colorScheme.surface
                     }
-                } else {
-                    baseContainerColor
-                }
-                val containerColor = lerp(highlightedContainerColor, cueTargetContainerColor, colorPulseProgress)
-                val baseBorderColor = if (showPrimaryActionHighlight) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = if (translucentItems) 0.5f else 0.22f)
-                } else {
-                    Color.Transparent
-                }
-                val cueBorderColor = if (showPrimaryActionHighlight) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = if (translucentItems) 0.82f else 0.38f)
-                } else {
-                    Color.Transparent
-                }
+                val highlightedContainerColor =
+                    if (showPrimaryActionHighlight) {
+                        primaryActionContainerColor(
+                            highlightMode = firstResultHighlightMode,
+                            translucentItems = translucentItems,
+                        )
+                    } else {
+                        baseContainerColor
+                    }
+                val cueTargetContainerColor =
+                    if (showPrimaryActionHighlight) {
+                        if (translucentItems) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.82f)
+                        } else {
+                            lerp(
+                                highlightedContainerColor,
+                                MaterialTheme.colorScheme.primaryContainer,
+                                0.35f,
+                            )
+                        }
+                    } else {
+                        baseContainerColor
+                    }
+                val containerColor =
+                    lerp(highlightedContainerColor, cueTargetContainerColor, colorPulseProgress)
+                val baseBorderColor =
+                    if (showPrimaryActionHighlight) {
+                        MaterialTheme.colorScheme.primary.copy(
+                            alpha = if (translucentItems) 0.5f else 0.22f,
+                        )
+                    } else {
+                        Color.Transparent
+                    }
+                val cueBorderColor =
+                    if (showPrimaryActionHighlight) {
+                        MaterialTheme.colorScheme.primary.copy(
+                            alpha = if (translucentItems) 0.82f else 0.38f,
+                        )
+                    } else {
+                        Color.Transparent
+                    }
                 val borderColor = lerp(baseBorderColor, cueBorderColor, colorPulseProgress)
                 // Keep the pop from scale, but don't pulse stroke width.
                 // The inner/top edge reads as a flashing seam when the first slot flips.
                 val borderWidth = if (showPrimaryActionHighlight) firstResultBorderThickness.dp else 0.dp
-                val tonalElevation = when {
-                    translucentItems -> 0.dp
-                    showPrimaryActionHighlight -> 3.dp
-                    else -> 1.dp
-                }
-                val isDarkTheme = isSystemInDarkTheme()
-                val primaryTextColor = if (translucentItems) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
-                val subtitleColor = if (translucentItems) {
-                    val alpha = when {
-                        showPrimaryActionHighlight && isDarkTheme -> 0.9f
-                        showPrimaryActionHighlight -> 0.82f
-                        isDarkTheme -> 0.85f
-                        else -> 0.75f
+                val tonalElevation =
+                    when {
+                        translucentItems -> 0.dp
+                        showPrimaryActionHighlight -> 3.dp
+                        else -> 1.dp
                     }
-                    primaryTextColor.copy(alpha = alpha)
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                val isDarkTheme = isSystemInDarkTheme()
+                val primaryTextColor =
+                    if (translucentItems) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                val subtitleColor =
+                    if (translucentItems) {
+                        val alpha =
+                            when {
+                                showPrimaryActionHighlight && isDarkTheme -> 0.9f
+                                showPrimaryActionHighlight -> 0.82f
+                                isDarkTheme -> 0.85f
+                                else -> 0.75f
+                            }
+                        primaryTextColor.copy(alpha = alpha)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
 
                 val iconBitmap by produceState<Bitmap?>(
                     initialValue = item.icon,
-                    key1 = item.id,
-                    key2 = item.iconLoader
+                    item.id,
+                    item.iconLoader,
+                    appSettings.themedIconsEnabled,
+                    appSettings.themeAllIcons,
+                    appSettings.iconPackPackageName,
                 ) {
                     if (value != null) return@produceState
                     val loader = item.iconLoader ?: return@produceState
@@ -511,23 +577,24 @@ fun ItemsList(
                             tapFeedbackActive = false
                         }
                     }
-                    val clickModifier = if (onItemLongPress != null) {
-                        Modifier.combinedClickable(
-                            interactionSource = interactionSource,
-                            indication = rippleIndication,
-                            onClick = handleItemClick,
-                            onLongClick = {
-                                tapFeedbackActive = false
-                                onItemLongPress(item)
-                            }
-                        )
-                    } else {
-                        Modifier.clickable(
-                            interactionSource = interactionSource,
-                            indication = rippleIndication,
-                            onClick = handleItemClick,
-                        )
-                    }
+                    val clickModifier =
+                        if (onItemLongPress != null) {
+                            Modifier.combinedClickable(
+                                interactionSource = interactionSource,
+                                indication = rippleIndication,
+                                onClick = handleItemClick,
+                                onLongClick = {
+                                    tapFeedbackActive = false
+                                    onItemLongPress(item)
+                                },
+                            )
+                        } else {
+                            Modifier.clickable(
+                                interactionSource = interactionSource,
+                                indication = rippleIndication,
+                                onClick = handleItemClick,
+                            )
+                        }
 
                     Row(
                         Modifier
@@ -535,15 +602,18 @@ fun ItemsList(
                             .height(70.dp)
                             .then(clickModifier)
                             .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         when {
                             iconBitmap != null -> {
-                                val painter = remember(iconBitmap) { BitmapPainter(iconBitmap!!.asImageBitmap()) }
+                                val painter =
+                                    remember(
+                                        iconBitmap,
+                                    ) { BitmapPainter(iconBitmap!!.asImageBitmap()) }
                                 androidx.compose.foundation.Image(
                                     painter = painter,
                                     contentDescription = null,
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(28.dp),
                                 )
                                 Spacer(Modifier.width(12.dp))
                             }
@@ -552,7 +622,7 @@ fun ItemsList(
                                     imageVector = item.vectorIcon,
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
-                                    tint = primaryTextColor
+                                    tint = primaryTextColor,
                                 )
                                 Spacer(Modifier.width(12.dp))
                             }
@@ -561,7 +631,7 @@ fun ItemsList(
                                     imageVector = item.defaultVectorIcon,
                                     contentDescription = null,
                                     modifier = Modifier.size(28.dp),
-                                    tint = primaryTextColor
+                                    tint = primaryTextColor,
                                 )
                                 Spacer(Modifier.width(12.dp))
                             }
@@ -571,16 +641,17 @@ fun ItemsList(
                                 text = item.title,
                                 matchedIndices = item.matchedTitleIndices,
                                 color = primaryTextColor,
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontWeight = if (showPrimaryActionHighlight) FontWeight.SemiBold else FontWeight.Normal,
-                                ),
+                                style =
+                                    MaterialTheme.typography.bodyLarge.copy(
+                                        fontWeight = if (showPrimaryActionHighlight) FontWeight.SemiBold else FontWeight.Normal,
+                                    ),
                             )
                             item.subtitle?.let { subtitle ->
                                 HighlightedText(
                                     text = subtitle,
                                     matchedIndices = item.matchedSubtitleIndices,
                                     color = subtitleColor,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
                             }
                         }
@@ -596,7 +667,10 @@ fun ItemsList(
                                 if (item.id.startsWith("alias:")) {
                                     Icon(
                                         imageVector = Icons.Filled.Bookmark,
-                                        contentDescription = stringResource(R.string.alias_content_description),
+                                        contentDescription =
+                                            stringResource(
+                                                R.string.alias_content_description,
+                                            ),
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                                     )

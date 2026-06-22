@@ -30,36 +30,39 @@ import androidx.compose.ui.window.DialogProperties
 fun ScrimDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false
-        )
+        properties =
+            DialogProperties(
+                usePlatformDefaultWidth = false,
+            ),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = onDismiss
-                ),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onDismiss,
+                    ),
+            contentAlignment = Alignment.Center,
         ) {
             Surface(
                 shape = MaterialTheme.shapes.extraLarge,
                 tonalElevation = 12.dp,
-                modifier = modifier
-                    .fillMaxWidth(0.85f)
-                    .padding(24.dp)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        enabled = false
-                    ) {}
+                modifier =
+                    modifier
+                        .fillMaxWidth(0.85f)
+                        .padding(24.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            enabled = false,
+                        ) {},
             ) {
                 content()
             }

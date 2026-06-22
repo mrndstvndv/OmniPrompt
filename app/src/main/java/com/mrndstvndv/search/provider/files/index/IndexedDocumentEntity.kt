@@ -9,8 +9,8 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["rootId", "relativePath"], unique = true),
         Index(value = ["displayName"]),
-        Index(value = ["lastModified"])
-    ]
+        Index(value = ["lastModified"]),
+    ],
 )
 data class IndexedDocumentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -22,5 +22,5 @@ data class IndexedDocumentEntity(
     val mimeType: String?,
     val sizeBytes: Long,
     val lastModified: Long,
-    val isDirectory: Boolean
+    val isDirectory: Boolean,
 )

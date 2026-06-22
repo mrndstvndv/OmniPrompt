@@ -40,7 +40,10 @@ class SearchTrigger private constructor(
     suspend fun execute(
         matchedToken: String,
         payload: String,
-    ): List<ProviderResult> = executeLogic(TriggerInvocation(matchedToken = matchedToken, payload = payload))
+    ): List<ProviderResult> =
+        executeLogic(
+            TriggerInvocation(matchedToken = matchedToken, payload = payload),
+        )
 
     companion object {
         fun create(
@@ -73,9 +76,10 @@ class SearchTrigger private constructor(
             if (firstToken.isBlank()) return null
 
             val labelMatch = FuzzyMatcher.match(firstToken, trigger.label)
-            val aliasMatch = trigger.aliases
-                .mapNotNull { alias -> FuzzyMatcher.match(firstToken, alias) }
-                .maxByOrNull { it.score }
+            val aliasMatch =
+                trigger.aliases
+                    .mapNotNull { alias -> FuzzyMatcher.match(firstToken, alias) }
+                    .maxByOrNull { it.score }
 
             val best = listOfNotNull(labelMatch, aliasMatch).maxByOrNull { it.score } ?: return null
             val matchedIndices = if (best === labelMatch) best.matchedIndices else emptyList()

@@ -91,7 +91,14 @@ fun ProviderRankingSection(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                         Text(
-                            text = if (useFrequencyRanking) stringResource(R.string.ranking_frequency_desc_on) else stringResource(R.string.ranking_frequency_desc_off),
+                            text =
+                                if (useFrequencyRanking) {
+                                    stringResource(
+                                        R.string.ranking_frequency_desc_on,
+                                    )
+                                } else {
+                                    stringResource(R.string.ranking_frequency_desc_off)
+                                },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -106,7 +113,14 @@ fun ProviderRankingSection(
                     SettingsDivider()
                     SettingsSwitch(
                         title = stringResource(R.string.ranking_use_query_specific),
-                        subtitle = if (queryBasedRankingEnabled) stringResource(R.string.ranking_query_based) else stringResource(R.string.ranking_global),
+                        subtitle =
+                            if (queryBasedRankingEnabled) {
+                                stringResource(
+                                    R.string.ranking_query_based,
+                                )
+                            } else {
+                                stringResource(R.string.ranking_global)
+                            },
                         checked = queryBasedRankingEnabled,
                         onCheckedChange = { rankingRepository.setQueryBasedRankingEnabled(it) },
                     )
@@ -134,10 +148,14 @@ fun ProviderRankingSection(
                         isFirst = index == 0,
                         isLast = index == visibleProviderOrder.size - 1,
                         onMoveUp = {
-                            rankingRepository.moveUp(providerId) { id -> enabledProviders[id] != false }
+                            rankingRepository.moveUp(
+                                providerId,
+                            ) { id -> enabledProviders[id] != false }
                         },
                         onMoveDown = {
-                            rankingRepository.moveDown(providerId) { id -> enabledProviders[id] != false }
+                            rankingRepository.moveDown(
+                                providerId,
+                            ) { id -> enabledProviders[id] != false }
                         },
                     )
                     if (index < visibleProviderOrder.size - 1) {
@@ -175,7 +193,10 @@ private fun FrequencyRankingDialog(
                     if (queryMatches) {
                         sortedResults
                     } else {
-                        sortedResults.filter { (resultId, _) -> resultId.contains(normalizedSearch, ignoreCase = true) }
+                        sortedResults.filter {
+                                (resultId, _) ->
+                            resultId.contains(normalizedSearch, ignoreCase = true)
+                        }
                     }
 
                 if (!queryMatches && visibleResults.isEmpty()) return@mapNotNull null
@@ -231,7 +252,17 @@ private fun FrequencyRankingDialog(
                             filteredGroups.forEach { (query, sortedResults) ->
                                 item(key = query) {
                                     Text(
-                                        text = if (query.isEmpty()) stringResource(R.string.ranking_general_no_query) else stringResource(R.string.ranking_query_label, query),
+                                        text =
+                                            if (query.isEmpty()) {
+                                                stringResource(
+                                                    R.string.ranking_general_no_query,
+                                                )
+                                            } else {
+                                                stringResource(
+                                                    R.string.ranking_query_label,
+                                                    query,
+                                                )
+                                            },
                                         style = MaterialTheme.typography.labelLarge,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
@@ -240,14 +271,17 @@ private fun FrequencyRankingDialog(
 
                                 itemsIndexed(
                                     items = sortedResults,
-                                    key = { _, item -> "${query}:${item.first}" },
-                                    contentType = { _, _ -> "frequency_item" }
+                                    key = { _, item -> "$query:${item.first}" },
+                                    contentType = { _, _ -> "frequency_item" },
                                 ) { index, (resultId, score) ->
                                     FrequencyItem(resultId = resultId, score = score)
                                     if (index < sortedResults.lastIndex) {
                                         HorizontalDivider(
                                             modifier = Modifier.padding(start = 16.dp),
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                            color =
+                                                MaterialTheme.colorScheme.outlineVariant.copy(
+                                                    alpha = 0.5f,
+                                                ),
                                         )
                                     }
                                 }
@@ -363,7 +397,10 @@ private fun ProviderRankingItem(
     }
 }
 
-private fun getProviderDisplayName(context: android.content.Context, providerId: String): String =
+private fun getProviderDisplayName(
+    context: android.content.Context,
+    providerId: String,
+): String =
     when (providerId) {
         "app-list" -> context.getString(R.string.provider_applications)
         "calculator" -> context.getString(R.string.provider_calculator)

@@ -7,14 +7,13 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
 interface Provider {
-
     /** Unique provider identifier (e.g., "app-list"). */
     val id: String
 
     /** Human readable name shown in settings or logs. */
     val displayName: String
 
-    /** 
+    /**
      * Optional flow that emits when results should be refreshed.
      * Providers can emit to this flow to signal that the UI should re-query.
      */

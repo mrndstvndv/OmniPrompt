@@ -1,0 +1,20 @@
+root = true
+
+[*.{kt,kts}]
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+max_line_length = off
+
+# Disable rules that crash or cause infinite formatting loops in nested layouts/Compose code
+ktlint_standard_argument-list-wrapping = disabled
+
+# Allow Composable functions (annotated with @Composable) to start with an uppercase letter
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+# Disable other overly restrictive stylistic rules
+ktlint_standard_property-naming = disabled
+ktlint_standard_discouraged-comment-location = disabled
+ktlint_standard_if-else-wrapping = disabled
+ktlint_standard_filename = disabled
+ktlint_standard_no-wildcard-imports = disabled

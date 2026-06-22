@@ -1,6 +1,7 @@
 package com.mrndstvndv.search.alias
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,11 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
-import androidx.core.content.edit
 
 /**
  * Repository for alias settings.
- * 
+ *
  * @param context Application context
  * @param scope CoroutineScope for async initialization. Pass null for synchronous initialization
  *              (useful for Workers that are already on IO thread).
@@ -24,7 +24,7 @@ class AliasRepository(context: Context, scope: CoroutineScope? = null) {
     }
 
     private val preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    
+
     // Initialize with empty list; actual values loaded async in init block
     private val _aliases = MutableStateFlow(emptyList<AliasEntry>())
     val aliases: StateFlow<List<AliasEntry>> = _aliases
@@ -43,10 +43,13 @@ class AliasRepository(context: Context, scope: CoroutineScope? = null) {
     enum class SaveResult {
         SUCCESS,
         DUPLICATE,
-        INVALID_ALIAS
+        INVALID_ALIAS,
     }
 
-    fun addAlias(alias: String, target: AliasTarget): SaveResult {
+    fun addAlias(
+        alias: String,
+        target: AliasTarget,
+    ): SaveResult {
         val normalized = alias.trim().lowercase()
         if (normalized.isBlank()) return SaveResult.INVALID_ALIAS
         if (_aliases.value.any { it.alias == normalized }) return SaveResult.DUPLICATE

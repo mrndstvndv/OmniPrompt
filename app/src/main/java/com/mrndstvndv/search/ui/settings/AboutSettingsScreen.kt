@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Code
@@ -47,14 +48,14 @@ fun AboutSettingsScreen(
     val context = LocalContext.current
     val repositoryLabel = repositoryUrl.removePrefix("https://").removePrefix("http://")
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     LazyColumn(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 28.dp),
+                .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 28.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp),
     ) {
         item {

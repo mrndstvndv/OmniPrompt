@@ -73,17 +73,22 @@ class TermuxProvider(
             createTriggerResult(
                 invocation = invocation,
                 id = "$id:${command.id}",
-                title = if (invocation.payload.isBlank()) {
-                    command.displayName
-                } else {
-                    activity.getString(R.string.termux_result_title_with_args, command.displayName, invocation.payload)
-                },
+                title =
+                    if (invocation.payload.isBlank()) {
+                        command.displayName
+                    } else {
+                        activity.getString(
+                            R.string.termux_result_title_with_args,
+                            command.displayName,
+                            invocation.payload,
+                        )
+                    },
                 subtitle = preview,
                 vectorIcon = Icons.Outlined.Terminal,
                 providerId = id,
                 triggerId = command.id,
                 onSelect = { executeTermuxCommand(command, queryArgs, invocation.payload) },
-            )
+            ),
         )
     }
 
@@ -173,7 +178,16 @@ class TermuxProvider(
             val preview = buildCommandPreview(command.executablePath, resolvedArgs)
             ProviderResult(
                 id = "$id:${command.id}",
-                title = if (argsText.isBlank()) command.displayName else activity.getString(R.string.termux_result_title_with_args, command.displayName, argsText),
+                title =
+                    if (argsText.isBlank()) {
+                        command.displayName
+                    } else {
+                        activity.getString(
+                            R.string.termux_result_title_with_args,
+                            command.displayName,
+                            argsText,
+                        )
+                    },
                 subtitle = preview,
                 vectorIcon = Icons.Outlined.Terminal,
                 providerId = id,
@@ -181,11 +195,12 @@ class TermuxProvider(
                 keepOverlayUntilExit = true,
                 matchedTitleIndices = matchedTitleIndices,
                 matchedSubtitleIndices = matchedSubtitleIndices,
-                frequencyQuery = if (command.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
-                    dynamicTriggerFrequencyQuery(commandPart)
-                } else {
-                    commandPart
-                },
+                frequencyQuery =
+                    if (command.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
+                        dynamicTriggerFrequencyQuery(commandPart)
+                    } else {
+                        commandPart
+                    },
             )
         }
     }
@@ -227,14 +242,15 @@ class TermuxProvider(
 
         // Replace $1, $2, etc. with corresponding query arguments
         val placeholderPattern = Regex("\\$([0-9]+)")
-        result = placeholderPattern.replace(result) { matchResult ->
-            val index = matchResult.groupValues[1].toIntOrNull()
-            if (index != null && index > 0) {
-                queryArgs.getOrNull(index - 1) ?: matchResult.value
-            } else {
-                matchResult.value
+        result =
+            placeholderPattern.replace(result) { matchResult ->
+                val index = matchResult.groupValues[1].toIntOrNull()
+                if (index != null && index > 0) {
+                    queryArgs.getOrNull(index - 1) ?: matchResult.value
+                } else {
+                    matchResult.value
+                }
             }
-        }
 
         return result
     }
@@ -242,9 +258,16 @@ class TermuxProvider(
     /**
      * Builds a command preview string showing the executable and resolved arguments.
      */
-    private fun buildCommandPreview(executablePath: String, resolvedArgs: List<String>): String {
+    private fun buildCommandPreview(
+        executablePath: String,
+        resolvedArgs: List<String>,
+    ): String {
         if (resolvedArgs.isEmpty()) return executablePath
-        return activity.getString(R.string.termux_command_preview, executablePath, resolvedArgs.joinToString(" "))
+        return activity.getString(
+            R.string.termux_command_preview,
+            executablePath,
+            resolvedArgs.joinToString(" "),
+        )
     }
 
     private suspend fun executeTermuxCommand(
@@ -265,39 +288,50 @@ class TermuxProvider(
             }
 
             val resolvedArgs = resolveArguments(command.arguments, queryArgs, argsText)
-            
+
             // 2. Create a valid PendingIntent for results (mandatory for Android 12+ background start)
             val resultIntent = Intent("com.mrndstvndv.search.TERMUX_RESULT")
             resultIntent.setPackage(activity.packageName)
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
-            } else {
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT
-            }
-            val pendingIntent = android.app.PendingIntent.getBroadcast(activity, 0, resultIntent, flags)
+            val flags =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+                } else {
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                }
+            val pendingIntent =
+                android.app.PendingIntent.getBroadcast(
+                    activity,
+                    0,
+                    resultIntent,
+                    flags,
+                )
 
             // 3. Prepare the base intent
-            val intent = Intent(ACTION_RUN_COMMAND).apply {
-                setPackage(TERMUX_PACKAGE)
-                putExtra(EXTRA_COMMAND_PATH, command.executablePath)
-                if (resolvedArgs.isNotEmpty()) {
-                    putExtra(EXTRA_COMMAND_ARGUMENTS, resolvedArgs.toTypedArray())
+            val intent =
+                Intent(ACTION_RUN_COMMAND).apply {
+                    setPackage(TERMUX_PACKAGE)
+                    putExtra(EXTRA_COMMAND_PATH, command.executablePath)
+                    if (resolvedArgs.isNotEmpty()) {
+                        putExtra(EXTRA_COMMAND_ARGUMENTS, resolvedArgs.toTypedArray())
+                    }
+                    command.workingDir?.let { workDir ->
+                        putExtra(EXTRA_COMMAND_WORKDIR, workDir)
+                    }
+                    putExtra(EXTRA_COMMAND_BACKGROUND, command.runInBackground)
+                    // sessionAction must be String: "0", "1", "2", "3"
+                    putExtra(EXTRA_COMMAND_SESSION_ACTION, command.sessionAction.toString())
+                    command.shellName?.let { putExtra(EXTRA_COMMAND_SHELL_NAME, it) }
+                    command.shellCreateMode?.let { putExtra(EXTRA_COMMAND_SHELL_CREATE_MODE, it) }
+                    putExtra(EXTRA_COMMAND_PENDING_INTENT, pendingIntent)
                 }
-                command.workingDir?.let { workDir ->
-                    putExtra(EXTRA_COMMAND_WORKDIR, workDir)
-                }
-                putExtra(EXTRA_COMMAND_BACKGROUND, command.runInBackground)
-                // sessionAction must be String: "0", "1", "2", "3"
-                putExtra(EXTRA_COMMAND_SESSION_ACTION, command.sessionAction.toString())
-                command.shellName?.let { putExtra(EXTRA_COMMAND_SHELL_NAME, it) }
-                command.shellCreateMode?.let { putExtra(EXTRA_COMMAND_SHELL_CREATE_MODE, it) }
-                putExtra(EXTRA_COMMAND_PENDING_INTENT, pendingIntent)
-            }
 
             try {
                 // 4. Deliver the command.
-                val serviceIntent = Intent(intent).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE)
-                
+                val serviceIntent =
+                    Intent(
+                        intent,
+                    ).setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE)
+
                 // Android 14+ requires explicit ActivityOptions when granting a PendingIntent
                 // permission to start activities from the background.
                 val options = android.app.ActivityOptions.makeBasic()
@@ -315,14 +349,23 @@ class TermuxProvider(
                 try {
                     // Use PendingIntent to reliably deliver the intent from a "closing" activity.
                     // We use getForegroundService because RunCommandService calls startForeground().
-                    val pi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        android.app.PendingIntent.getForegroundService(activity, 0, serviceIntent, 
-                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
-                    } else {
-                        android.app.PendingIntent.getService(activity, 0, serviceIntent, 
-                            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
-                    }
-                    
+                    val pi =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            android.app.PendingIntent.getForegroundService(
+                                activity,
+                                0,
+                                serviceIntent,
+                                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+                            )
+                        } else {
+                            android.app.PendingIntent.getService(
+                                activity,
+                                0,
+                                serviceIntent,
+                                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+                            )
+                        }
+
                     pi.send(activity, 0, null, null, null, null, options.toBundle())
                 } catch (e: Exception) {
                     // Direct start as fallback
@@ -334,7 +377,11 @@ class TermuxProvider(
                 }
             } catch (e: Exception) {
                 val message = e.message ?: activity.getString(R.string.unknown_error)
-                Toast.makeText(activity, activity.getString(R.string.toast_command_failed, message), Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    activity,
+                    activity.getString(R.string.toast_command_failed, message),
+                    Toast.LENGTH_LONG,
+                ).show()
             }
 
             // 6. CRITICAL: Stay in foreground long enough for delivery to complete.

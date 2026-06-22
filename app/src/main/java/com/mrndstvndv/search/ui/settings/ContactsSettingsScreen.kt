@@ -1,32 +1,29 @@
 package com.mrndstvndv.search.ui.settings
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -44,7 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
-import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
@@ -87,14 +83,14 @@ fun ContactsSettingsScreen(
             }
         }
 
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+
     LazyColumn(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(start = 20.dp, top = systemBarsPadding.calculateTopPadding(), end = 20.dp, bottom = systemBarsPadding.calculateBottomPadding() + 24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
@@ -116,7 +112,10 @@ fun ContactsSettingsScreen(
             item {
                 ContactsSettingsCard(
                     includePhoneNumbers = contactsSettings.includePhoneNumbers,
-                    onIncludePhoneNumbersChange = { enabled -> repository.update { it.copy(includePhoneNumbers = enabled) } },
+                    onIncludePhoneNumbersChange = {
+                            enabled ->
+                        repository.update { it.copy(includePhoneNumbers = enabled) }
+                    },
                     showSimNumbers = contactsSettings.showSimNumbers,
                     hasPhoneStatePermission = hasPhoneStatePermission,
                     onShowSimNumbersChange = { enabled ->
@@ -179,7 +178,14 @@ private fun PermissionStatusCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (hasContactsPermission) stringResource(R.string.permission_granted) else stringResource(R.string.permission_required),
+                        text =
+                            if (hasContactsPermission) {
+                                stringResource(
+                                    R.string.permission_granted,
+                                )
+                            } else {
+                                stringResource(R.string.permission_required)
+                            },
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
