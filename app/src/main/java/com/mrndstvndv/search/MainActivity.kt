@@ -314,6 +314,7 @@ class MainActivity : ComponentActivity() {
             val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
+            val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
             val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
@@ -341,21 +342,21 @@ class MainActivity : ComponentActivity() {
             val animatedOpacity by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundOpacity else 0f,
                 durationMillis = 300,
-                delayMillis = 200,
+                delayMillis = backgroundAnimationDelayMs,
                 label = "backgroundOpacity",
             )
 
             val animatedBlurStrength by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundBlurStrength else 0f,
                 durationMillis = 300,
-                delayMillis = 200,
+                delayMillis = backgroundAnimationDelayMs,
                 label = "backgroundBlurStrength",
             )
 
             val animatedFraction by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) 1f else 0f,
                 durationMillis = 300,
-                delayMillis = 200,
+                delayMillis = backgroundAnimationDelayMs,
                 label = "backgroundFraction",
             )
 
