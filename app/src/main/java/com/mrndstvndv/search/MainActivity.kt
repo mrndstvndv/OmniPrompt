@@ -63,6 +63,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -340,15 +342,22 @@ class MainActivity : ComponentActivity() {
             val animatedOpacity by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundOpacity else 0f,
                 durationMillis = 300,
-                delayMillis = 100,
+                delayMillis = 200,
                 label = "backgroundOpacity",
             )
 
             val animatedBlurStrength by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundBlurStrength else 0f,
                 durationMillis = 300,
-                delayMillis = 100,
+                delayMillis = 200,
                 label = "backgroundBlurStrength",
+            )
+
+            val animatedScale by rememberMotionAwareFloat(
+                targetValue = if (isLaunched) 1f else 0f,
+                durationMillis = 300,
+                delayMillis = 200,
+                label = "backgroundScale",
             )
 
             LaunchedEffect(animatedBlurStrength) {
@@ -1067,20 +1076,34 @@ class MainActivity : ComponentActivity() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(backgroundColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) {
                             finish()
-                        }.padding(top = 50.dp),
+                        },
                 ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = animatedScale
+                                scaleY = animatedScale
+                                transformOrigin = TransformOrigin.Center
+                            }
+                            .background(backgroundColor)
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(top = 50.dp)
                     ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                        ) {
                         if (searchBarPosition == SearchBarPosition.TOP) {
                             Spacer(Modifier.weight(spacerWeight))
                         } else if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
@@ -1422,6 +1445,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
 
                 aliasDialogCandidate?.let { candidate ->
                     AliasCreationDialog(
