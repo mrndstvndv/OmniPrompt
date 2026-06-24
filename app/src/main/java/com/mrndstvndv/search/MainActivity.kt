@@ -61,10 +61,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -353,11 +352,11 @@ class MainActivity : ComponentActivity() {
                 label = "backgroundBlurStrength",
             )
 
-            val animatedScale by rememberMotionAwareFloat(
+            val animatedFraction by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) 1f else 0f,
                 durationMillis = 300,
                 delayMillis = 200,
-                label = "backgroundScale",
+                label = "backgroundFraction",
             )
 
             LaunchedEffect(animatedBlurStrength) {
@@ -1086,12 +1085,17 @@ class MainActivity : ComponentActivity() {
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = animatedScale
-                                scaleY = animatedScale
-                                transformOrigin = TransformOrigin.Center
+                            .drawBehind {
+                                val center = this.center
+                                val maxRadius = kotlin.math.hypot(size.width, size.height) / 2f
+                                val currentRadius = maxRadius * animatedFraction
+                                val color = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
+                                drawCircle(
+                                    color = color,
+                                    radius = currentRadius,
+                                    center = center,
+                                )
                             }
-                            .background(backgroundColor)
                     )
                     Box(
                         Modifier
