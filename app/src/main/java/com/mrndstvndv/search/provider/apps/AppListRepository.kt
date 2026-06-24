@@ -2,7 +2,6 @@ package com.mrndstvndv.search.provider.apps
 
 import android.content.ComponentCallbacks
 import android.content.Context
-import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.res.Configuration
 import android.graphics.Bitmap
