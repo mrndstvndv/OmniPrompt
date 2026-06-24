@@ -106,7 +106,7 @@ fun HighlightedText(
             modifier = modifier,
         )
     } else {
-        val matchedSet = matchedIndices.toSet()
+        val matchedSet = remember(matchedIndices) { matchedIndices.toSet() }
         Text(
             text =
                 buildAnnotatedString {
@@ -550,6 +550,38 @@ fun ItemsList(
                     value = loader()
                 }
 
+                val rippleIndication = LocalIndication.current
+                val handleItemClick = click@{
+                    if (tapFeedbackActive) return@click
+
+                    itemCoroutineScope.launch {
+                        tapFeedbackActive = true
+                        if (tapFeedbackDelayMillis > 0L) {
+                            delay(tapFeedbackDelayMillis)
+                        }
+                        onItemClick(item)
+                        tapFeedbackActive = false
+                    }
+                }
+                val clickModifier =
+                    if (onItemLongPress != null) {
+                        Modifier.combinedClickable(
+                            interactionSource = interactionSource,
+                            indication = rippleIndication,
+                            onClick = handleItemClick,
+                            onLongClick = {
+                                tapFeedbackActive = false
+                                onItemLongPress(item)
+                            },
+                        )
+                    } else {
+                        Modifier.clickable(
+                            interactionSource = interactionSource,
+                            indication = rippleIndication,
+                            onClick = handleItemClick,
+                        )
+                    }
+
                 Surface(
                     modifier =
                         Modifier
@@ -558,49 +590,17 @@ fun ItemsList(
                                 transformOrigin = itemTransformOrigin
                                 scaleX = itemScaleX
                                 scaleY = itemScaleY
-                            },
+                            }
+                            .then(clickModifier),
                     shape = shape,
                     tonalElevation = tonalElevation,
                     color = containerColor,
                     border = BorderStroke(borderWidth, borderColor),
                 ) {
-                    val rippleIndication = LocalIndication.current
-                    val handleItemClick = click@{
-                        if (tapFeedbackActive) return@click
-
-                        itemCoroutineScope.launch {
-                            tapFeedbackActive = true
-                            if (tapFeedbackDelayMillis > 0L) {
-                                delay(tapFeedbackDelayMillis)
-                            }
-                            onItemClick(item)
-                            tapFeedbackActive = false
-                        }
-                    }
-                    val clickModifier =
-                        if (onItemLongPress != null) {
-                            Modifier.combinedClickable(
-                                interactionSource = interactionSource,
-                                indication = rippleIndication,
-                                onClick = handleItemClick,
-                                onLongClick = {
-                                    tapFeedbackActive = false
-                                    onItemLongPress(item)
-                                },
-                            )
-                        } else {
-                            Modifier.clickable(
-                                interactionSource = interactionSource,
-                                indication = rippleIndication,
-                                onClick = handleItemClick,
-                            )
-                        }
-
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .height(70.dp)
-                            .then(clickModifier)
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

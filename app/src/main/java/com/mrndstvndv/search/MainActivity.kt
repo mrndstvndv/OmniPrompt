@@ -928,13 +928,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                     Card(
+                        onClick = onDownload,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .clickable(
-                                    onClick = onDownload,
-                                ),
+                                .padding(bottom = 8.dp),
                         colors =
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
