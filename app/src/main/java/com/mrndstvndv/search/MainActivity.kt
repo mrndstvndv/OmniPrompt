@@ -125,6 +125,7 @@ import com.mrndstvndv.search.ui.components.findTriggerMatch
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
+import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.GitHubUpdateChecker
 import com.mrndstvndv.search.util.loadAppIconBitmap
@@ -331,8 +332,27 @@ class MainActivity : ComponentActivity() {
             val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
-            LaunchedEffect(backgroundBlurStrength) {
-                applyWindowBlur(backgroundBlurStrength)
+            var isLaunched by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                isLaunched = true
+            }
+
+            val animatedOpacity by rememberMotionAwareFloat(
+                targetValue = if (isLaunched) backgroundOpacity else 0f,
+                durationMillis = 300,
+                delayMillis = 100,
+                label = "backgroundOpacity",
+            )
+
+            val animatedBlurStrength by rememberMotionAwareFloat(
+                targetValue = if (isLaunched) backgroundBlurStrength else 0f,
+                durationMillis = 300,
+                delayMillis = 100,
+                label = "backgroundBlurStrength",
+            )
+
+            LaunchedEffect(animatedBlurStrength) {
+                applyWindowBlur(animatedBlurStrength)
             }
 
             val fileSearchRepository = remember(this@MainActivity) { FileSearchRepository.getInstance(this@MainActivity) }
@@ -1043,7 +1063,7 @@ class MainActivity : ComponentActivity() {
                         stop = MaterialTheme.colorScheme.primaryContainer,
                         fraction = 0.65f,
                     )
-                val backgroundColor = tintedPrimaryBackground.copy(alpha = backgroundOpacity.coerceIn(0f, 1f))
+                val backgroundColor = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
                 Box(
                     Modifier
                         .fillMaxSize()
