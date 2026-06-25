@@ -17,6 +17,7 @@ import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ class IntentProvider(
     private val activity: ComponentActivity,
     private val globalSettingsRepository: ProviderSettingsRepository,
     private val settingsRepository: SettingsRepository<IntentSettings>,
+    private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "intent"
     override val displayName: String = activity.getString(R.string.provider_intent_launcher)
@@ -269,13 +271,7 @@ class IntentProvider(
                             }
                         }
                         config.packageName.isNotEmpty() -> {
-                            com.mrndstvndv.search.util.loadAppIconBitmap(
-                                activity.packageManager,
-                                config.packageName,
-                                activity.resources.getDimensionPixelSize(
-                                    android.R.dimen.app_icon_size,
-                                ),
-                            )
+                            appListRepository.getIcon(config.packageName)
                         }
                         else -> null
                     }

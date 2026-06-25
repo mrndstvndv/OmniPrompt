@@ -286,22 +286,23 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
+            val container = remember(this@MainActivity) { (application as SearchApplication).container }
             val textState = rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
             val focusRequester = remember { FocusRequester() }
             val coroutineScope = rememberCoroutineScope()
-            val settingsRepository = remember(this@MainActivity) { ProviderSettingsRepository(this@MainActivity, coroutineScope) }
-            val aliasRepository = remember(this@MainActivity) { AliasRepository(this@MainActivity, coroutineScope) }
+            val settingsRepository = container.settingsRepository
+            val aliasRepository = container.aliasRepository
             val aliasEntries by aliasRepository.aliases.collectAsState()
 
             // Create new provider-specific settings repositories (auto-register for backup)
-            val webSearchSettingsRepo = remember(this@MainActivity) { createWebSearchSettingsRepository(this@MainActivity) }
-            val appSearchSettingsRepo = remember(this@MainActivity) { createAppSearchSettingsRepository(this@MainActivity) }
-            val textUtilitiesSettingsRepo = remember(this@MainActivity) { createTextUtilitiesSettingsRepository(this@MainActivity) }
-            val fileSearchSettingsRepo = remember(this@MainActivity) { createFileSearchSettingsRepository(this@MainActivity) }
-            val systemSettingsSettingsRepo = remember(this@MainActivity) { createSystemSettingsSettingsRepository(this@MainActivity) }
-            val contactsSettingsRepo = remember(this@MainActivity) { createContactsSettingsRepository(this@MainActivity) }
-            val termuxSettingsRepo = remember(this@MainActivity) { createTermuxSettingsRepository(this@MainActivity) }
-            val intentSettingsRepo = remember(this@MainActivity) { createIntentSettingsRepository(this@MainActivity) }
+            val webSearchSettingsRepo = container.webSearchSettingsRepo
+            val appSearchSettingsRepo = container.appSearchSettingsRepo
+            val textUtilitiesSettingsRepo = container.textUtilitiesSettingsRepo
+            val fileSearchSettingsRepo = container.fileSearchSettingsRepo
+            val systemSettingsSettingsRepo = container.systemSettingsSettingsRepo
+            val contactsSettingsRepo = container.contactsSettingsRepo
+            val termuxSettingsRepo = container.termuxSettingsRepo
+            val intentSettingsRepo = container.intentSettingsRepo
 
             // Collect settings from new repositories
             val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
@@ -364,20 +365,14 @@ class MainActivity : ComponentActivity() {
                 applyWindowBlur(animatedBlurStrength)
             }
 
-            val fileSearchRepository = remember(this@MainActivity) { FileSearchRepository.getInstance(this@MainActivity) }
-            val fileThumbnailRepository = remember(this@MainActivity) { FileThumbnailRepository.getInstance(this@MainActivity) }
-            val contactsRepository = remember(this@MainActivity) { ContactsRepository.getInstance(this@MainActivity) }
-            val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
-            val appListRepository = remember(this@MainActivity) { AppListRepository.getInstance(this@MainActivity, defaultAppIconSize) }
-            val recentAppsRepository =
-                remember(this@MainActivity, appListRepository) {
-                    RecentAppsRepository(this@MainActivity, appListRepository)
-                }
-            val pinnedAppsRepository =
-                remember(this@MainActivity, appSearchSettingsRepo, appListRepository) {
-                    PinnedAppsRepository(this@MainActivity, appSearchSettingsRepo, appListRepository)
-                }
-            val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
+            val fileSearchRepository = container.fileSearchRepository
+            val fileThumbnailRepository = container.fileThumbnailRepository
+            val contactsRepository = container.contactsRepository
+            val rankingRepository = container.rankingRepository
+            val appListRepository = container.appListRepository
+            val recentAppsRepository = container.recentAppsRepository
+            val pinnedAppsRepository = container.pinnedAppsRepository
+            val developerSettingsManager = container.developerSettingsManager
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
@@ -392,7 +387,7 @@ class MainActivity : ComponentActivity() {
                         add(ContactsProvider(this@MainActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
                         add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
                         add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
-                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo))
+                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo, appListRepository))
                     }
                 }
 
