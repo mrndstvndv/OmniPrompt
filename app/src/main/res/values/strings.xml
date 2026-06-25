@@ -124,6 +124,8 @@
     <string name="app_search_include_package_name_subtitle">Search apps by their package name (e.g. com.android.settings).</string>
     <string name="app_search_ai_queries">AI Assistant queries</string>
     <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using &quot;ask gemini &lt;query&gt;&quot;.</string>
+    <string name="app_search_include_work_apps">Include work profile apps</string>
+    <string name="app_search_include_work_apps_subtitle">Show and search applications installed in the managed work profile.</string>
 
     <!-- Icon theme settings -->
     <string name="settings_icon_theme_section_title">Icon Theme</string>
