@@ -1105,6 +1105,7 @@ data class AppSearchSettings(
     val themedIconsEnabled: Boolean = false,
     val themeAllIcons: Boolean = false,
     val iconPackPackageName: String = "",
+    val includeWorkApps: Boolean = true,
 ) : ProviderSettings {
     override val providerId: String = PROVIDER_ID
 
@@ -1127,6 +1128,7 @@ data class AppSearchSettings(
                 themedIconsEnabled = false,
                 themeAllIcons = false,
                 iconPackPackageName = "",
+                includeWorkApps = true,
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
@@ -1165,6 +1167,7 @@ data class AppSearchSettings(
                 themedIconsEnabled = json.optBoolean("themedIconsEnabled", false),
                 themeAllIcons = json.optBoolean("themeAllIcons", false),
                 iconPackPackageName = json.optString("iconPackPackageName", ""),
+                includeWorkApps = json.optBoolean("includeWorkApps", true),
             )
         }
     }
@@ -1185,6 +1188,7 @@ data class AppSearchSettings(
             put("themedIconsEnabled", themedIconsEnabled)
             put("themeAllIcons", themeAllIcons)
             put("iconPackPackageName", iconPackPackageName)
+            put("includeWorkApps", includeWorkApps)
         }
 
     fun toJsonString(): String = toJson().toString()
