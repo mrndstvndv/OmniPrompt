@@ -115,6 +115,8 @@
     <string name="behavior_enable_animations_subtitle">Turn off to remove most in-app transitions.</string>
     <string name="behavior_activity_indicator_delay">Activity indicator delay</string>
     <string name="behavior_activity_indicator_delay_subtitle">Wait time before showing the loading spinner.</string>
+    <string name="behavior_background_animation_delay">Background animation delay</string>
+    <string name="behavior_background_animation_delay_subtitle">Wait time before starting the background reveal animation.</string>
 
     <!-- App search settings -->
     <string name="app_search_header_subtitle">Configure app search.</string>
@@ -122,6 +124,8 @@
     <string name="app_search_include_package_name_subtitle">Search apps by their package name (e.g. com.android.settings).</string>
     <string name="app_search_ai_queries">AI Assistant queries</string>
     <string name="app_search_ai_queries_subtitle">Send queries directly to AI apps like Gemini using &quot;ask gemini &lt;query&gt;&quot;.</string>
+    <string name="app_search_include_work_apps">Include work profile apps</string>
+    <string name="app_search_include_work_apps_subtitle">Show and search applications installed in the managed work profile.</string>
 
     <!-- Icon theme settings -->
     <string name="settings_icon_theme_section_title">Icon Theme</string>

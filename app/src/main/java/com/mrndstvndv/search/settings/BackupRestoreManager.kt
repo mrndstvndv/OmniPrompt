@@ -60,6 +60,7 @@ class BackupRestoreManager(
         // Behavior Keys
         private const val KEY_ANIMATIONS_ENABLED = "animationsEnabled"
         private const val KEY_ACTIVITY_INDICATOR_DELAY_MS = "activityIndicatorDelayMs"
+        private const val KEY_BACKGROUND_ANIMATION_DELAY_MS = "backgroundAnimationDelayMs"
 
         // Ranking Keys
         private const val KEY_PROVIDER_ORDER = "providerOrder"
@@ -188,6 +189,10 @@ class BackupRestoreManager(
             behavior.put(
                 KEY_ACTIVITY_INDICATOR_DELAY_MS,
                 settingsRepository.activityIndicatorDelayMs.value,
+            )
+            behavior.put(
+                KEY_BACKGROUND_ANIMATION_DELAY_MS,
+                settingsRepository.backgroundAnimationDelayMs.value,
             )
             providerSettings.put(KEY_BEHAVIOR, behavior)
 
@@ -461,6 +466,9 @@ class BackupRestoreManager(
                         )
                         settingsRepository.setActivityIndicatorDelayMs(
                             behaviorJson.optInt(KEY_ACTIVITY_INDICATOR_DELAY_MS, 250),
+                        )
+                        settingsRepository.setBackgroundAnimationDelayMs(
+                            behaviorJson.optInt(KEY_BACKGROUND_ANIMATION_DELAY_MS, 200),
                         )
                         settingsRestored++
                     } catch (e: Exception) {

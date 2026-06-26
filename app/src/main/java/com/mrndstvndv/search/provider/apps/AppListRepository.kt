@@ -2,7 +2,6 @@ package com.mrndstvndv.search.provider.apps
 
 import android.content.ComponentCallbacks
 import android.content.Context
-import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -90,12 +89,16 @@ class AppListRepository private constructor(
             settingsRepository.flow.collectLatest { settings ->
                 val prev = currentSettings
                 currentSettings = settings
-                if (prev != null &&
-                    (prev.themedIconsEnabled != settings.themedIconsEnabled ||
-                     prev.themeAllIcons != settings.themeAllIcons ||
-                     prev.iconPackPackageName != settings.iconPackPackageName)
-                ) {
-                    iconCache.clear()
+                if (prev != null) {
+                    if (prev.themedIconsEnabled != settings.themedIconsEnabled ||
+                        prev.themeAllIcons != settings.themeAllIcons ||
+                        prev.iconPackPackageName != settings.iconPackPackageName
+                    ) {
+                        iconCache.clear()
+                    }
+                    if (prev.includeWorkApps != settings.includeWorkApps) {
+                        refresh()
+                    }
                 }
             }
         }
@@ -194,9 +197,13 @@ class AppListRepository private constructor(
     }
 
     private suspend fun loadApps() {
+        val settings = settingsRepository.value
+        val includeWorkApps = settings.includeWorkApps
         val apps =
             withContext(Dispatchers.IO) {
-                userManager.userProfiles.flatMap { user ->
+                userManager.userProfiles.filter { user ->
+                    includeWorkApps || !isWorkProfile(user)
+                }.flatMap { user ->
                     val serialNumber = userManager.getSerialNumberForUser(user)
                     launcherApps.getActivityList(null, user).mapNotNull { activityInfo ->
                         val packageName = activityInfo.componentName.packageName
@@ -211,6 +218,16 @@ class AppListRepository private constructor(
             cachedApps = apps
             _apps.value = apps
         }
+    }
+
+    private fun isWorkProfile(user: UserHandle): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            val crossProfileApps = context.getSystemService(Context.CROSS_PROFILE_APPS_SERVICE) as? android.content.pm.CrossProfileApps
+            if (crossProfileApps?.isManagedProfile(user) == true) {
+                return true
+            }
+        }
+        return user != android.os.Process.myUserHandle()
     }
 
     companion object {
