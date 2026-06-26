@@ -60,7 +60,7 @@ class ProviderSettingsRepository(
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
         private const val MAX_ACTIVITY_INDICATOR_DELAY_MS = 1000
-        private const val DEFAULT_BACKGROUND_ANIMATION_DELAY_MS = 200
+        private const val DEFAULT_BACKGROUND_ANIMATION_DELAY_MS = 0
         private const val MAX_BACKGROUND_ANIMATION_DELAY_MS = 1000
         private const val DEFAULT_ANIMATIONS_ENABLED = true
         private const val DEFAULT_FIRST_RESULT_BORDER_THICKNESS = 1f
