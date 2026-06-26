@@ -1,5 +1,6 @@
 package com.mrndstvndv.search.provider.settings
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -32,9 +33,18 @@ object SettingsRegistry {
      */
     fun exportAll(): JSONObject {
         val root = JSONObject()
+        val debug = JSONArray()
         repositories.forEach { (id, repo) ->
-            root.put(id, repo.toBackupJson())
+            val json = repo.toBackupJson()
+            root.put(id, json)
+            debug.put(
+                JSONObject().apply {
+                    put("id", id)
+                    put("json", json.toString())
+                }
+            )
         }
+        root.put("_registry_dump", debug)
         return root
     }
 

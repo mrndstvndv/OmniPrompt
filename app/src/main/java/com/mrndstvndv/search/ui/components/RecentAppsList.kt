@@ -122,11 +122,10 @@ fun RecentAppsList(
                     repository.getRecentApps(limit = fetchLimit)
                 }.collectAsState(initial = emptyList())
 
-                val filteredApps =
-                    recentApps.filterNot { app -> app.packageName in excludePackages }.take(
-                        maxItems,
-                    )
-                val displayApps = if (isReversed) filteredApps else filteredApps.asReversed()
+                val displayApps = remember(recentApps, excludePackages, maxItems, isReversed) {
+                    val filtered = recentApps.filterNot { app -> app.packageName in excludePackages }.take(maxItems)
+                    if (isReversed) filtered else filtered.asReversed()
+                }
                 val scrollState = rememberScrollState()
 
                 LaunchedEffect(recentApps, isReversed) {
@@ -235,7 +234,9 @@ fun AppListRow(
     visible: Boolean = true,
 ) {
     val context = LocalContext.current
-    val displayApps = if (isReversed) apps else apps.asReversed()
+    val displayApps = remember(apps, isReversed) {
+        if (isReversed) apps else apps.asReversed()
+    }
     val iconSizeDp = 40.dp
     val scrollState = rememberScrollState()
     val listKey = remember(apps) { apps.joinToString("|") { it.packageName } }

@@ -61,6 +61,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.lerp
@@ -100,6 +101,7 @@ import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.AppListType
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
@@ -125,6 +127,7 @@ import com.mrndstvndv.search.ui.components.findTriggerMatch
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
+import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.GitHubUpdateChecker
 import com.mrndstvndv.search.util.loadAppIconBitmap
@@ -284,22 +287,23 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
+            val container = remember(this@MainActivity) { (application as SearchApplication).container }
             val textState = rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
             val focusRequester = remember { FocusRequester() }
             val coroutineScope = rememberCoroutineScope()
-            val settingsRepository = remember(this@MainActivity) { ProviderSettingsRepository(this@MainActivity, coroutineScope) }
-            val aliasRepository = remember(this@MainActivity) { AliasRepository(this@MainActivity, coroutineScope) }
+            val settingsRepository = container.settingsRepository
+            val aliasRepository = container.aliasRepository
             val aliasEntries by aliasRepository.aliases.collectAsState()
 
             // Create new provider-specific settings repositories (auto-register for backup)
-            val webSearchSettingsRepo = remember(this@MainActivity) { createWebSearchSettingsRepository(this@MainActivity) }
-            val appSearchSettingsRepo = remember(this@MainActivity) { createAppSearchSettingsRepository(this@MainActivity) }
-            val textUtilitiesSettingsRepo = remember(this@MainActivity) { createTextUtilitiesSettingsRepository(this@MainActivity) }
-            val fileSearchSettingsRepo = remember(this@MainActivity) { createFileSearchSettingsRepository(this@MainActivity) }
-            val systemSettingsSettingsRepo = remember(this@MainActivity) { createSystemSettingsSettingsRepository(this@MainActivity) }
-            val contactsSettingsRepo = remember(this@MainActivity) { createContactsSettingsRepository(this@MainActivity) }
-            val termuxSettingsRepo = remember(this@MainActivity) { createTermuxSettingsRepository(this@MainActivity) }
-            val intentSettingsRepo = remember(this@MainActivity) { createIntentSettingsRepository(this@MainActivity) }
+            val webSearchSettingsRepo = container.webSearchSettingsRepo
+            val appSearchSettingsRepo = container.appSearchSettingsRepo
+            val textUtilitiesSettingsRepo = container.textUtilitiesSettingsRepo
+            val fileSearchSettingsRepo = container.fileSearchSettingsRepo
+            val systemSettingsSettingsRepo = container.systemSettingsSettingsRepo
+            val contactsSettingsRepo = container.contactsSettingsRepo
+            val termuxSettingsRepo = container.termuxSettingsRepo
+            val intentSettingsRepo = container.intentSettingsRepo
 
             // Collect settings from new repositories
             val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
@@ -312,6 +316,7 @@ class MainActivity : ComponentActivity() {
             val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
+            val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
             val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
@@ -331,24 +336,44 @@ class MainActivity : ComponentActivity() {
             val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
-            LaunchedEffect(backgroundBlurStrength) {
-                applyWindowBlur(backgroundBlurStrength)
+            var isLaunched by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                isLaunched = true
             }
 
-            val fileSearchRepository = remember(this@MainActivity) { FileSearchRepository.getInstance(this@MainActivity) }
-            val fileThumbnailRepository = remember(this@MainActivity) { FileThumbnailRepository.getInstance(this@MainActivity) }
-            val contactsRepository = remember(this@MainActivity) { ContactsRepository.getInstance(this@MainActivity) }
-            val rankingRepository = remember(this@MainActivity) { ProviderRankingRepository.getInstance(this@MainActivity, coroutineScope) }
-            val appListRepository = remember(this@MainActivity) { AppListRepository.getInstance(this@MainActivity, defaultAppIconSize) }
-            val recentAppsRepository =
-                remember(this@MainActivity, appListRepository) {
-                    RecentAppsRepository(this@MainActivity, appListRepository)
-                }
-            val pinnedAppsRepository =
-                remember(this@MainActivity, appSearchSettingsRepo, appListRepository) {
-                    PinnedAppsRepository(this@MainActivity, appSearchSettingsRepo, appListRepository)
-                }
-            val developerSettingsManager = remember(this@MainActivity) { DeveloperSettingsManager.getInstance(this@MainActivity) }
+            val animatedOpacity by rememberMotionAwareFloat(
+                targetValue = if (isLaunched) backgroundOpacity else 0f,
+                durationMillis = 300,
+                delayMillis = backgroundAnimationDelayMs,
+                label = "backgroundOpacity",
+            )
+
+            val animatedBlurStrength by rememberMotionAwareFloat(
+                targetValue = if (isLaunched) backgroundBlurStrength else 0f,
+                durationMillis = 300,
+                delayMillis = backgroundAnimationDelayMs,
+                label = "backgroundBlurStrength",
+            )
+
+            val animatedFraction by rememberMotionAwareFloat(
+                targetValue = if (isLaunched) 1f else 0f,
+                durationMillis = 300,
+                delayMillis = backgroundAnimationDelayMs,
+                label = "backgroundFraction",
+            )
+
+            LaunchedEffect(animatedBlurStrength) {
+                applyWindowBlur(animatedBlurStrength)
+            }
+
+            val fileSearchRepository = container.fileSearchRepository
+            val fileThumbnailRepository = container.fileThumbnailRepository
+            val contactsRepository = container.contactsRepository
+            val rankingRepository = container.rankingRepository
+            val appListRepository = container.appListRepository
+            val recentAppsRepository = container.recentAppsRepository
+            val pinnedAppsRepository = container.pinnedAppsRepository
+            val developerSettingsManager = container.developerSettingsManager
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
@@ -363,7 +388,7 @@ class MainActivity : ComponentActivity() {
                         add(ContactsProvider(this@MainActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
                         add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
                         add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
-                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo))
+                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo, appListRepository))
                     }
                 }
 
@@ -789,7 +814,7 @@ class MainActivity : ComponentActivity() {
                         currentNormalizedQuery = normalizedText
                         val query = Query(normalizedText, originalText = currentText)
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
-                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
+                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings, appSearchSettings) }
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
 
@@ -928,13 +953,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                     Card(
+                        onClick = onDownload,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .clickable(
-                                    onClick = onDownload,
-                                ),
+                                .padding(bottom = 8.dp),
                         colors =
                             CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
@@ -1045,24 +1068,43 @@ class MainActivity : ComponentActivity() {
                         stop = MaterialTheme.colorScheme.primaryContainer,
                         fraction = 0.65f,
                     )
-                val backgroundColor = tintedPrimaryBackground.copy(alpha = backgroundOpacity.coerceIn(0f, 1f))
+                val backgroundColor = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .background(backgroundColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) {
                             finish()
-                        }.padding(top = 50.dp),
+                        },
                 ) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .drawBehind {
+                                val center = this.center
+                                val maxRadius = kotlin.math.hypot(size.width, size.height) / 2f
+                                val currentRadius = maxRadius * animatedFraction
+                                val color = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
+                                drawCircle(
+                                    color = color,
+                                    radius = currentRadius,
+                                    center = center,
+                                )
+                            }
+                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(top = 50.dp)
                     ) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                        ) {
                         if (searchBarPosition == SearchBarPosition.TOP) {
                             Spacer(Modifier.weight(spacerWeight))
                         } else if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
@@ -1404,6 +1446,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
 
                 aliasDialogCandidate?.let { candidate ->
                     AliasCreationDialog(
@@ -1513,6 +1556,7 @@ class MainActivity : ComponentActivity() {
         entry: AliasEntry,
         query: String,
         webSearchSettings: WebSearchSettings,
+        appSearchSettings: AppSearchSettings,
     ): ProviderResult? {
         return when (val target = entry.target) {
             is WebSearchAliasTarget -> {
@@ -1575,8 +1619,18 @@ class MainActivity : ComponentActivity() {
                     onSelect = action,
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
-                    // Load app icon from PackageManager with profile badging
-                    iconLoader = { loadAppIconBitmap(this@MainActivity, target.packageName, defaultAppIconSize, target.userSerialNumber) },
+                    // Load app icon from PackageManager with profile badging and theming/icon pack support
+                    iconLoader = {
+                        loadAppIconBitmap(
+                            context = this@MainActivity,
+                            packageName = target.packageName,
+                            iconSize = defaultAppIconSize,
+                            themedIconsEnabled = appSearchSettings.themedIconsEnabled,
+                            themeAllIcons = appSearchSettings.themeAllIcons,
+                            iconPackPackageName = appSearchSettings.iconPackPackageName,
+                            userSerialNumber = target.userSerialNumber,
+                        )
+                    },
                 )
             }
 

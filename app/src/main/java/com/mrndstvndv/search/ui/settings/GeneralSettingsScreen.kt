@@ -715,6 +715,7 @@ fun BehaviorSettingsScreen(
 ) {
     val motionPreferences by settingsRepository.motionPreferences.collectAsState()
     val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
+    val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
 
     SettingsScaffold(
         title = stringResource(R.string.settings_behavior),
@@ -740,6 +741,24 @@ fun BehaviorSettingsScreen(
                     value = activityIndicatorDelayMs.toFloat(),
                     onValueChange = {
                         settingsRepository.setActivityIndicatorDelayMs(
+                            it.roundToInt(),
+                        )
+                    },
+                    valueRange = 0f..1000f,
+                    steps = 19,
+                )
+                SettingsDivider()
+                SettingsSliderRow(
+                    title = stringResource(R.string.behavior_background_animation_delay),
+                    subtitle = stringResource(R.string.behavior_background_animation_delay_subtitle),
+                    valueText =
+                        stringResource(
+                            R.string.value_milliseconds,
+                            backgroundAnimationDelayMs,
+                        ),
+                    value = backgroundAnimationDelayMs.toFloat(),
+                    onValueChange = {
+                        settingsRepository.setBackgroundAnimationDelayMs(
                             it.roundToInt(),
                         )
                     },

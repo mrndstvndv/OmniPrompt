@@ -34,6 +34,7 @@ class ProviderSettingsRepository(
         private const val KEY_BACKGROUND_OPACITY = "background_opacity"
         private const val KEY_BACKGROUND_BLUR_STRENGTH = "background_blur_strength"
         private const val KEY_ACTIVITY_INDICATOR_DELAY_MS = "activity_indicator_delay_ms"
+        private const val KEY_BACKGROUND_ANIMATION_DELAY_MS = "background_animation_delay_ms"
         private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
         private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
@@ -59,6 +60,8 @@ class ProviderSettingsRepository(
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
         private const val MAX_ACTIVITY_INDICATOR_DELAY_MS = 1000
+        private const val DEFAULT_BACKGROUND_ANIMATION_DELAY_MS = 0
+        private const val MAX_BACKGROUND_ANIMATION_DELAY_MS = 1000
         private const val DEFAULT_ANIMATIONS_ENABLED = true
         private const val DEFAULT_FIRST_RESULT_BORDER_THICKNESS = 1f
         private const val DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS = 1.5f
@@ -88,6 +91,9 @@ class ProviderSettingsRepository(
 
     private val _activityIndicatorDelayMs = MutableStateFlow(DEFAULT_ACTIVITY_INDICATOR_DELAY_MS)
     val activityIndicatorDelayMs: StateFlow<Int> = _activityIndicatorDelayMs
+
+    private val _backgroundAnimationDelayMs = MutableStateFlow(DEFAULT_BACKGROUND_ANIMATION_DELAY_MS)
+    val backgroundAnimationDelayMs: StateFlow<Int> = _backgroundAnimationDelayMs
 
     private val _motionPreferences =
         MutableStateFlow(MotionPreferences(animationsEnabled = DEFAULT_ANIMATIONS_ENABLED))
@@ -150,6 +156,7 @@ class ProviderSettingsRepository(
                 _backgroundOpacity.value = loadBackgroundOpacity()
                 _backgroundBlurStrength.value = loadBackgroundBlurStrength()
                 _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
+                _backgroundAnimationDelayMs.value = loadBackgroundAnimationDelayMs()
                 _motionPreferences.value = loadMotionPreferences()
                 _enabledProviders.value = loadEnabledProviders()
                 _settingsIconPosition.value = loadSettingsIconPosition()
@@ -173,6 +180,7 @@ class ProviderSettingsRepository(
             _backgroundOpacity.value = loadBackgroundOpacity()
             _backgroundBlurStrength.value = loadBackgroundBlurStrength()
             _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
+            _backgroundAnimationDelayMs.value = loadBackgroundAnimationDelayMs()
             _motionPreferences.value = loadMotionPreferences()
             _enabledProviders.value = loadEnabledProviders()
             _settingsIconPosition.value = loadSettingsIconPosition()
@@ -216,6 +224,12 @@ class ProviderSettingsRepository(
         _activityIndicatorDelayMs.value = coercedDelay
     }
 
+    fun setBackgroundAnimationDelayMs(delayMs: Int) {
+        val coercedDelay = delayMs.coerceIn(0, MAX_BACKGROUND_ANIMATION_DELAY_MS)
+        preferences.edit { putInt(KEY_BACKGROUND_ANIMATION_DELAY_MS, coercedDelay) }
+        _backgroundAnimationDelayMs.value = coercedDelay
+    }
+
     fun setAnimationsEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_ANIMATIONS_ENABLED, enabled) }
         _motionPreferences.value = _motionPreferences.value.copy(animationsEnabled = enabled)
@@ -255,6 +269,15 @@ class ProviderSettingsRepository(
                 DEFAULT_ACTIVITY_INDICATOR_DELAY_MS,
             )
         return stored.coerceIn(0, MAX_ACTIVITY_INDICATOR_DELAY_MS)
+    }
+
+    private fun loadBackgroundAnimationDelayMs(): Int {
+        val stored =
+            preferences.getInt(
+                KEY_BACKGROUND_ANIMATION_DELAY_MS,
+                DEFAULT_BACKGROUND_ANIMATION_DELAY_MS,
+            )
+        return stored.coerceIn(0, MAX_BACKGROUND_ANIMATION_DELAY_MS)
     }
 
     private fun loadAnimationsEnabled(): Boolean =
@@ -1082,6 +1105,7 @@ data class AppSearchSettings(
     val themedIconsEnabled: Boolean = false,
     val themeAllIcons: Boolean = false,
     val iconPackPackageName: String = "",
+    val includeWorkApps: Boolean = true,
 ) : ProviderSettings {
     override val providerId: String = PROVIDER_ID
 
@@ -1104,6 +1128,7 @@ data class AppSearchSettings(
                 themedIconsEnabled = false,
                 themeAllIcons = false,
                 iconPackPackageName = "",
+                includeWorkApps = true,
             )
 
         fun fromJson(json: JSONObject?): AppSearchSettings? {
@@ -1142,6 +1167,7 @@ data class AppSearchSettings(
                 themedIconsEnabled = json.optBoolean("themedIconsEnabled", false),
                 themeAllIcons = json.optBoolean("themeAllIcons", false),
                 iconPackPackageName = json.optString("iconPackPackageName", ""),
+                includeWorkApps = json.optBoolean("includeWorkApps", true),
             )
         }
     }
@@ -1162,6 +1188,7 @@ data class AppSearchSettings(
             put("themedIconsEnabled", themedIconsEnabled)
             put("themeAllIcons", themeAllIcons)
             put("iconPackPackageName", iconPackPackageName)
+            put("includeWorkApps", includeWorkApps)
         }
 
     fun toJsonString(): String = toJson().toString()

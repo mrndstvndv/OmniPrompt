@@ -122,6 +122,15 @@ fun AppSearchSettingsScreen(
                             repository.update { it.copy(aiAssistantQueriesEnabled = newValue) }
                         },
                     )
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = stringResource(R.string.app_search_include_work_apps),
+                        subtitle = stringResource(R.string.app_search_include_work_apps_subtitle),
+                        checked = appSearchSettings.includeWorkApps,
+                        onCheckedChange = { newValue ->
+                            repository.update { it.copy(includeWorkApps = newValue) }
+                        },
+                    )
                 }
             }
 
