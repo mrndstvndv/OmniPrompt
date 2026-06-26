@@ -101,6 +101,7 @@ import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.AppListType
+import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
@@ -813,7 +814,7 @@ class MainActivity : ComponentActivity() {
                         currentNormalizedQuery = normalizedText
                         val query = Query(normalizedText, originalText = currentText)
                         val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
-                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings) }
+                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings, appSearchSettings) }
 
                         shouldShowResults = normalizedText.isNotBlank() || match != null
 
@@ -1555,6 +1556,7 @@ class MainActivity : ComponentActivity() {
         entry: AliasEntry,
         query: String,
         webSearchSettings: WebSearchSettings,
+        appSearchSettings: AppSearchSettings,
     ): ProviderResult? {
         return when (val target = entry.target) {
             is WebSearchAliasTarget -> {
@@ -1617,8 +1619,18 @@ class MainActivity : ComponentActivity() {
                     onSelect = action,
                     aliasTarget = target,
                     keepOverlayUntilExit = true,
-                    // Load app icon from PackageManager with profile badging
-                    iconLoader = { loadAppIconBitmap(this@MainActivity, target.packageName, defaultAppIconSize, target.userSerialNumber) },
+                    // Load app icon from PackageManager with profile badging and theming/icon pack support
+                    iconLoader = {
+                        loadAppIconBitmap(
+                            context = this@MainActivity,
+                            packageName = target.packageName,
+                            iconSize = defaultAppIconSize,
+                            themedIconsEnabled = appSearchSettings.themedIconsEnabled,
+                            themeAllIcons = appSearchSettings.themeAllIcons,
+                            iconPackPackageName = appSearchSettings.iconPackPackageName,
+                            userSerialNumber = target.userSerialNumber,
+                        )
+                    },
                 )
             }
 
