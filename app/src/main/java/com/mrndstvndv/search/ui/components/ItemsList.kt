@@ -6,8 +6,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -618,21 +620,41 @@ fun ItemsList(
                                 Spacer(Modifier.width(12.dp))
                             }
                             item.vectorIcon != null -> {
-                                Icon(
-                                    imageVector = item.vectorIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = primaryTextColor,
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = item.vectorIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                                 Spacer(Modifier.width(12.dp))
                             }
                             item.defaultVectorIcon != null -> {
-                                Icon(
-                                    imageVector = item.defaultVectorIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = primaryTextColor,
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = item.defaultVectorIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                                 Spacer(Modifier.width(12.dp))
                             }
                         }

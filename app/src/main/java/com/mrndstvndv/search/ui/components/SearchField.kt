@@ -261,7 +261,7 @@ fun SearchField(
                                             scaleY = clearScale * bounceScaleY
                                             alpha = clearAlpha
                                         },
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.primary,
                             )
                         }
                     }
