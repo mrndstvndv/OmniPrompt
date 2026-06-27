@@ -17,6 +17,8 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -52,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -65,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -189,6 +193,9 @@ class MainActivity : ComponentActivity() {
     // fight the system's attempt to immediately background us.
     private var launchedFromAssist = false
 
+    private var isExiting = false
+    private var onExitAnimationFinished: (() -> Unit)? = null
+
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         val action = event.actionMasked
         if (action == MotionEvent.ACTION_DOWN) {
@@ -200,7 +207,18 @@ class MainActivity : ComponentActivity() {
         return true // Consume the event silently
     }
 
+    override fun finish() {
+        val onExit = onExitAnimationFinished
+        if (!isExiting && onExit != null) {
+            isExiting = true
+            onExit()
+        } else {
+            super.finish()
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
+        isExiting = false
         super.onNewIntent(intent)
 
         val isAssistAction = intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS"
@@ -341,26 +359,42 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 isLaunched = true
             }
+            DisposableEffect(Unit) {
+                onExitAnimationFinished = {
+                    isLaunched = false
+                }
+                onDispose {
+                    onExitAnimationFinished = null
+                }
+            }
 
             val animatedOpacity by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundOpacity else 0f,
-                durationMillis = 300,
-                delayMillis = backgroundAnimationDelayMs,
+                durationMillis = if (isLaunched) 300 else 350,
+                delayMillis = if (isLaunched) backgroundAnimationDelayMs else 0,
+                easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundOpacity",
             )
 
             val animatedBlurStrength by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundBlurStrength else 0f,
-                durationMillis = 300,
-                delayMillis = backgroundAnimationDelayMs,
+                durationMillis = if (isLaunched) 300 else 350,
+                delayMillis = if (isLaunched) backgroundAnimationDelayMs else 0,
+                easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundBlurStrength",
             )
 
             val animatedFraction by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) 1f else 0f,
-                durationMillis = 300,
-                delayMillis = backgroundAnimationDelayMs,
+                durationMillis = if (isLaunched) 300 else 350,
+                delayMillis = if (isLaunched) backgroundAnimationDelayMs else 0,
+                easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundFraction",
+                finishedListener = { value ->
+                    if (value == 0f && isExiting) {
+                        finish()
+                    }
+                }
             )
 
             LaunchedEffect(animatedBlurStrength) {
@@ -1099,6 +1133,9 @@ class MainActivity : ComponentActivity() {
                         Modifier
                             .fillMaxSize()
                             .padding(top = 50.dp)
+                            .graphicsLayer {
+                                alpha = animatedFraction
+                            }
                     ) {
                         Column(
                             modifier =
