@@ -117,6 +117,9 @@
     <string name="behavior_activity_indicator_delay_subtitle">Wait time before showing the loading spinner.</string>
     <string name="behavior_background_animation_delay">Background animation delay</string>
     <string name="behavior_background_animation_delay_subtitle">Wait time before starting the background reveal animation.</string>
+    <string name="behavior_reveal_animation">Open/close reveal animation</string>
+    <string name="behavior_reveal_animation_subtitle">Animate the circular reveal when opening or closing the search overlay.</string>
+
 
     <!-- App search settings -->
     <string name="app_search_header_subtitle">Configure app search.</string>

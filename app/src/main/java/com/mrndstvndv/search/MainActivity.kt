@@ -194,7 +194,8 @@ class MainActivity : ComponentActivity() {
     private var launchedFromAssist = false
 
     private var isExiting = false
-    private var onExitAnimationFinished: (() -> Unit)? = null
+    private var isLaunched by mutableStateOf(false)
+    private var launchTrigger by mutableStateOf(0)
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         val action = event.actionMasked
@@ -208,13 +209,19 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun finish() {
-        val onExit = onExitAnimationFinished
-        if (!isExiting && onExit != null) {
+        val revealEnabled = (application as SearchApplication).container.settingsRepository.revealAnimationEnabled.value
+        if (revealEnabled && !isExiting) {
             isExiting = true
-            onExit()
+            isLaunched = false
         } else {
             super.finish()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isExiting = false
+        launchTrigger++
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -337,6 +344,7 @@ class MainActivity : ComponentActivity() {
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
             val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
+            val revealAnimationEnabled by settingsRepository.revealAnimationEnabled.collectAsState()
             val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
             val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
             val firstResultHighlightEnabled by settingsRepository.firstResultHighlightEnabled.collectAsState()
@@ -355,39 +363,32 @@ class MainActivity : ComponentActivity() {
             val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
-            var isLaunched by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                isLaunched = true
-            }
-            DisposableEffect(Unit) {
-                onExitAnimationFinished = {
-                    isLaunched = false
-                }
-                onDispose {
-                    onExitAnimationFinished = null
+            LaunchedEffect(launchTrigger) {
+                if (launchTrigger > 0) {
+                    isLaunched = true
                 }
             }
 
             val animatedOpacity by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundOpacity else 0f,
-                durationMillis = if (isLaunched) 300 else 350,
-                delayMillis = if (isLaunched) backgroundAnimationDelayMs else 0,
+                durationMillis = if (!revealAnimationEnabled) 0 else (if (isLaunched) 300 else 350),
+                delayMillis = if (isLaunched && revealAnimationEnabled) backgroundAnimationDelayMs else 0,
                 easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundOpacity",
             )
 
             val animatedBlurStrength by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundBlurStrength else 0f,
-                durationMillis = if (isLaunched) 300 else 350,
-                delayMillis = if (isLaunched) backgroundAnimationDelayMs else 0,
+                durationMillis = if (!revealAnimationEnabled) 0 else (if (isLaunched) 300 else 350),
+                delayMillis = if (isLaunched && revealAnimationEnabled) backgroundAnimationDelayMs else 0,
                 easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundBlurStrength",
             )
 
             val animatedFraction by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) 1f else 0f,
-                durationMillis = if (isLaunched) 300 else 350,
-                delayMillis = if (isLaunched) backgroundAnimationDelayMs else 0,
+                durationMillis = if (!revealAnimationEnabled) 0 else (if (isLaunched) 300 else 350),
+                delayMillis = if (isLaunched && revealAnimationEnabled) backgroundAnimationDelayMs else 0,
                 easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundFraction",
                 finishedListener = { value ->
