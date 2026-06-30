@@ -46,6 +46,7 @@ fun rememberMotionAwareFloat(
     delayMillis: Int = 0,
     easing: Easing = FastOutSlowInEasing,
     label: String = "motionAwareFloat",
+    finishedListener: ((Float) -> Unit)? = null,
 ): State<Float> {
     val spec =
         motionAwareTween<Float>(
@@ -57,6 +58,7 @@ fun rememberMotionAwareFloat(
         targetValue = targetValue,
         animationSpec = spec,
         label = label,
+        finishedListener = finishedListener,
     )
 }
 
