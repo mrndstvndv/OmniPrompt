@@ -71,6 +71,9 @@ class ProviderSettingsRepository(
         private const val DEFAULT_UPDATE_CHECK_INTERVAL = "weekly"
         private const val DEFAULT_CUSTOM_UPDATE_INTERVAL_DAYS = 3
         private const val DEFAULT_CHECK_PRERELEASE_BUILDS = false
+
+        private const val KEY_REVEAL_ANIMATION_ENABLED = "reveal_animation_enabled"
+        private const val DEFAULT_REVEAL_ANIMATION_ENABLED = true
     }
 
     private val appContext: Context = context.applicationContext
@@ -149,6 +152,9 @@ class ProviderSettingsRepository(
     private val _checkPrereleaseBuilds = MutableStateFlow(loadCheckPrereleaseBuilds())
     val checkPrereleaseBuilds: StateFlow<Boolean> = _checkPrereleaseBuilds
 
+    private val _revealAnimationEnabled = MutableStateFlow(DEFAULT_REVEAL_ANIMATION_ENABLED)
+    val revealAnimationEnabled: StateFlow<Boolean> = _revealAnimationEnabled
+
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
@@ -174,6 +180,7 @@ class ProviderSettingsRepository(
                 _dismissedVersion.value = loadDismissedVersion()
                 _latestUpdate.value = loadLatestUpdate()
                 _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
+                _revealAnimationEnabled.value = loadRevealAnimationEnabled()
             }
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
@@ -198,6 +205,7 @@ class ProviderSettingsRepository(
             _dismissedVersion.value = loadDismissedVersion()
             _latestUpdate.value = loadLatestUpdate()
             _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
+            _revealAnimationEnabled.value = loadRevealAnimationEnabled()
         }
     }
 
@@ -233,6 +241,11 @@ class ProviderSettingsRepository(
     fun setAnimationsEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_ANIMATIONS_ENABLED, enabled) }
         _motionPreferences.value = _motionPreferences.value.copy(animationsEnabled = enabled)
+    }
+
+    fun setRevealAnimationEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_REVEAL_ANIMATION_ENABLED, enabled) }
+        _revealAnimationEnabled.value = enabled
     }
 
     fun setProviderEnabled(
@@ -284,6 +297,12 @@ class ProviderSettingsRepository(
         preferences.getBoolean(
             KEY_ANIMATIONS_ENABLED,
             DEFAULT_ANIMATIONS_ENABLED,
+        )
+
+    private fun loadRevealAnimationEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_REVEAL_ANIMATION_ENABLED,
+            DEFAULT_REVEAL_ANIMATION_ENABLED,
         )
 
     private fun loadMotionPreferences(): MotionPreferences =

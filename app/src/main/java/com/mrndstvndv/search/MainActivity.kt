@@ -17,6 +17,8 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -31,6 +33,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -51,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -188,6 +193,10 @@ class MainActivity : ComponentActivity() {
     // fight the system's attempt to immediately background us.
     private var launchedFromAssist = false
 
+    private var isExiting = false
+    private var isLaunched by mutableStateOf(false)
+    private var launchTrigger by mutableStateOf(0)
+
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         val action = event.actionMasked
         if (action == MotionEvent.ACTION_DOWN) {
@@ -199,7 +208,24 @@ class MainActivity : ComponentActivity() {
         return true // Consume the event silently
     }
 
+    override fun finish() {
+        val revealEnabled = (application as SearchApplication).container.settingsRepository.revealAnimationEnabled.value
+        if (revealEnabled && !isExiting) {
+            isExiting = true
+            isLaunched = false
+        } else {
+            super.finish()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isExiting = false
+        launchTrigger++
+    }
+
     override fun onNewIntent(intent: Intent) {
+        isExiting = false
         super.onNewIntent(intent)
 
         val isAssistAction = intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS"
@@ -318,6 +344,7 @@ class MainActivity : ComponentActivity() {
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
             val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
+            val revealAnimationEnabled by settingsRepository.revealAnimationEnabled.collectAsState()
             val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
             val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
             val firstResultHighlightEnabled by settingsRepository.firstResultHighlightEnabled.collectAsState()
@@ -336,30 +363,39 @@ class MainActivity : ComponentActivity() {
             val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
-            var isLaunched by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) {
-                isLaunched = true
+            LaunchedEffect(launchTrigger) {
+                if (launchTrigger > 0) {
+                    isLaunched = true
+                }
             }
 
             val animatedOpacity by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundOpacity else 0f,
-                durationMillis = 300,
-                delayMillis = backgroundAnimationDelayMs,
+                durationMillis = if (!revealAnimationEnabled) 0 else (if (isLaunched) 300 else 350),
+                delayMillis = if (isLaunched && revealAnimationEnabled) backgroundAnimationDelayMs else 0,
+                easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundOpacity",
             )
 
             val animatedBlurStrength by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) backgroundBlurStrength else 0f,
-                durationMillis = 300,
-                delayMillis = backgroundAnimationDelayMs,
+                durationMillis = if (!revealAnimationEnabled) 0 else (if (isLaunched) 300 else 350),
+                delayMillis = if (isLaunched && revealAnimationEnabled) backgroundAnimationDelayMs else 0,
+                easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundBlurStrength",
             )
 
             val animatedFraction by rememberMotionAwareFloat(
                 targetValue = if (isLaunched) 1f else 0f,
-                durationMillis = 300,
-                delayMillis = backgroundAnimationDelayMs,
+                durationMillis = if (!revealAnimationEnabled) 0 else (if (isLaunched) 300 else 350),
+                delayMillis = if (isLaunched && revealAnimationEnabled) backgroundAnimationDelayMs else 0,
+                easing = if (isLaunched) FastOutSlowInEasing else FastOutLinearInEasing,
                 label = "backgroundFraction",
+                finishedListener = { value ->
+                    if (value == 0f && isExiting) {
+                        finish()
+                    }
+                }
             )
 
             LaunchedEffect(animatedBlurStrength) {
@@ -1024,7 +1060,7 @@ class MainActivity : ComponentActivity() {
                                 Icon(
                                     imageVector = Icons.Outlined.Settings,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
                         },
@@ -1098,6 +1134,9 @@ class MainActivity : ComponentActivity() {
                         Modifier
                             .fillMaxSize()
                             .padding(top = 50.dp)
+                            .graphicsLayer {
+                                alpha = animatedFraction
+                            }
                     ) {
                         Column(
                             modifier =

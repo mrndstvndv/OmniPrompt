@@ -716,6 +716,7 @@ fun BehaviorSettingsScreen(
     val motionPreferences by settingsRepository.motionPreferences.collectAsState()
     val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
     val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
+    val revealAnimationEnabled by settingsRepository.revealAnimationEnabled.collectAsState()
 
     SettingsScaffold(
         title = stringResource(R.string.settings_behavior),
@@ -728,6 +729,13 @@ fun BehaviorSettingsScreen(
                     subtitle = stringResource(R.string.behavior_enable_animations_subtitle),
                     checked = motionPreferences.animationsEnabled,
                     onCheckedChange = { settingsRepository.setAnimationsEnabled(it) },
+                )
+                SettingsDivider()
+                SettingsSwitch(
+                    title = stringResource(R.string.behavior_reveal_animation),
+                    subtitle = stringResource(R.string.behavior_reveal_animation_subtitle),
+                    checked = revealAnimationEnabled,
+                    onCheckedChange = { settingsRepository.setRevealAnimationEnabled(it) },
                 )
                 SettingsDivider()
                 SettingsSliderRow(
