@@ -71,7 +71,7 @@ class WebSearchProvider(
         return listOf(
             createTriggerResult(
                 invocation = invocation,
-                id = "$id:${site.id}:${queryText.hashCode()}",
+                id = "$id:${site.id}",
                 title = activity.getString(R.string.web_search_result_title, queryText),
                 subtitle = site.displayName,
                 providerId = id,
@@ -241,7 +241,7 @@ class WebSearchProvider(
                     triggerToken
                 }
             ProviderResult(
-                id = "$id:${site.id}:${actualQuery.hashCode()}",
+                id = "$id:${site.id}",
                 title = activity.getString(R.string.web_search_result_title, actualQuery),
                 subtitle =
                     if (site.id == defaultSite.id) {
