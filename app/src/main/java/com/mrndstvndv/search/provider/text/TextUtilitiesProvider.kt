@@ -179,7 +179,7 @@ class TextUtilitiesProvider(
         }
         return createTriggerResult(
             invocation = invocation,
-            id = "$id:${utility.id}:${mode.name}:${payload.hashCode()}",
+            id = "$id:${utility.id}:${mode.name}",
             title = preview,
             subtitle = subtitle,
             providerId = id,
@@ -204,7 +204,7 @@ class TextUtilitiesProvider(
         outcome: TransformOutcome.InvalidInput,
     ): ProviderResult {
         return ProviderResult(
-            id = "$id:${utility.id}:invalid:${payload.hashCode()}",
+            id = "$id:${utility.id}:invalid",
             title = outcome.message,
             subtitle = utility.invalidInputHint(activity),
             providerId = id,

@@ -790,9 +790,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
 
-                                // Show trigger results immediately
-                                providerResults = triggerResults
-                                shouldShowResults = triggerResults.isNotEmpty()
+
 
                                 val supplementalMap = mutableMapOf<String, List<ProviderResult>>()
                                 val (slowSupplemental, fastSupplemental) = supplementalProviders.partition { it.id in SLOW_PROVIDER_IDS }
@@ -1610,7 +1608,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 ProviderResult(
-                    id = "alias:web:${entry.alias}:${query.hashCode()}",
+                    id = "alias:web:${entry.alias}",
                     title = if (query.isBlank()) resolvedSite.displayName else query,
                     subtitle = getString(R.string.alias_web_subtitle, entry.alias, resolvedSite.displayName),
                     providerId = target.providerId,
