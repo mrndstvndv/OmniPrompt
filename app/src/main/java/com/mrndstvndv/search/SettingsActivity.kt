@@ -32,6 +32,7 @@ import com.mrndstvndv.search.ui.settings.AppearanceSettingsScreen
 import com.mrndstvndv.search.ui.settings.BackupRestoreSettingsScreen
 import com.mrndstvndv.search.ui.settings.BehaviorSettingsScreen
 import com.mrndstvndv.search.ui.settings.ContactsSettingsScreen
+import com.mrndstvndv.search.ui.settings.DebugSettingsScreen
 import com.mrndstvndv.search.ui.settings.FileSearchSettingsScreen
 import com.mrndstvndv.search.ui.settings.GeneralSettingsScreen
 import com.mrndstvndv.search.ui.settings.IntentSettingsScreen
@@ -70,6 +71,7 @@ class SettingsActivity : ComponentActivity() {
         ContactsSettings,
         BackupRestore,
         Updates,
+        Debug,
         About,
         Licenses,
         TermuxSettings,
@@ -152,6 +154,7 @@ class SettingsActivity : ComponentActivity() {
                                 onOpenResultRanking = { currentScreen = Screen.Ranking },
                                 onOpenBackupRestore = { currentScreen = Screen.BackupRestore },
                                 onOpenUpdates = { currentScreen = Screen.Updates },
+                                onOpenDebug = { currentScreen = Screen.Debug },
                                 onOpenAbout = { currentScreen = Screen.About },
                                 onClose = { finish() },
                             )
@@ -316,6 +319,15 @@ class SettingsActivity : ComponentActivity() {
                             BackHandler { currentScreen = Screen.Home }
                             UpdatesSettingsScreen(
                                 settingsRepository = settingsRepository,
+                                onBack = { currentScreen = Screen.Home },
+                            )
+                        }
+
+                        Screen.Debug -> {
+                            BackHandler { currentScreen = Screen.Home }
+                            DebugSettingsScreen(
+                                settingsRepository = settingsRepository,
+                                rankingRepository = rankingRepository,
                                 onBack = { currentScreen = Screen.Home },
                             )
                         }

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
@@ -95,6 +96,7 @@ fun GeneralSettingsScreen(
     onOpenResultRanking: () -> Unit,
     onOpenBackupRestore: () -> Unit,
     onOpenUpdates: () -> Unit,
+    onOpenDebug: () -> Unit,
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -219,6 +221,13 @@ fun GeneralSettingsScreen(
                         subtitle = stringResource(R.string.settings_updates_subtitle),
                         onClick = onOpenUpdates,
                         showBadge = showBadge,
+                    )
+                    SettingsDivider()
+                    SettingsNavigationRow(
+                        icon = Icons.Rounded.BugReport,
+                        title = stringResource(R.string.settings_debug),
+                        subtitle = stringResource(R.string.settings_debug_subtitle),
+                        onClick = onOpenDebug,
                     )
                     SettingsDivider()
                     SettingsNavigationRow(
@@ -832,7 +841,6 @@ fun ResultRankingSettingsScreen(
         item {
             ProviderRankingSection(
                 rankingRepository = rankingRepository,
-                settingsRepository = settingsRepository,
                 enabledProviders = enabledProviders,
             )
         }

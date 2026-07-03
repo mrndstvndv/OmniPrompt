@@ -54,7 +54,6 @@ import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 @Composable
 fun ProviderRankingSection(
     rankingRepository: ProviderRankingRepository,
-    settingsRepository: ProviderSettingsRepository,
     enabledProviders: Map<String, Boolean>,
 ) {
     val providerOrder by rankingRepository.providerOrder.collectAsState()
@@ -62,7 +61,6 @@ fun ProviderRankingSection(
     val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
     val resultFrequency by rankingRepository.resultFrequency.collectAsState()
     val decayAmount by rankingRepository.decayAmount.collectAsState()
-    val collectDebugData by settingsRepository.collectDebugData.collectAsState()
     var showFrequencyDialog by remember { mutableStateOf(false) }
 
     val visibleProviderOrder = providerOrder.filter { enabledProviders[it] != false }
@@ -145,45 +143,6 @@ fun ProviderRankingSection(
                         valueText = stringResource(R.string.value_decimal, decayAmount),
                     )
                 }
-                SettingsDivider()
-                SettingsSwitch(
-                    title = stringResource(R.string.settings_collect_debug_data),
-                    subtitle = stringResource(R.string.settings_collect_debug_data_subtitle),
-                    icon = Icons.Rounded.BugReport,
-                    checked = collectDebugData,
-                    onCheckedChange = { settingsRepository.setCollectDebugData(it) }
-                )
-                SettingsDivider()
-                val context = LocalContext.current
-                SettingsNavigationRow(
-                    title = stringResource(R.string.settings_export_debug_info),
-                    subtitle = if (collectDebugData) {
-                        stringResource(R.string.settings_export_debug_info_subtitle)
-                    } else {
-                        "Enable debug collection above to record search data"
-                    },
-                    icon = Icons.Rounded.BugReport,
-                    onClick = {
-                        val json = com.mrndstvndv.search.util.SearchDebugCollector.generateDebugJson(
-                            context,
-                            rankingRepository,
-                            settingsRepository
-                        )
-                        // Copy to clipboard
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Search Debug Info", json)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, context.getString(R.string.debug_info_copied), Toast.LENGTH_SHORT).show()
-
-                        // Share via Intent
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "application/json"
-                            putExtra(Intent.EXTRA_TEXT, json)
-                            putExtra(Intent.EXTRA_SUBJECT, "Search Debug Info")
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share Debug Info"))
-                    }
-                )
             }
         }
 

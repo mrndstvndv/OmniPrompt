@@ -56,7 +56,7 @@ class ProviderSettingsRepository(
         private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
         private const val KEY_CHECK_PRERELEASE_BUILDS = "check_prerelease_builds"
         private const val KEY_COLLECT_DEBUG_DATA = "collect_debug_data"
-        private const val DEFAULT_COLLECT_DEBUG_DATA = true
+        private const val DEFAULT_COLLECT_DEBUG_DATA = false
 
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
