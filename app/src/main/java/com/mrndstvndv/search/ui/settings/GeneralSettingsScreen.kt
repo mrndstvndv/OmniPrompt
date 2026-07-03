@@ -832,6 +832,7 @@ fun ResultRankingSettingsScreen(
         item {
             ProviderRankingSection(
                 rankingRepository = rankingRepository,
+                settingsRepository = settingsRepository,
                 enabledProviders = enabledProviders,
             )
         }

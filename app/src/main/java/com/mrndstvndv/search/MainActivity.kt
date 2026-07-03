@@ -434,6 +434,10 @@ class MainActivity : ComponentActivity() {
                     providers.forEach { it.initialize() }
                     appListRepository.initialize()
                 }
+                com.mrndstvndv.search.util.SearchDebugCollector.providerDisplayNames = providers.associate { it.id to it.displayName }
+                com.mrndstvndv.search.util.SearchDebugCollector.providerTriggers = providers.associate { provider ->
+                    provider.id to provider.triggers.map { it.label }
+                }
             }
 
             // Initialize developer settings manager if feature is enabled
@@ -825,6 +829,12 @@ class MainActivity : ComponentActivity() {
                                 }
                                 shouldShowResults = initialMerged.isNotEmpty()
 
+                                val triggerOriginalText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload)
+                                com.mrndstvndv.search.util.SearchDebugCollector.lastQueryText = triggerOriginalText
+                                com.mrndstvndv.search.util.SearchDebugCollector.lastNormalizedQueryText = triggerFrequencyQuery
+                                com.mrndstvndv.search.util.SearchDebugCollector.lastResults = initialMerged
+                                com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = mapOf(activeTrigger.trigger.ownerProviderId to triggerResults) + supplementalMap
+
                                 // 2. Query slow supplemental providers incrementally
                                 if (slowSupplemental.isNotEmpty()) {
                                     queryProvidersFlow(payloadQuery, slowSupplemental).collect { (providerId, batch) ->
@@ -835,6 +845,9 @@ class MainActivity : ComponentActivity() {
                                             providerResults = merged
                                         }
                                         shouldShowResults = merged.isNotEmpty()
+
+                                        com.mrndstvndv.search.util.SearchDebugCollector.lastResults = merged
+                                        com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = mapOf(activeTrigger.trigger.ownerProviderId to triggerResults) + supplementalMap
                                     }
                                 }
                             } catch (_: Exception) {
@@ -892,6 +905,11 @@ class MainActivity : ComponentActivity() {
                             providerResults = initialResults
                         }
 
+                        com.mrndstvndv.search.util.SearchDebugCollector.lastQueryText = currentText
+                        com.mrndstvndv.search.util.SearchDebugCollector.lastNormalizedQueryText = normalizedText
+                        com.mrndstvndv.search.util.SearchDebugCollector.lastResults = initialResults
+                        com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = resultsMap.toMap()
+
                         // 2. Query slow providers incrementally
                         if (slowProviders.isNotEmpty()) {
                             queryProvidersFlow(query, slowProviders).collect { (providerId, batch) ->
@@ -909,6 +927,9 @@ class MainActivity : ComponentActivity() {
                                 if (providerResults != newResults) {
                                     providerResults = newResults
                                 }
+
+                                com.mrndstvndv.search.util.SearchDebugCollector.lastResults = newResults
+                                com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = resultsMap.toMap()
                             }
                         }
                     }

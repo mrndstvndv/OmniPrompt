@@ -12,9 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -38,14 +44,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
+import com.mrndstvndv.search.ui.components.settings.SettingsNavigationRow
 import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun ProviderRankingSection(
     rankingRepository: ProviderRankingRepository,
+    settingsRepository: ProviderSettingsRepository,
     enabledProviders: Map<String, Boolean>,
 ) {
     val providerOrder by rankingRepository.providerOrder.collectAsState()
@@ -135,6 +144,33 @@ fun ProviderRankingSection(
                         valueText = stringResource(R.string.value_decimal, decayAmount),
                     )
                 }
+                SettingsDivider()
+                val context = LocalContext.current
+                SettingsNavigationRow(
+                    title = stringResource(R.string.settings_export_debug_info),
+                    subtitle = stringResource(R.string.settings_export_debug_info_subtitle),
+                    icon = Icons.Rounded.BugReport,
+                    onClick = {
+                        val json = com.mrndstvndv.search.util.SearchDebugCollector.generateDebugJson(
+                            context,
+                            rankingRepository,
+                            settingsRepository
+                        )
+                        // Copy to clipboard
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Search Debug Info", json)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, context.getString(R.string.debug_info_copied), Toast.LENGTH_SHORT).show()
+
+                        // Share via Intent
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/json"
+                            putExtra(Intent.EXTRA_TEXT, json)
+                            putExtra(Intent.EXTRA_SUBJECT, "Search Debug Info")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Debug Info"))
+                    }
+                )
             }
         }
 
