@@ -62,6 +62,7 @@ fun ProviderRankingSection(
     val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
     val resultFrequency by rankingRepository.resultFrequency.collectAsState()
     val decayAmount by rankingRepository.decayAmount.collectAsState()
+    val collectDebugData by settingsRepository.collectDebugData.collectAsState()
     var showFrequencyDialog by remember { mutableStateOf(false) }
 
     val visibleProviderOrder = providerOrder.filter { enabledProviders[it] != false }
@@ -145,10 +146,22 @@ fun ProviderRankingSection(
                     )
                 }
                 SettingsDivider()
+                SettingsSwitch(
+                    title = stringResource(R.string.settings_collect_debug_data),
+                    subtitle = stringResource(R.string.settings_collect_debug_data_subtitle),
+                    icon = Icons.Rounded.BugReport,
+                    checked = collectDebugData,
+                    onCheckedChange = { settingsRepository.setCollectDebugData(it) }
+                )
+                SettingsDivider()
                 val context = LocalContext.current
                 SettingsNavigationRow(
                     title = stringResource(R.string.settings_export_debug_info),
-                    subtitle = stringResource(R.string.settings_export_debug_info_subtitle),
+                    subtitle = if (collectDebugData) {
+                        stringResource(R.string.settings_export_debug_info_subtitle)
+                    } else {
+                        "Enable debug collection above to record search data"
+                    },
                     icon = Icons.Rounded.BugReport,
                     onClick = {
                         val json = com.mrndstvndv.search.util.SearchDebugCollector.generateDebugJson(

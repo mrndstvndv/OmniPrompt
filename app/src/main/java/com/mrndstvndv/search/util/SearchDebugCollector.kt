@@ -28,6 +28,13 @@ object SearchDebugCollector {
     @Volatile
     var providerTriggers: Map<String, List<String>> = emptyMap()
 
+    fun clear() {
+        lastQueryText = ""
+        lastNormalizedQueryText = ""
+        lastResults = emptyList()
+        lastRawResultsByProvider = emptyMap()
+    }
+
     fun generateDebugJson(
         context: Context,
         rankingRepository: ProviderRankingRepository,

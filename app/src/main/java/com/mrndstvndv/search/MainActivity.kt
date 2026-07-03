@@ -361,6 +361,7 @@ class MainActivity : ComponentActivity() {
             val dismissedVersion by settingsRepository.dismissedVersion.collectAsState()
             val latestUpdate by settingsRepository.latestUpdate.collectAsState()
             val checkPrereleaseBuilds by settingsRepository.checkPrereleaseBuilds.collectAsState()
+            val collectDebugData by settingsRepository.collectDebugData.collectAsState()
             val showEnterBadge = alwaysShowEnterBadge || !hasUsedEnter
 
             LaunchedEffect(launchTrigger) {
@@ -757,7 +758,7 @@ class MainActivity : ComponentActivity() {
                 focusRequester.requestFocus()
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, enabledProviders, refreshTrigger, queryBasedRankingEnabled, useFrequencyRanking, triggerState) {
+            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, enabledProviders, refreshTrigger, queryBasedRankingEnabled, useFrequencyRanking, triggerState, collectDebugData) {
                 pendingQueryJob?.cancel()
 
                 pendingQueryJob =
@@ -829,11 +830,15 @@ class MainActivity : ComponentActivity() {
                                 }
                                 shouldShowResults = initialMerged.isNotEmpty()
 
-                                val triggerOriginalText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload)
-                                com.mrndstvndv.search.util.SearchDebugCollector.lastQueryText = triggerOriginalText
-                                com.mrndstvndv.search.util.SearchDebugCollector.lastNormalizedQueryText = triggerFrequencyQuery
-                                com.mrndstvndv.search.util.SearchDebugCollector.lastResults = initialMerged
-                                com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = mapOf(activeTrigger.trigger.ownerProviderId to triggerResults) + supplementalMap
+                                if (collectDebugData) {
+                                    val triggerOriginalText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload)
+                                    com.mrndstvndv.search.util.SearchDebugCollector.lastQueryText = triggerOriginalText
+                                    com.mrndstvndv.search.util.SearchDebugCollector.lastNormalizedQueryText = triggerFrequencyQuery
+                                    com.mrndstvndv.search.util.SearchDebugCollector.lastResults = initialMerged
+                                    com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = mapOf(activeTrigger.trigger.ownerProviderId to triggerResults) + supplementalMap
+                                } else {
+                                    com.mrndstvndv.search.util.SearchDebugCollector.clear()
+                                }
 
                                 // 2. Query slow supplemental providers incrementally
                                 if (slowSupplemental.isNotEmpty()) {
@@ -846,8 +851,12 @@ class MainActivity : ComponentActivity() {
                                         }
                                         shouldShowResults = merged.isNotEmpty()
 
-                                        com.mrndstvndv.search.util.SearchDebugCollector.lastResults = merged
-                                        com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = mapOf(activeTrigger.trigger.ownerProviderId to triggerResults) + supplementalMap
+                                        if (collectDebugData) {
+                                            com.mrndstvndv.search.util.SearchDebugCollector.lastResults = merged
+                                            com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = mapOf(activeTrigger.trigger.ownerProviderId to triggerResults) + supplementalMap
+                                        } else {
+                                            com.mrndstvndv.search.util.SearchDebugCollector.clear()
+                                        }
                                     }
                                 }
                             } catch (_: Exception) {
@@ -905,10 +914,14 @@ class MainActivity : ComponentActivity() {
                             providerResults = initialResults
                         }
 
-                        com.mrndstvndv.search.util.SearchDebugCollector.lastQueryText = currentText
-                        com.mrndstvndv.search.util.SearchDebugCollector.lastNormalizedQueryText = normalizedText
-                        com.mrndstvndv.search.util.SearchDebugCollector.lastResults = initialResults
-                        com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = resultsMap.toMap()
+                        if (collectDebugData) {
+                            com.mrndstvndv.search.util.SearchDebugCollector.lastQueryText = currentText
+                            com.mrndstvndv.search.util.SearchDebugCollector.lastNormalizedQueryText = normalizedText
+                            com.mrndstvndv.search.util.SearchDebugCollector.lastResults = initialResults
+                            com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = resultsMap.toMap()
+                        } else {
+                            com.mrndstvndv.search.util.SearchDebugCollector.clear()
+                        }
 
                         // 2. Query slow providers incrementally
                         if (slowProviders.isNotEmpty()) {
@@ -928,8 +941,12 @@ class MainActivity : ComponentActivity() {
                                     providerResults = newResults
                                 }
 
-                                com.mrndstvndv.search.util.SearchDebugCollector.lastResults = newResults
-                                com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = resultsMap.toMap()
+                                if (collectDebugData) {
+                                    com.mrndstvndv.search.util.SearchDebugCollector.lastResults = newResults
+                                    com.mrndstvndv.search.util.SearchDebugCollector.lastRawResultsByProvider = resultsMap.toMap()
+                                } else {
+                                    com.mrndstvndv.search.util.SearchDebugCollector.clear()
+                                }
                             }
                         }
                     }

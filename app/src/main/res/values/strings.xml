@@ -671,6 +671,8 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="updates_check_prerelease">Check pre-release builds</string>
     <string name="updates_check_prerelease_desc">Include beta and dev versions when checking for updates</string>
     <!-- Debugging info -->
+    <string name="settings_collect_debug_data">Collect debug data</string>
+    <string name="settings_collect_debug_data_subtitle">Log queries and search results to memory for debugging</string>
     <string name="settings_export_debug_info">Export debug info</string>
     <string name="settings_export_debug_info_subtitle">Extract results, query, frequency, and settings for debugging</string>
     <string name="debug_info_copied">Debug info copied to clipboard</string>

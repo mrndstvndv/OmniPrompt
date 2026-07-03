@@ -55,6 +55,8 @@ class ProviderSettingsRepository(
         private const val KEY_LATEST_UPDATE_DOWNLOAD_URL = "latest_update_download_url"
         private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
         private const val KEY_CHECK_PRERELEASE_BUILDS = "check_prerelease_builds"
+        private const val KEY_COLLECT_DEBUG_DATA = "collect_debug_data"
+        private const val DEFAULT_COLLECT_DEBUG_DATA = true
 
         private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
         private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
@@ -155,6 +157,9 @@ class ProviderSettingsRepository(
     private val _revealAnimationEnabled = MutableStateFlow(DEFAULT_REVEAL_ANIMATION_ENABLED)
     val revealAnimationEnabled: StateFlow<Boolean> = _revealAnimationEnabled
 
+    private val _collectDebugData = MutableStateFlow(DEFAULT_COLLECT_DEBUG_DATA)
+    val collectDebugData: StateFlow<Boolean> = _collectDebugData
+
     init {
         if (scope != null) {
             scope.launch(Dispatchers.IO) {
@@ -181,6 +186,7 @@ class ProviderSettingsRepository(
                 _latestUpdate.value = loadLatestUpdate()
                 _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
                 _revealAnimationEnabled.value = loadRevealAnimationEnabled()
+                _collectDebugData.value = loadCollectDebugData()
             }
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
@@ -206,6 +212,7 @@ class ProviderSettingsRepository(
             _latestUpdate.value = loadLatestUpdate()
             _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
             _revealAnimationEnabled.value = loadRevealAnimationEnabled()
+            _collectDebugData.value = loadCollectDebugData()
         }
     }
 
@@ -246,6 +253,11 @@ class ProviderSettingsRepository(
     fun setRevealAnimationEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_REVEAL_ANIMATION_ENABLED, enabled) }
         _revealAnimationEnabled.value = enabled
+    }
+
+    fun setCollectDebugData(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_COLLECT_DEBUG_DATA, enabled) }
+        _collectDebugData.value = enabled
     }
 
     fun setProviderEnabled(
@@ -303,6 +315,12 @@ class ProviderSettingsRepository(
         preferences.getBoolean(
             KEY_REVEAL_ANIMATION_ENABLED,
             DEFAULT_REVEAL_ANIMATION_ENABLED,
+        )
+
+    private fun loadCollectDebugData(): Boolean =
+        preferences.getBoolean(
+            KEY_COLLECT_DEBUG_DATA,
+            DEFAULT_COLLECT_DEBUG_DATA,
         )
 
     private fun loadMotionPreferences(): MotionPreferences =
