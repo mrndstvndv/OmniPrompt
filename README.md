@@ -31,6 +31,10 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Material 3 UI** — Adjustable blur, opacity, and motion
 - **Power-User Tools** — Termux and Shizuku integration
 
+## Credits
+
+- **[Blue Line Console](https://github.com/nhirokinet/bluelineconsole)** — The keyboard-first Android launcher that inspired OmniPrompt's core interaction model.
+
 ## Building
 
 See [BUILDING.md](docs/BUILDING.md) for local and CI build instructions.
