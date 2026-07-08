@@ -4,14 +4,11 @@ A keyboard-first Android command palette that unifies app launching, device sear
 
 ## Screenshots
 
-<p float="left">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/app.png" width="45%" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/calculator.png" width="45%" />
-</p>
-<p float="left">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="45%" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/search.png" width="45%" />
-</p>
+| App Launcher | Calculator |
+|:-:|:-:|
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/app.png" width="200" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/calculator.png" width="200" /> |
+| File Search | Web Search |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="200" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/search.png" width="200" /> |
 
 ## Providers
 
