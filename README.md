@@ -1,5 +1,7 @@
 # OmniPrompt
 
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/mrndstvndv?label=Sponsor&logo=GitHub)](https://github.com/sponsors/mrndstvndv)
+
 A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay. Set it as your default assistant for instant access from anywhere.
 
 ## Screenshots
