@@ -7,6 +7,7 @@ import android.os.UserManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
+import androidx.lifecycle.lifecycleScope
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.provider.Provider
@@ -17,6 +18,11 @@ import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
 
 class AppListProvider(
@@ -26,6 +32,16 @@ class AppListProvider(
 ) : Provider {
     override val id: String = "app-list"
     override val displayName: String = activity.getString(R.string.provider_applications)
+    override val refreshSignal: SharedFlow<Unit> =
+        appListRepository
+            .getAllApps()
+            .drop(1)
+            .map { Unit }
+            .shareIn(
+                scope = activity.lifecycleScope,
+                started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+                replay = 0,
+            )
 
     private val packageManager = activity.packageManager
 
