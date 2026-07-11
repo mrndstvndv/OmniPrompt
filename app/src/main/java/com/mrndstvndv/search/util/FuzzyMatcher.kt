@@ -36,14 +36,12 @@ object FuzzyMatcher {
      * - Length bonus: up to +10 for shorter targets
      */
     fun match(
-        query: String,
+        queryLower: String,
         target: String,
+        targetLower: String,
     ): FuzzyMatchResult? {
-        if (query.isEmpty()) return FuzzyMatchResult(0, emptyList())
+        if (queryLower.isEmpty()) return FuzzyMatchResult(0, emptyList())
         if (target.isEmpty()) return null
-
-        val queryLower = query.lowercase()
-        val targetLower = target.lowercase()
 
         var queryIdx = 0
         var score = 0
@@ -85,6 +83,16 @@ object FuzzyMatcher {
         } else {
             null
         }
+    }
+
+    /**
+     * Legacy compatibility overload.
+     */
+    fun match(
+        query: String,
+        target: String,
+    ): FuzzyMatchResult? {
+        return match(query.lowercase(), target, target.lowercase())
     }
 
     /**

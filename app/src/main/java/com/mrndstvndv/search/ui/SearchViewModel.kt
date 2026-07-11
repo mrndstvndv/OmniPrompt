@@ -134,7 +134,7 @@ class SearchViewModel(
 
         pendingQueryJob =
             viewModelScope.launch {
-                delay(50)
+                delay(80)
 
                 if (currentTriggerState != null) {
                     val triggerFrequencyQuery =
