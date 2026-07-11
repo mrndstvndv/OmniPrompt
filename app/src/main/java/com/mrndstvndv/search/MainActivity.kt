@@ -15,6 +15,7 @@ import android.provider.Settings
 import android.util.Patterns
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import com.mrndstvndv.search.ui.SearchViewModel
 import com.mrndstvndv.search.ui.SearchViewModelFactory
@@ -203,6 +204,7 @@ class MainActivity : ComponentActivity() {
 
     private var isExiting = false
     private var finishRequestedDuringAction = false
+    private var forceFinish = false
     private var isLaunched by mutableStateOf(false)
     private var launchTrigger by mutableStateOf(0)
 
@@ -218,12 +220,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun finish() {
-        if (viewModel.uiState.value.isPerformingAction) {
+        if (viewModel.uiState.value.isPerformingAction && !finishRequestedDuringAction && !forceFinish) {
             finishRequestedDuringAction = true
             return
         }
+        forceFinish = false
+        val isResumed = lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
         val revealEnabled = (application as SearchApplication).container.settingsRepository.revealAnimationEnabled.value
-        if (revealEnabled && !isExiting) {
+        if (revealEnabled && !isExiting && isResumed) {
             isExiting = true
             isLaunched = false
         } else {
@@ -317,6 +321,15 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    forceFinish = true
+                    finish()
+                }
+            }
+        )
         if (savedInstanceState == null) {
             viewModel.clearState()
         }
@@ -1216,13 +1229,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(uiState.isPerformingAction) {
-                if (!uiState.isPerformingAction && finishRequestedDuringAction) {
-                    finishRequestedDuringAction = false
-                    finish()
-                }
-            }
-
             LaunchedEffect(pendingAction) {
                 val action = pendingAction ?: return@LaunchedEffect
                 var completed = false
@@ -1237,6 +1243,9 @@ class MainActivity : ComponentActivity() {
                         !action.keepOverlayUntilExit || !completed || (!this@MainActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
                     if (shouldDismissOverlay) {
                         viewModel.setIsPerformingAction(false)
+                    }
+                    if (finishRequestedDuringAction) {
+                        finish()
                     }
                 }
             }
