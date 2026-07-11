@@ -201,6 +201,7 @@ class MainActivity : ComponentActivity() {
     private var launchedFromAssist = false
 
     private var isExiting = false
+    private var finishRequestedDuringAction = false
     private var isLaunched by mutableStateOf(false)
     private var launchTrigger by mutableStateOf(0)
 
@@ -216,6 +217,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun finish() {
+        if (viewModel.uiState.value.isPerformingAction) {
+            finishRequestedDuringAction = true
+            return
+        }
         val revealEnabled = (application as SearchApplication).container.settingsRepository.revealAnimationEnabled.value
         if (revealEnabled && !isExiting) {
             isExiting = true
@@ -231,8 +236,17 @@ class MainActivity : ComponentActivity() {
         launchTrigger++
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (finishRequestedDuringAction) {
+            finishRequestedDuringAction = false
+            super.finish()
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         isExiting = false
+        finishRequestedDuringAction = false
         super.onNewIntent(intent)
         viewModel.clearState()
 
@@ -1190,6 +1204,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(uiState.isPerformingAction) {
+                if (!uiState.isPerformingAction && finishRequestedDuringAction) {
+                    finishRequestedDuringAction = false
+                    finish()
+                }
+            }
+
             LaunchedEffect(pendingAction) {
                 val action = pendingAction ?: return@LaunchedEffect
                 var completed = false
@@ -1201,7 +1222,7 @@ class MainActivity : ComponentActivity() {
                 } finally {
                     pendingAction = null
                     val shouldDismissOverlay =
-                        !action.keepOverlayUntilExit || !completed || !this@MainActivity.isFinishing
+                        !action.keepOverlayUntilExit || !completed || (!this@MainActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
                     if (shouldDismissOverlay) {
                         viewModel.setIsPerformingAction(false)
                     }
