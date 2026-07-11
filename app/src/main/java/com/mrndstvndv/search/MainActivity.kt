@@ -71,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
@@ -800,14 +801,25 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .drawBehind {
                                 val center = this.center
-                                val maxRadius = kotlin.math.hypot(size.width, size.height) / 2f
+                                val featherWidthPx = 80.dp.toPx()
+                                val maxRadius = (kotlin.math.hypot(size.width, size.height) / 2f) + featherWidthPx
                                 val currentRadius = maxRadius * animatedFraction
                                 val color = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
-                                drawCircle(
-                                    color = color,
-                                    radius = currentRadius,
-                                    center = center,
-                                )
+                                if (currentRadius > 0f) {
+                                    val startFadeRatio = ((currentRadius - featherWidthPx) / currentRadius).coerceIn(0f, 1f)
+                                    val brush = Brush.radialGradient(
+                                        0f to color,
+                                        startFadeRatio to color,
+                                        1f to color.copy(alpha = 0f),
+                                        center = center,
+                                        radius = currentRadius,
+                                    )
+                                    drawCircle(
+                                        brush = brush,
+                                        radius = currentRadius,
+                                        center = center,
+                                    )
+                                }
                             }
                     )
                     Box(
