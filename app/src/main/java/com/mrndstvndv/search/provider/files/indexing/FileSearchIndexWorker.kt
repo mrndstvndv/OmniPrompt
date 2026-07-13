@@ -13,7 +13,7 @@ import com.mrndstvndv.search.provider.files.index.IndexedDocumentEntity
 import com.mrndstvndv.search.provider.settings.FileSearchScanMetadata
 import com.mrndstvndv.search.provider.settings.FileSearchScanState
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -94,7 +94,7 @@ class FileSearchIndexWorker(
         dao: IndexedDocumentDao,
         batch: MutableList<IndexedDocumentEntity>,
         counter: Counter,
-        settingsRepository: SettingsRepository<FileSearchSettings>,
+        settingsRepository: ProviderSettingsRepository<FileSearchSettings>,
     ) {
         if (isStopped || counter.value >= MAX_INDEXED_ITEMS) return
         val children = document.listFiles()
@@ -143,7 +143,7 @@ class FileSearchIndexWorker(
     private suspend fun flushBatch(
         dao: IndexedDocumentDao,
         batch: MutableList<IndexedDocumentEntity>,
-        settingsRepository: SettingsRepository<FileSearchSettings>,
+        settingsRepository: ProviderSettingsRepository<FileSearchSettings>,
         rootId: String,
         counter: Counter,
     ) {
@@ -160,7 +160,7 @@ class FileSearchIndexWorker(
     }
 
     private fun updateScanState(
-        settingsRepository: SettingsRepository<FileSearchSettings>,
+        settingsRepository: ProviderSettingsRepository<FileSearchSettings>,
         rootId: String,
         state: FileSearchScanState,
         itemCount: Int = 0,

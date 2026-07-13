@@ -1,4 +1,4 @@
-package com.mrndstvndv.search.settings
+package com.mrndstvndv.search.manager
 
 import android.content.Context
 import android.net.Uri
@@ -6,9 +6,9 @@ import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
-import com.mrndstvndv.search.provider.settings.SettingsRegistry
 import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRegistry
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -124,7 +124,7 @@ class BackupRestoreManager(
      * Creates a backup JSON containing all app settings.
      */
     suspend fun createBackup(
-        settingsRepository: ProviderSettingsRepository,
+        settingsRepository: SettingsRepository,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): JSONObject =
@@ -361,7 +361,7 @@ class BackupRestoreManager(
      */
     suspend fun restoreFromBackup(
         backupJson: JSONObject,
-        settingsRepository: ProviderSettingsRepository,
+        settingsRepository: SettingsRepository,
         rankingRepository: ProviderRankingRepository,
         aliasRepository: AliasRepository,
     ): RestoreResult =
@@ -384,7 +384,7 @@ class BackupRestoreManager(
                                 val fileSearchRepo =
                                     SettingsRegistry.get(
                                         "file-search",
-                                    ) as? SettingsRepository<FileSearchSettings>
+                                    ) as? ProviderSettingsRepository<FileSearchSettings>
                                 fileSearchRepo?.value?.roots?.takeIf { it.isNotEmpty() }?.let {
                                         roots ->
                                     warnings.add(

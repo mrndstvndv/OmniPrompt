@@ -112,7 +112,7 @@ import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
@@ -179,7 +179,7 @@ private fun buildTriggerText(
         else -> "$matchedToken $payload"
     }
 
-class MainActivity : ComponentActivity() {
+class SearchActivity : ComponentActivity() {
     companion object {
         private const val MAX_BACKGROUND_BLUR_RADIUS = 80
         private val SLOW_PROVIDER_IDS = setOf("contacts", "file-search", "termux")
@@ -289,7 +289,7 @@ class MainActivity : ComponentActivity() {
             if (!hasReorderPermission) {
                 try {
                     val relaunchIntent =
-                        Intent(this, MainActivity::class.java).apply {
+                        Intent(this, SearchActivity::class.java).apply {
                             action = Intent.ACTION_MAIN
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                         }
@@ -352,7 +352,7 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
-            val container = remember(this@MainActivity) { (application as SearchApplication).container }
+            val container = remember(this@SearchActivity) { (application as SearchApplication).container }
             val textState by viewModel.textState.collectAsState()
             val uiState by viewModel.uiState.collectAsState()
             val focusRequester = remember { FocusRequester() }
@@ -454,17 +454,17 @@ class MainActivity : ComponentActivity() {
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
             val providers =
-                remember(this@MainActivity) {
+                remember(this@SearchActivity) {
                     buildList {
-                        add(AppListProvider(this@MainActivity, appSearchSettingsRepo, appListRepository))
-                        add(SettingsProvider(this@MainActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
-                        add(CalculatorProvider(this@MainActivity))
-                        add(TextUtilitiesProvider(this@MainActivity, textUtilitiesSettingsRepo))
-                        add(FileSearchProvider(this@MainActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(this@MainActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
-                        add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
-                        add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
-                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo, appListRepository))
+                        add(AppListProvider(this@SearchActivity, appSearchSettingsRepo, appListRepository))
+                        add(SettingsProvider(this@SearchActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
+                        add(CalculatorProvider(this@SearchActivity))
+                        add(TextUtilitiesProvider(this@SearchActivity, textUtilitiesSettingsRepo))
+                        add(FileSearchProvider(this@SearchActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
+                        add(ContactsProvider(this@SearchActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
+                        add(WebSearchProvider(this@SearchActivity, webSearchSettingsRepo))
+                        add(TermuxProvider(this@SearchActivity, settingsRepository, termuxSettingsRepo))
+                        add(IntentProvider(this@SearchActivity, settingsRepository, intentSettingsRepo, appListRepository))
                     }
                 }
 
@@ -610,7 +610,7 @@ class MainActivity : ComponentActivity() {
 
             fun openSettingsScreen() {
                 val intent =
-                    Intent(this@MainActivity, SettingsActivity::class.java)
+                    Intent(this@SearchActivity, SettingsActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
                 finish()
@@ -1006,7 +1006,7 @@ class MainActivity : ComponentActivity() {
                                         showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                         onSettingsClick = {
                                             val intent =
-                                                Intent(this@MainActivity, SettingsActivity::class.java)
+                                                Intent(this@SearchActivity, SettingsActivity::class.java)
                                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                             startActivity(intent)
                                             finish()
@@ -1073,7 +1073,7 @@ class MainActivity : ComponentActivity() {
                                     showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                     onSettingsClick = {
                                         val intent =
-                                            Intent(this@MainActivity, SettingsActivity::class.java)
+                                            Intent(this@SearchActivity, SettingsActivity::class.java)
                                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         startActivity(intent)
                                         finish()
@@ -1240,7 +1240,7 @@ class MainActivity : ComponentActivity() {
                 } finally {
                     pendingAction = null
                     val shouldDismissOverlay =
-                        !action.keepOverlayUntilExit || !completed || (!this@MainActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
+                        !action.keepOverlayUntilExit || !completed || (!this@SearchActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
                     if (shouldDismissOverlay) {
                         viewModel.setIsPerformingAction(false)
                     }
@@ -1308,7 +1308,7 @@ class MainActivity : ComponentActivity() {
                     // Aggregate frequency by site rather than per-query
                     frequencyKey = "web-search:${resolvedSite.id}",
                     // Load favicon from the site's URL
-                    iconLoader = { FaviconLoader.loadFavicon(this@MainActivity, resolvedSite.id) },
+                    iconLoader = { FaviconLoader.loadFavicon(this@SearchActivity, resolvedSite.id) },
                 )
             }
 
@@ -1349,7 +1349,7 @@ class MainActivity : ComponentActivity() {
                     // Load app icon from PackageManager with profile badging and theming/icon pack support
                     iconLoader = {
                         loadAppIconBitmap(
-                            context = this@MainActivity,
+                            context = this@SearchActivity,
                             packageName = target.packageName,
                             iconSize = defaultAppIconSize,
                             themedIconsEnabled = appSearchSettings.themedIconsEnabled,

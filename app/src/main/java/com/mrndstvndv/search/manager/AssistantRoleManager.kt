@@ -1,11 +1,11 @@
-package com.mrndstvndv.search.settings
+package com.mrndstvndv.search.manager
 
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
-import com.mrndstvndv.search.MainActivity
+import com.mrndstvndv.search.SearchActivity
 
 class AssistantRoleManager(private val context: Context) {
     fun isDefaultAssistant(): Boolean {
@@ -13,7 +13,7 @@ class AssistantRoleManager(private val context: Context) {
             Settings.Secure.getString(context.contentResolver, ASSISTANT_SETTING_KEY)
                 ?: return false
         val defaultComponent = ComponentName.unflattenFromString(assistantComponent) ?: return false
-        val appComponent = ComponentName(context, MainActivity::class.java)
+        val appComponent = ComponentName(context, SearchActivity::class.java)
         return defaultComponent.packageName == appComponent.packageName
     }
 

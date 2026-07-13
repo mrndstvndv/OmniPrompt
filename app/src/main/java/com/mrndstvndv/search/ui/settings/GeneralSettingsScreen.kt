@@ -64,7 +64,7 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.termux.TermuxProvider
@@ -83,7 +83,7 @@ import kotlin.math.roundToInt
 @Composable
 fun GeneralSettingsScreen(
     aliasRepository: AliasRepository,
-    settingsRepository: ProviderSettingsRepository,
+    settingsRepository: SettingsRepository,
     rankingRepository: ProviderRankingRepository,
     appName: String,
     isDefaultAssistant: Boolean,
@@ -235,7 +235,7 @@ fun GeneralSettingsScreen(
 
 @Composable
 fun ProvidersSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    settingsRepository: SettingsRepository,
     appName: String,
     isDefaultAssistant: Boolean,
     onRequestSetDefaultAssistant: () -> Unit,
@@ -432,7 +432,7 @@ fun ProvidersSettingsScreen(
 
 @Composable
 fun AppearanceSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
     val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
@@ -710,7 +710,7 @@ private fun SettingsIconPositionChooser(
 
 @Composable
 fun BehaviorSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
     val motionPreferences by settingsRepository.motionPreferences.collectAsState()
@@ -820,7 +820,7 @@ fun AliasesSettingsScreen(
 @Composable
 fun ResultRankingSettingsScreen(
     rankingRepository: ProviderRankingRepository,
-    settingsRepository: ProviderSettingsRepository,
+    settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
     val enabledProviders by settingsRepository.enabledProviders.collectAsState()

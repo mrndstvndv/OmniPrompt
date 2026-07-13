@@ -6,20 +6,20 @@ import androidx.annotation.Keep
 import kotlin.system.exitProcess
 
 @Keep
-class UserService : IUserService.Stub {
+class ShizukuUserService : IUserService.Stub {
     companion object {
-        private const val TAG = "UserService"
+        private const val TAG = "ShizukuUserService"
     }
 
     // Default constructor required by Shizuku
     constructor() {
-        Log.d(TAG, "UserService created (default constructor)")
+        Log.d(TAG, "ShizukuUserService created (default constructor)")
     }
 
     // Constructor with Context available from Shizuku v13
     @Keep
     constructor(context: Context) {
-        Log.d(TAG, "UserService created with context: $context")
+        Log.d(TAG, "ShizukuUserService created with context: $context")
     }
 
     override fun destroy() {

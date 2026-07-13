@@ -56,7 +56,7 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -70,7 +70,7 @@ import com.mrndstvndv.search.util.IconPackManager
 
 @Composable
 fun AppSearchSettingsScreen(
-    repository: SettingsRepository<AppSearchSettings>,
+    repository: ProviderSettingsRepository<AppSearchSettings>,
     appListRepository: AppListRepository,
     onBack: () -> Unit,
 ) {
@@ -841,7 +841,7 @@ private fun AddPinnedAppDialog(
 @Composable
 private fun IconThemeSection(
     appSearchSettings: AppSearchSettings,
-    repository: SettingsRepository<AppSearchSettings>,
+    repository: ProviderSettingsRepository<AppSearchSettings>,
 ) {
     var isIconPackDialogOpen by remember { mutableStateOf(false) }
 

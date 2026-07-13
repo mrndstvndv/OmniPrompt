@@ -55,7 +55,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxCommand
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.TermuxSettings
@@ -68,7 +68,7 @@ import java.util.UUID
 
 @Composable
 fun TermuxSettingsScreen(
-    repository: SettingsRepository<TermuxSettings>,
+    repository: ProviderSettingsRepository<TermuxSettings>,
     isTermuxInstalled: Boolean,
     onBack: () -> Unit,
 ) {

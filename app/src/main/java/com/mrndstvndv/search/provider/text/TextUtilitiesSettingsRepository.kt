@@ -1,17 +1,17 @@
 package com.mrndstvndv.search.provider.text
 
 import android.content.Context
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 
 /**
  * Factory function to create TextUtilities settings repository.
- * Uses existing TextUtilitiesSettings from ProviderSettingsRepository.
+ * Uses existing TextUtilitiesSettings from SettingsRepository.
  */
 fun createTextUtilitiesSettingsRepository(
     context: Context,
-): SettingsRepository<TextUtilitiesSettings> {
-    return SettingsRepository(
+): ProviderSettingsRepository<TextUtilitiesSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = TextUtilitiesSettings.PROVIDER_ID,
         default = { TextUtilitiesSettings.default() },

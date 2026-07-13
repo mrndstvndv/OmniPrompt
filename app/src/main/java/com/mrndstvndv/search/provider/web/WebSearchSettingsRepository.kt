@@ -1,15 +1,15 @@
 package com.mrndstvndv.search.provider.web
 
 import android.content.Context
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 
 /**
  * Factory function to create WebSearch settings repository.
- * Uses existing WebSearchSettings from ProviderSettingsRepository.
+ * Uses existing WebSearchSettings from SettingsRepository.
  */
-fun createWebSearchSettingsRepository(context: Context): SettingsRepository<WebSearchSettings> {
-    return SettingsRepository(
+fun createWebSearchSettingsRepository(context: Context): ProviderSettingsRepository<WebSearchSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = WebSearchSettings.PROVIDER_ID,
         default = { WebSearchSettings.default() },

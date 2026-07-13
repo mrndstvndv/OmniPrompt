@@ -1,17 +1,17 @@
 package com.mrndstvndv.search.provider.system
 
 import android.content.Context
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 
 /**
  * Factory function to create SystemSettings settings repository.
- * Uses existing SystemSettingsSettings from ProviderSettingsRepository.
+ * Uses existing SystemSettingsSettings from SettingsRepository.
  */
 fun createSystemSettingsSettingsRepository(
     context: Context,
-): SettingsRepository<SystemSettingsSettings> {
-    return SettingsRepository(
+): ProviderSettingsRepository<SystemSettingsSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = SystemSettingsSettings.PROVIDER_ID,
         default = { SystemSettingsSettings.default() },

@@ -19,8 +19,8 @@ import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,8 +33,8 @@ import kotlinx.coroutines.withContext
  */
 class TermuxProvider(
     private val activity: ComponentActivity,
-    private val globalSettingsRepository: ProviderSettingsRepository,
-    private val settingsRepository: SettingsRepository<TermuxSettings>,
+    private val globalSettingsRepository: SettingsRepository,
+    private val settingsRepository: ProviderSettingsRepository<TermuxSettings>,
 ) : Provider {
     override val id: String = "termux"
     override val displayName: String = activity.getString(R.string.provider_termux)

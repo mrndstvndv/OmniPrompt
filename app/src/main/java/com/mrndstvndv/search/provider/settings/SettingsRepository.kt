@@ -2,118 +2,1275 @@ package com.mrndstvndv.search.provider.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
+import android.os.Environment
+import androidx.annotation.StringRes
+import androidx.core.content.edit
+import com.mrndstvndv.search.R
+import com.mrndstvndv.search.util.GitHubUpdateChecker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * Generic repository for any ProviderSettings type.
- * Handles persistence, change notification, and auto-registration.
+ * Repository for provider settings.
  *
- * @param S The settings type (must implement ProviderSettings)
  * @param context Application context
- * @param providerId Unique identifier for the provider (used for prefs file naming)
- * @param default Factory function to create default settings
- * @param deserializer Function to parse settings from JSON string
- * @param serializer Function to convert settings to JSON string
+ * @param scope CoroutineScope for async initialization. Pass null for synchronous initialization
+ *              (useful for Workers that are already on IO thread).
  */
-class SettingsRepository<S : ProviderSettings>(
+class SettingsRepository(
     context: Context,
-    private val providerId: String,
-    private val default: () -> S,
-    private val deserializer: (String) -> S?,
-    private val serializer: (S) -> String,
+    scope: CoroutineScope? = null,
 ) {
-    /**
-     * SharedPreferences file name: "{providerId}_settings"
-     */
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences(
-            "${providerId}_settings",
+    companion object {
+        private const val PREF_NAME = "provider_settings"
+        private const val KEY_TRANSLUCENT_RESULTS = "translucent_results"
+        private const val KEY_BACKGROUND_OPACITY = "background_opacity"
+        private const val KEY_BACKGROUND_BLUR_STRENGTH = "background_blur_strength"
+        private const val KEY_ACTIVITY_INDICATOR_DELAY_MS = "activity_indicator_delay_ms"
+        private const val KEY_BACKGROUND_ANIMATION_DELAY_MS = "background_animation_delay_ms"
+        private const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
+        private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
+        private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
+        private const val KEY_SEARCH_BAR_POSITION = "search_bar_position"
+        private const val KEY_FIRST_RESULT_HIGHLIGHT_ENABLED = "first_result_highlight_enabled"
+        private const val KEY_FIRST_RESULT_HIGHLIGHT_MODE = "first_result_highlight_mode"
+        private const val KEY_FIRST_RESULT_BORDER_THICKNESS = "first_result_border_thickness"
+        private const val KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED = "first_result_change_animation_enabled"
+        private const val KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED = "first_result_color_animation_enabled"
+        private const val KEY_ALWAYS_SHOW_ENTER_BADGE = "always_show_enter_badge"
+        private const val KEY_HAS_USED_ENTER = "has_used_enter"
+        private const val KEY_UPDATE_CHECK_INTERVAL = "update_check_interval"
+        private const val KEY_CUSTOM_UPDATE_INTERVAL_DAYS = "custom_update_interval_days"
+        private const val KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time"
+        private const val KEY_DISMISSED_VERSION = "dismissed_version"
+        private const val KEY_LATEST_UPDATE_VERSION = "latest_update_version"
+        private const val KEY_LATEST_UPDATE_CHANGELOG = "latest_update_changelog"
+        private const val KEY_LATEST_UPDATE_DOWNLOAD_URL = "latest_update_download_url"
+        private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
+        private const val KEY_CHECK_PRERELEASE_BUILDS = "check_prerelease_builds"
+
+        private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
+        private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
+        private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
+        private const val MAX_ACTIVITY_INDICATOR_DELAY_MS = 1000
+        private const val DEFAULT_BACKGROUND_ANIMATION_DELAY_MS = 0
+        private const val MAX_BACKGROUND_ANIMATION_DELAY_MS = 1000
+        private const val DEFAULT_ANIMATIONS_ENABLED = true
+        private const val DEFAULT_FIRST_RESULT_BORDER_THICKNESS = 1f
+        private const val DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS = 1.5f
+        private const val MIN_FIRST_RESULT_BORDER_THICKNESS = 0.5f
+        private const val MAX_FIRST_RESULT_BORDER_THICKNESS = 3f
+
+        private const val DEFAULT_UPDATE_CHECK_INTERVAL = "weekly"
+        private const val DEFAULT_CUSTOM_UPDATE_INTERVAL_DAYS = 3
+        private const val DEFAULT_CHECK_PRERELEASE_BUILDS = false
+
+        private const val KEY_REVEAL_ANIMATION_ENABLED = "reveal_animation_enabled"
+        private const val DEFAULT_REVEAL_ANIMATION_ENABLED = true
+    }
+
+    private val appContext: Context = context.applicationContext
+    private val preferences: SharedPreferences =
+        appContext.getSharedPreferences(
+            PREF_NAME,
             Context.MODE_PRIVATE,
         )
 
-    /**
-     * Internal MutableStateFlow for reactive updates.
-     */
-    private val _flow: MutableStateFlow<S>
+    private val _translucentResultsEnabled = MutableStateFlow(true)
+    val translucentResultsEnabled: StateFlow<Boolean> = _translucentResultsEnabled
 
-    /**
-     * Public read-only StateFlow. UI observes this for changes.
-     */
-    val flow: StateFlow<S>
+    private val _backgroundOpacity = MutableStateFlow(DEFAULT_BACKGROUND_OPACITY)
+    val backgroundOpacity: StateFlow<Float> = _backgroundOpacity
 
-    /**
-     * Current settings value (immutable snapshot).
-     * Providers read this in their query() method.
-     */
-    val value: S
-        get() = _flow.value
+    private val _backgroundBlurStrength = MutableStateFlow(DEFAULT_BACKGROUND_BLUR_STRENGTH)
+    val backgroundBlurStrength: StateFlow<Float> = _backgroundBlurStrength
+
+    private val _activityIndicatorDelayMs = MutableStateFlow(DEFAULT_ACTIVITY_INDICATOR_DELAY_MS)
+    val activityIndicatorDelayMs: StateFlow<Int> = _activityIndicatorDelayMs
+
+    private val _backgroundAnimationDelayMs = MutableStateFlow(DEFAULT_BACKGROUND_ANIMATION_DELAY_MS)
+    val backgroundAnimationDelayMs: StateFlow<Int> = _backgroundAnimationDelayMs
+
+    private val _motionPreferences =
+        MutableStateFlow(MotionPreferences(animationsEnabled = DEFAULT_ANIMATIONS_ENABLED))
+    val motionPreferences: StateFlow<MotionPreferences> = _motionPreferences
+
+    private val _enabledProviders = MutableStateFlow(emptyMap<String, Boolean>())
+    val enabledProviders: StateFlow<Map<String, Boolean>> = _enabledProviders
+
+    private val _settingsIconPosition = MutableStateFlow(SettingsIconPosition.INSIDE)
+    val settingsIconPosition: StateFlow<SettingsIconPosition> = _settingsIconPosition
+
+    private val _searchBarPosition = MutableStateFlow(SearchBarPosition.BOTTOM)
+    val searchBarPosition: StateFlow<SearchBarPosition> = _searchBarPosition
+
+    private val _firstResultHighlightEnabled = MutableStateFlow(loadFirstResultHighlightEnabled())
+    val firstResultHighlightEnabled: StateFlow<Boolean> = _firstResultHighlightEnabled
+
+    private val _firstResultHighlightMode = MutableStateFlow(loadFirstResultHighlightMode())
+    val firstResultHighlightMode: StateFlow<FirstResultHighlightMode> = _firstResultHighlightMode
+
+    private val _firstResultBorderThickness = MutableStateFlow(loadFirstResultBorderThickness())
+    val firstResultBorderThickness: StateFlow<Float> = _firstResultBorderThickness
+
+    private val _firstResultChangeAnimationEnabled =
+        MutableStateFlow(loadFirstResultChangeAnimationEnabled())
+    val firstResultChangeAnimationEnabled: StateFlow<Boolean> = _firstResultChangeAnimationEnabled
+
+    private val _firstResultColorAnimationEnabled =
+        MutableStateFlow(loadFirstResultColorAnimationEnabled())
+    val firstResultColorAnimationEnabled: StateFlow<Boolean> = _firstResultColorAnimationEnabled
+
+    private val _alwaysShowEnterBadge = MutableStateFlow(loadAlwaysShowEnterBadge())
+    val alwaysShowEnterBadge: StateFlow<Boolean> = _alwaysShowEnterBadge
+
+    private val _hasUsedEnter = MutableStateFlow(loadHasUsedEnter())
+    val hasUsedEnter: StateFlow<Boolean> = _hasUsedEnter
+
+    private val _updateCheckInterval = MutableStateFlow(loadUpdateCheckInterval())
+    val updateCheckInterval: StateFlow<String> = _updateCheckInterval
+
+    private val _customUpdateIntervalDays = MutableStateFlow(loadCustomUpdateIntervalDays())
+    val customUpdateIntervalDays: StateFlow<Int> = _customUpdateIntervalDays
+
+    private val _lastUpdateCheckTime = MutableStateFlow(loadLastUpdateCheckTime())
+    val lastUpdateCheckTime: StateFlow<Long> = _lastUpdateCheckTime
+
+    private val _dismissedVersion = MutableStateFlow(loadDismissedVersion())
+    val dismissedVersion: StateFlow<String> = _dismissedVersion
+
+    private val _latestUpdate = MutableStateFlow<GitHubUpdateChecker.UpdateResult?>(null)
+    val latestUpdate: StateFlow<GitHubUpdateChecker.UpdateResult?> = _latestUpdate
+
+    private val _checkPrereleaseBuilds = MutableStateFlow(loadCheckPrereleaseBuilds())
+    val checkPrereleaseBuilds: StateFlow<Boolean> = _checkPrereleaseBuilds
+
+    private val _revealAnimationEnabled = MutableStateFlow(DEFAULT_REVEAL_ANIMATION_ENABLED)
+    val revealAnimationEnabled: StateFlow<Boolean> = _revealAnimationEnabled
 
     init {
-        // Load or create default settings
-        val settings = load()
-        _flow = MutableStateFlow(settings)
-        flow = _flow.asStateFlow()
-
-        // Auto-register for backup/restore
-        SettingsRegistry.register(this)
-    }
-
-    /**
-     * Update settings atomically.
-     * Triggers StateFlow emission and persists to disk.
-     *
-     * Usage:
-     *   repository.update { it.copy(defaultSiteId = "bing") }
-     */
-    fun update(transform: (S) -> S) {
-        val newSettings = transform(value)
-        _flow.value = newSettings
-        persist(newSettings)
-    }
-
-    /**
-     * Replace settings entirely (used by backup restore).
-     */
-    fun replace(settings: S) {
-        _flow.value = settings
-        persist(settings)
-    }
-
-    /**
-     * Replace settings from a JSON object (used by backup restore).
-     */
-    fun replaceFromJson(json: JSONObject): Boolean {
-        return try {
-            val deserialized = deserializer(json.toString())
-            if (deserialized != null) {
-                replace(deserialized)
-                true
-            } else {
-                false
+        if (scope != null) {
+            scope.launch(Dispatchers.IO) {
+                _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
+                _backgroundOpacity.value = loadBackgroundOpacity()
+                _backgroundBlurStrength.value = loadBackgroundBlurStrength()
+                _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
+                _backgroundAnimationDelayMs.value = loadBackgroundAnimationDelayMs()
+                _motionPreferences.value = loadMotionPreferences()
+                _enabledProviders.value = loadEnabledProviders()
+                _settingsIconPosition.value = loadSettingsIconPosition()
+                _searchBarPosition.value = loadSearchBarPosition()
+                _firstResultHighlightEnabled.value = loadFirstResultHighlightEnabled()
+                _firstResultHighlightMode.value = loadFirstResultHighlightMode()
+                _firstResultBorderThickness.value = loadFirstResultBorderThickness()
+                _firstResultChangeAnimationEnabled.value = loadFirstResultChangeAnimationEnabled()
+                _firstResultColorAnimationEnabled.value = loadFirstResultColorAnimationEnabled()
+                _alwaysShowEnterBadge.value = loadAlwaysShowEnterBadge()
+                _hasUsedEnter.value = loadHasUsedEnter()
+                _updateCheckInterval.value = loadUpdateCheckInterval()
+                _customUpdateIntervalDays.value = loadCustomUpdateIntervalDays()
+                _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
+                _dismissedVersion.value = loadDismissedVersion()
+                _latestUpdate.value = loadLatestUpdate()
+                _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
+                _revealAnimationEnabled.value = loadRevealAnimationEnabled()
             }
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    /**
-     * Serialize to JSON for backup export.
-     */
-    fun toBackupJson(): JSONObject = value.toJson()
-
-    private fun load(): S {
-        val jsonString = prefs.getString("settings", null)
-        return if (jsonString != null) {
-            deserializer(jsonString) ?: default()
         } else {
-            default()
+            _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
+            _backgroundOpacity.value = loadBackgroundOpacity()
+            _backgroundBlurStrength.value = loadBackgroundBlurStrength()
+            _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
+            _backgroundAnimationDelayMs.value = loadBackgroundAnimationDelayMs()
+            _motionPreferences.value = loadMotionPreferences()
+            _enabledProviders.value = loadEnabledProviders()
+            _settingsIconPosition.value = loadSettingsIconPosition()
+            _searchBarPosition.value = loadSearchBarPosition()
+            _firstResultHighlightEnabled.value = loadFirstResultHighlightEnabled()
+            _firstResultHighlightMode.value = loadFirstResultHighlightMode()
+            _firstResultBorderThickness.value = loadFirstResultBorderThickness()
+            _firstResultChangeAnimationEnabled.value = loadFirstResultChangeAnimationEnabled()
+            _firstResultColorAnimationEnabled.value = loadFirstResultColorAnimationEnabled()
+            _alwaysShowEnterBadge.value = loadAlwaysShowEnterBadge()
+            _hasUsedEnter.value = loadHasUsedEnter()
+            _updateCheckInterval.value = loadUpdateCheckInterval()
+            _customUpdateIntervalDays.value = loadCustomUpdateIntervalDays()
+            _lastUpdateCheckTime.value = loadLastUpdateCheckTime()
+            _dismissedVersion.value = loadDismissedVersion()
+            _latestUpdate.value = loadLatestUpdate()
+            _checkPrereleaseBuilds.value = loadCheckPrereleaseBuilds()
+            _revealAnimationEnabled.value = loadRevealAnimationEnabled()
         }
     }
 
-    private fun persist(settings: S) {
-        prefs.edit().putString("settings", serializer(settings)).apply()
+    fun setTranslucentResultsEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_TRANSLUCENT_RESULTS, enabled) }
+        _translucentResultsEnabled.value = enabled
     }
+
+    fun setBackgroundOpacity(alpha: Float) {
+        val coercedAlpha = alpha.coerceIn(0f, 1f)
+        preferences.edit { putFloat(KEY_BACKGROUND_OPACITY, coercedAlpha) }
+        _backgroundOpacity.value = coercedAlpha
+    }
+
+    fun setBackgroundBlurStrength(strength: Float) {
+        val coercedStrength = strength.coerceIn(0f, 1f)
+        preferences.edit { putFloat(KEY_BACKGROUND_BLUR_STRENGTH, coercedStrength) }
+        _backgroundBlurStrength.value = coercedStrength
+    }
+
+    fun setActivityIndicatorDelayMs(delayMs: Int) {
+        val coercedDelay = delayMs.coerceIn(0, MAX_ACTIVITY_INDICATOR_DELAY_MS)
+        preferences.edit { putInt(KEY_ACTIVITY_INDICATOR_DELAY_MS, coercedDelay) }
+        _activityIndicatorDelayMs.value = coercedDelay
+    }
+
+    fun setBackgroundAnimationDelayMs(delayMs: Int) {
+        val coercedDelay = delayMs.coerceIn(0, MAX_BACKGROUND_ANIMATION_DELAY_MS)
+        preferences.edit { putInt(KEY_BACKGROUND_ANIMATION_DELAY_MS, coercedDelay) }
+        _backgroundAnimationDelayMs.value = coercedDelay
+    }
+
+    fun setAnimationsEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_ANIMATIONS_ENABLED, enabled) }
+        _motionPreferences.value = _motionPreferences.value.copy(animationsEnabled = enabled)
+    }
+
+    fun setRevealAnimationEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_REVEAL_ANIMATION_ENABLED, enabled) }
+        _revealAnimationEnabled.value = enabled
+    }
+
+    fun setProviderEnabled(
+        providerId: String,
+        enabled: Boolean,
+    ) {
+        val current = _enabledProviders.value.toMutableMap()
+        current[providerId] = enabled
+        saveEnabledProviders(current)
+    }
+
+    private fun loadTranslucentResultsEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_TRANSLUCENT_RESULTS,
+            true,
+        )
+
+    private fun loadBackgroundOpacity(): Float =
+        preferences.getFloat(
+            KEY_BACKGROUND_OPACITY,
+            DEFAULT_BACKGROUND_OPACITY,
+        )
+
+    private fun loadBackgroundBlurStrength(): Float =
+        preferences.getFloat(
+            KEY_BACKGROUND_BLUR_STRENGTH,
+            DEFAULT_BACKGROUND_BLUR_STRENGTH,
+        )
+
+    private fun loadActivityIndicatorDelayMs(): Int {
+        val stored =
+            preferences.getInt(
+                KEY_ACTIVITY_INDICATOR_DELAY_MS,
+                DEFAULT_ACTIVITY_INDICATOR_DELAY_MS,
+            )
+        return stored.coerceIn(0, MAX_ACTIVITY_INDICATOR_DELAY_MS)
+    }
+
+    private fun loadBackgroundAnimationDelayMs(): Int {
+        val stored =
+            preferences.getInt(
+                KEY_BACKGROUND_ANIMATION_DELAY_MS,
+                DEFAULT_BACKGROUND_ANIMATION_DELAY_MS,
+            )
+        return stored.coerceIn(0, MAX_BACKGROUND_ANIMATION_DELAY_MS)
+    }
+
+    private fun loadAnimationsEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_ANIMATIONS_ENABLED,
+            DEFAULT_ANIMATIONS_ENABLED,
+        )
+
+    private fun loadRevealAnimationEnabled(): Boolean =
+        preferences.getBoolean(
+            KEY_REVEAL_ANIMATION_ENABLED,
+            DEFAULT_REVEAL_ANIMATION_ENABLED,
+        )
+
+    private fun loadMotionPreferences(): MotionPreferences =
+        MotionPreferences(
+            animationsEnabled = loadAnimationsEnabled(),
+        )
+
+    private fun loadEnabledProviders(): Map<String, Boolean> {
+        val json = preferences.getString(KEY_ENABLED_PROVIDERS, null) ?: return emptyMap()
+        return try {
+            val jsonObject = JSONObject(json)
+            val map = mutableMapOf<String, Boolean>()
+            val keys = jsonObject.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                map[key] = jsonObject.getBoolean(key)
+            }
+            map
+        } catch (ignored: JSONException) {
+            emptyMap()
+        }
+    }
+
+    private fun saveEnabledProviders(providers: Map<String, Boolean>) {
+        val jsonObject = JSONObject()
+        providers.forEach { (key, value) ->
+            jsonObject.put(key, value)
+        }
+        preferences.edit { putString(KEY_ENABLED_PROVIDERS, jsonObject.toString()) }
+        _enabledProviders.value = providers
+    }
+
+    fun setSettingsIconPosition(position: SettingsIconPosition) {
+        preferences.edit { putString(KEY_SETTINGS_ICON_POSITION, position.name) }
+        _settingsIconPosition.value = position
+    }
+
+    private fun loadSettingsIconPosition(): SettingsIconPosition {
+        val positionName = preferences.getString(KEY_SETTINGS_ICON_POSITION, null)
+        return SettingsIconPosition.fromStorageValue(positionName)
+    }
+
+    fun setSearchBarPosition(position: SearchBarPosition) {
+        preferences.edit { putString(KEY_SEARCH_BAR_POSITION, position.name) }
+        _searchBarPosition.value = position
+    }
+
+    fun setFirstResultHighlightEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, enabled) }
+        _firstResultHighlightEnabled.value = enabled
+    }
+
+    fun setFirstResultHighlightMode(mode: FirstResultHighlightMode) {
+        preferences.edit { putString(KEY_FIRST_RESULT_HIGHLIGHT_MODE, mode.name) }
+        _firstResultHighlightMode.value = mode
+    }
+
+    fun setFirstResultBorderThickness(thickness: Float) {
+        val coercedThickness =
+            thickness.coerceIn(
+                MIN_FIRST_RESULT_BORDER_THICKNESS,
+                MAX_FIRST_RESULT_BORDER_THICKNESS,
+            )
+        preferences.edit { putFloat(KEY_FIRST_RESULT_BORDER_THICKNESS, coercedThickness) }
+        _firstResultBorderThickness.value = coercedThickness
+    }
+
+    fun setFirstResultChangeAnimationEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, enabled) }
+        _firstResultChangeAnimationEnabled.value = enabled
+    }
+
+    fun setFirstResultColorAnimationEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, enabled) }
+        _firstResultColorAnimationEnabled.value = enabled
+    }
+
+    fun setAlwaysShowEnterBadge(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_ALWAYS_SHOW_ENTER_BADGE, enabled) }
+        _alwaysShowEnterBadge.value = enabled
+    }
+
+    fun markEnterUsed() {
+        if (_hasUsedEnter.value) return
+        preferences.edit { putBoolean(KEY_HAS_USED_ENTER, true) }
+        _hasUsedEnter.value = true
+    }
+
+    private fun loadSearchBarPosition(): SearchBarPosition {
+        val positionName = preferences.getString(KEY_SEARCH_BAR_POSITION, null)
+        return SearchBarPosition.fromStorageValue(positionName)
+    }
+
+    private fun loadFirstResultHighlightEnabled(): Boolean =
+        preferences.getBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, true)
+
+    private fun loadFirstResultHighlightMode(): FirstResultHighlightMode {
+        val modeName = preferences.getString(KEY_FIRST_RESULT_HIGHLIGHT_MODE, null)
+        return FirstResultHighlightMode.fromStorageValue(modeName)
+    }
+
+    private fun loadFirstResultBorderThickness(): Float {
+        val defaultThickness =
+            if (loadTranslucentResultsEnabled()) {
+                DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS
+            } else {
+                DEFAULT_FIRST_RESULT_BORDER_THICKNESS
+            }
+        return preferences.getFloat(KEY_FIRST_RESULT_BORDER_THICKNESS, defaultThickness)
+            .coerceIn(MIN_FIRST_RESULT_BORDER_THICKNESS, MAX_FIRST_RESULT_BORDER_THICKNESS)
+    }
+
+    private fun loadFirstResultChangeAnimationEnabled(): Boolean =
+        preferences.getBoolean(KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED, true)
+
+    private fun loadFirstResultColorAnimationEnabled(): Boolean =
+        preferences.getBoolean(KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED, false)
+
+    private fun loadAlwaysShowEnterBadge(): Boolean =
+        preferences.getBoolean(
+            KEY_ALWAYS_SHOW_ENTER_BADGE,
+            false,
+        )
+
+    private fun loadHasUsedEnter(): Boolean = preferences.getBoolean(KEY_HAS_USED_ENTER, false)
+
+    fun setUpdateCheckInterval(interval: String) {
+        preferences.edit { putString(KEY_UPDATE_CHECK_INTERVAL, interval) }
+        _updateCheckInterval.value = interval
+    }
+
+    private fun loadUpdateCheckInterval(): String =
+        preferences.getString(KEY_UPDATE_CHECK_INTERVAL, DEFAULT_UPDATE_CHECK_INTERVAL) ?: DEFAULT_UPDATE_CHECK_INTERVAL
+
+    fun setCustomUpdateIntervalDays(days: Int) {
+        val coerced = days.coerceAtLeast(1)
+        preferences.edit { putInt(KEY_CUSTOM_UPDATE_INTERVAL_DAYS, coerced) }
+        _customUpdateIntervalDays.value = coerced
+    }
+
+    private fun loadCustomUpdateIntervalDays(): Int =
+        preferences.getInt(KEY_CUSTOM_UPDATE_INTERVAL_DAYS, DEFAULT_CUSTOM_UPDATE_INTERVAL_DAYS)
+
+    fun setLastUpdateCheckTime(timestamp: Long) {
+        preferences.edit { putLong(KEY_LAST_UPDATE_CHECK_TIME, timestamp) }
+        _lastUpdateCheckTime.value = timestamp
+    }
+
+    private fun loadLastUpdateCheckTime(): Long =
+        preferences.getLong(KEY_LAST_UPDATE_CHECK_TIME, 0L)
+
+    fun setDismissedVersion(version: String) {
+        preferences.edit { putString(KEY_DISMISSED_VERSION, version) }
+        _dismissedVersion.value = version
+    }
+
+    private fun loadDismissedVersion(): String =
+        preferences.getString(KEY_DISMISSED_VERSION, "") ?: ""
+
+    fun setLatestUpdate(update: GitHubUpdateChecker.UpdateResult?) {
+        preferences.edit {
+            if (update == null) {
+                remove(KEY_LATEST_UPDATE_VERSION)
+                remove(KEY_LATEST_UPDATE_CHANGELOG)
+                remove(KEY_LATEST_UPDATE_DOWNLOAD_URL)
+                remove(KEY_LATEST_UPDATE_PRERELEASE)
+            } else {
+                putString(KEY_LATEST_UPDATE_VERSION, update.version)
+                putString(KEY_LATEST_UPDATE_CHANGELOG, update.changelog)
+                putString(KEY_LATEST_UPDATE_DOWNLOAD_URL, update.downloadUrl)
+                putBoolean(KEY_LATEST_UPDATE_PRERELEASE, update.isPrerelease)
+            }
+        }
+        _latestUpdate.value = update
+    }
+
+    private fun loadLatestUpdate(): GitHubUpdateChecker.UpdateResult? {
+        val version = preferences.getString(KEY_LATEST_UPDATE_VERSION, null) ?: return null
+        val changelog = preferences.getString(KEY_LATEST_UPDATE_CHANGELOG, "") ?: ""
+        val downloadUrl = preferences.getString(KEY_LATEST_UPDATE_DOWNLOAD_URL, "") ?: ""
+        val isPrerelease = preferences.getBoolean(KEY_LATEST_UPDATE_PRERELEASE, false)
+        return GitHubUpdateChecker.UpdateResult(version, changelog, downloadUrl, isPrerelease)
+    }
+
+    fun setCheckPrereleaseBuilds(enabled: Boolean) {
+        preferences.edit {
+            putBoolean(KEY_CHECK_PRERELEASE_BUILDS, enabled)
+            putLong(KEY_LAST_UPDATE_CHECK_TIME, 0L)
+        }
+        _checkPrereleaseBuilds.value = enabled
+        _lastUpdateCheckTime.value = 0L
+    }
+
+    private fun loadCheckPrereleaseBuilds(): Boolean =
+        preferences.getBoolean(KEY_CHECK_PRERELEASE_BUILDS, DEFAULT_CHECK_PRERELEASE_BUILDS)
+}
+
+data class WebSearchSettings(
+    val defaultSiteId: String,
+    val sites: List<WebSearchSite>,
+    val quicklinks: List<Quicklink> = emptyList(),
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    companion object {
+        const val PROVIDER_ID = "web-search"
+        private val DEFAULT_SITES =
+            listOf(
+                WebSearchSite(
+                    id = "bing",
+                    displayName = "Bing",
+                    urlTemplate = "https://www.bing.com/search?q={query}&form=QBLH",
+                    enabled = false,
+                ),
+                WebSearchSite(
+                    id = "duckduckgo",
+                    displayName = "DuckDuckGo",
+                    urlTemplate = "https://duckduckgo.com/?q={query}",
+                    enabled = false,
+                ),
+                WebSearchSite(
+                    id = "google",
+                    displayName = "Google",
+                    urlTemplate = "https://www.google.com/search?q={query}",
+                ),
+                WebSearchSite(
+                    id = "youtube",
+                    displayName = "YouTube",
+                    urlTemplate = "https://m.youtube.com/results?search_query={query}",
+                    enabled = false,
+                ),
+                WebSearchSite(
+                    id = "twitter",
+                    displayName = "Twitter",
+                    urlTemplate = "https://x.com/search?q={query}",
+                    enabled = false,
+                ),
+                WebSearchSite(
+                    id = "playstore",
+                    displayName = "Play Store",
+                    urlTemplate = "https://play.google.com/store/search?q={query}&c=apps",
+                    enabled = false,
+                ),
+                WebSearchSite(
+                    id = "github",
+                    displayName = "GitHub",
+                    urlTemplate = "https://github.com/search?q={query}",
+                    enabled = false,
+                ),
+            )
+        const val QUERY_PLACEHOLDER = "{query}"
+
+        fun default(): WebSearchSettings =
+            WebSearchSettings(
+                defaultSiteId = "google",
+                sites = DEFAULT_SITES,
+                quicklinks = emptyList(),
+            )
+
+        fun fromJson(json: JSONObject?): WebSearchSettings? {
+            if (json == null) return null
+            val array = json.optJSONArray("sites") ?: return null
+            val sites = mutableListOf<WebSearchSite>()
+            for (i in 0 until array.length()) {
+                WebSearchSite.fromJson(array.optJSONObject(i))?.let { sites.add(it) }
+            }
+            if (sites.isEmpty()) return null
+            val candidate = json.optString("defaultSiteId", sites.first().id)
+            val defaultId = sites.firstOrNull { it.id == candidate }?.id ?: sites.first().id
+
+            val quicklinksArray = json.optJSONArray("quicklinks") ?: JSONArray()
+            val quicklinks = mutableListOf<Quicklink>()
+            for (i in 0 until quicklinksArray.length()) {
+                Quicklink.fromJson(quicklinksArray.optJSONObject(i))?.let { quicklinks.add(it) }
+            }
+
+            return WebSearchSettings(
+                defaultSiteId = defaultId,
+                sites = sites,
+                quicklinks = quicklinks,
+            ).normalized()
+        }
+    }
+
+    fun siteForId(id: String?): WebSearchSite? = sites.firstOrNull { it.id == id }
+
+    fun normalized(): WebSearchSettings {
+        if (sites.isEmpty()) return this
+
+        val existingDefault = sites.firstOrNull { it.id == defaultSiteId }
+        val resolvedDefaultId =
+            existingDefault?.id ?: sites.firstOrNull {
+                it.enabled
+            }?.id ?: sites.first().id
+        val normalizedSites =
+            sites.map { site ->
+                if (site.id == resolvedDefaultId) {
+                    site.copy(enabled = true)
+                } else {
+                    site
+                }
+            }
+
+        return copy(defaultSiteId = resolvedDefaultId, sites = normalizedSites)
+    }
+
+    fun effectiveDefaultSite(): WebSearchSite? {
+        val normalized = normalized()
+        return normalized.sites.firstOrNull { it.id == normalized.defaultSiteId && it.enabled }
+    }
+
+    override fun toJson(): JSONObject {
+        val normalized = normalized()
+        val root = JSONObject()
+        root.put("defaultSiteId", normalized.defaultSiteId)
+
+        val sitesArray = JSONArray()
+        normalized.sites.forEach { sitesArray.put(it.toJson()) }
+        root.put("sites", sitesArray)
+
+        val quicklinksArray = JSONArray()
+        normalized.quicklinks.forEach { quicklinksArray.put(it.toJson()) }
+        root.put("quicklinks", quicklinksArray)
+
+        return root
+    }
+
+    fun toJsonString(): String = toJson().toString()
+}
+
+data class WebSearchSite(
+    val id: String,
+    val displayName: String,
+    val urlTemplate: String,
+    val enabled: Boolean = true,
+) {
+    fun buildUrl(query: String): String {
+        val template = normalizedTemplate()
+        val encoded = Uri.encode(query)
+        return template.replace(WebSearchSettings.QUERY_PLACEHOLDER, encoded)
+    }
+
+    private fun normalizedTemplate(): String =
+        if (urlTemplate.contains(WebSearchSettings.QUERY_PLACEHOLDER)) {
+            urlTemplate
+        } else if (urlTemplate.contains("?")) {
+            "$urlTemplate&q=${WebSearchSettings.QUERY_PLACEHOLDER}"
+        } else {
+            "$urlTemplate?q=${WebSearchSettings.QUERY_PLACEHOLDER}"
+        }
+
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("id", id)
+            put("displayName", displayName)
+            put("urlTemplate", urlTemplate)
+            put("enabled", enabled)
+        }
+
+    companion object {
+        fun fromJson(json: JSONObject?): WebSearchSite? {
+            if (json == null) return null
+            val id = json.opt("id") as? String ?: return null
+            val name = json.opt("displayName") as? String ?: return null
+            val template = json.opt("urlTemplate") as? String ?: return null
+            val enabled = json.optBoolean("enabled", true)
+            return WebSearchSite(
+                id = id,
+                displayName = name,
+                urlTemplate = template,
+                enabled = enabled,
+            )
+        }
+    }
+}
+
+data class Quicklink(
+    val id: String,
+    val title: String,
+    val url: String,
+    val hasFavicon: Boolean = false,
+) {
+    fun displayUrl(): String =
+        url
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .removeSuffix("/")
+
+    fun domain(): String {
+        val withoutProtocol =
+            url
+                .removePrefix("https://")
+                .removePrefix("http://")
+        return withoutProtocol.substringBefore("/").substringBefore("?")
+    }
+
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("id", id)
+            put("title", title)
+            put("url", url)
+            put("hasFavicon", hasFavicon)
+        }
+
+    companion object {
+        fun fromJson(json: JSONObject?): Quicklink? {
+            if (json == null) return null
+            val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
+            val title = json.optString("title").takeIf { it.isNotBlank() } ?: return null
+            val url = json.optString("url").takeIf { it.isNotBlank() } ?: return null
+            val hasFavicon = json.optBoolean("hasFavicon", false)
+            return Quicklink(id = id, title = title, url = url, hasFavicon = hasFavicon)
+        }
+    }
+}
+
+enum class TextUtilityDefaultMode {
+    ENCODE,
+    DECODE,
+}
+
+data class TextUtilitiesSettings(
+    val openDecodedUrls: Boolean,
+    val disabledUtilities: Set<String> = emptySet(),
+    val disabledKeywords: Map<String, Set<String>> = emptyMap(),
+    val utilityDefaultModes: Map<String, TextUtilityDefaultMode> = emptyMap(),
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    companion object {
+        const val PROVIDER_ID = "text-utilities"
+
+        fun default(): TextUtilitiesSettings =
+            TextUtilitiesSettings(
+                openDecodedUrls = true,
+                disabledUtilities = emptySet(),
+                disabledKeywords = emptyMap(),
+                utilityDefaultModes = emptyMap(),
+            )
+
+        fun fromJson(json: JSONObject?): TextUtilitiesSettings? {
+            if (json == null) return null
+
+            val disabledUtilitiesArray = json.optJSONArray("disabledUtilities")
+            val disabledUtilities =
+                buildSet {
+                    if (disabledUtilitiesArray != null) {
+                        for (i in 0 until disabledUtilitiesArray.length()) {
+                            disabledUtilitiesArray.optString(
+                                i,
+                            )?.takeIf { it.isNotBlank() }?.let { add(it) }
+                        }
+                    }
+                }
+
+            val disabledKeywordsObj = json.optJSONObject("disabledKeywords")
+            val disabledKeywords =
+                buildMap<String, Set<String>> {
+                    if (disabledKeywordsObj != null) {
+                        val keys = disabledKeywordsObj.keys()
+                        while (keys.hasNext()) {
+                            val utilityId = keys.next()
+                            val keywordsArray = disabledKeywordsObj.optJSONArray(utilityId)
+                            if (keywordsArray != null) {
+                                val keywords =
+                                    buildSet {
+                                        for (i in 0 until keywordsArray.length()) {
+                                            keywordsArray.optString(
+                                                i,
+                                            )?.takeIf { it.isNotBlank() }?.let { add(it) }
+                                        }
+                                    }
+                                if (keywords.isNotEmpty()) put(utilityId, keywords)
+                            }
+                        }
+                    }
+                }
+
+            val modesObj = json.optJSONObject("utilityDefaultModes")
+            val utilityDefaultModes =
+                buildMap<String, TextUtilityDefaultMode> {
+                    if (modesObj != null) {
+                        val keys = modesObj.keys()
+                        while (keys.hasNext()) {
+                            val utilityId = keys.next()
+                            val modeStr = modesObj.optString(utilityId)
+                            val mode =
+                                try {
+                                    TextUtilityDefaultMode.valueOf(modeStr)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            if (mode != null) put(utilityId, mode)
+                        }
+                    }
+                }
+
+            return TextUtilitiesSettings(
+                openDecodedUrls = json.optBoolean("openDecodedUrls", true),
+                disabledUtilities = disabledUtilities,
+                disabledKeywords = disabledKeywords,
+                utilityDefaultModes = utilityDefaultModes,
+            )
+        }
+    }
+
+    override fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("openDecodedUrls", openDecodedUrls)
+            put("disabledUtilities", JSONArray(disabledUtilities.toList()))
+            put(
+                "disabledKeywords",
+                JSONObject().apply {
+                    disabledKeywords.forEach { (utilityId, keywords) ->
+                        put(utilityId, JSONArray(keywords.toList()))
+                    }
+                },
+            )
+            put(
+                "utilityDefaultModes",
+                JSONObject().apply {
+                    utilityDefaultModes.forEach { (utilityId, mode) ->
+                        put(utilityId, mode.name)
+                    }
+                },
+            )
+        }
+
+    fun toJsonString(): String = toJson().toString()
+}
+
+data class FileSearchSettings(
+    val roots: List<FileSearchRoot>,
+    val scanMetadata: Map<String, FileSearchScanMetadata>,
+    val includeDownloads: Boolean,
+    val loadThumbnails: Boolean,
+    val thumbnailCropMode: FileSearchThumbnailCropMode,
+    val sortMode: FileSearchSortMode,
+    val sortAscending: Boolean,
+    val syncIntervalMinutes: Int,
+    val syncOnAppOpen: Boolean,
+    val lastSyncTimestamp: Long,
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    override fun toJson(): JSONObject {
+        val json = JSONObject()
+        val rootsArray = JSONArray()
+        roots.forEach { rootsArray.put(it.toJson()) }
+        json.put("roots", rootsArray)
+        val metadata = JSONObject()
+        scanMetadata.forEach { (rootId, data) ->
+            metadata.put(rootId, data.toJson())
+        }
+        json.put("metadata", metadata)
+        json.put("includeDownloads", includeDownloads)
+        json.put("loadThumbnails", loadThumbnails)
+        json.put("thumbnailCropMode", thumbnailCropMode.name)
+        json.put("sortMode", sortMode.name)
+        json.put("sortAscending", sortAscending)
+        json.put("syncIntervalMinutes", syncIntervalMinutes)
+        json.put("syncOnAppOpen", syncOnAppOpen)
+        json.put("lastSyncTimestamp", lastSyncTimestamp)
+        return json
+    }
+
+    fun toJsonString(): String {
+        val json = JSONObject()
+        val rootsArray = JSONArray()
+        roots.forEach { rootsArray.put(it.toJson()) }
+        json.put("roots", rootsArray)
+        val metadata = JSONObject()
+        scanMetadata.forEach { (rootId, data) ->
+            metadata.put(rootId, data.toJson())
+        }
+        json.put("metadata", metadata)
+        json.put("includeDownloads", includeDownloads)
+        json.put("loadThumbnails", loadThumbnails)
+        json.put("thumbnailCropMode", thumbnailCropMode.name)
+        json.put("sortMode", sortMode.name)
+        json.put("sortAscending", sortAscending)
+        json.put("syncIntervalMinutes", syncIntervalMinutes)
+        json.put("syncOnAppOpen", syncOnAppOpen)
+        json.put("lastSyncTimestamp", lastSyncTimestamp)
+        return json.toString()
+    }
+
+    fun rootById(rootId: String): FileSearchRoot? = roots.firstOrNull { it.id == rootId }
+
+    fun enabledRoots(): List<FileSearchRoot> = roots.filter { it.isEnabled }
+
+    fun hasEnabledRoots(): Boolean = includeDownloads || roots.any { it.isEnabled }
+
+    companion object {
+        const val PROVIDER_ID = "file-search"
+        const val DOWNLOADS_ROOT_ID = "downloads-root"
+        const val DEFAULT_SYNC_INTERVAL_MINUTES = 30
+        const val DEFAULT_SYNC_ON_APP_OPEN = true
+
+        fun empty(): FileSearchSettings =
+            FileSearchSettings(
+                roots = emptyList(),
+                scanMetadata = emptyMap(),
+                includeDownloads = false,
+                loadThumbnails = true,
+                thumbnailCropMode = FileSearchThumbnailCropMode.CENTER_CROP,
+                sortMode = FileSearchSortMode.NAME,
+                sortAscending = true,
+                syncIntervalMinutes = DEFAULT_SYNC_INTERVAL_MINUTES,
+                syncOnAppOpen = DEFAULT_SYNC_ON_APP_OPEN,
+                lastSyncTimestamp = 0L,
+            )
+
+        fun fromJson(json: JSONObject?): FileSearchSettings? {
+            if (json == null) return empty()
+            val rootsArray = json.optJSONArray("roots") ?: JSONArray()
+            val roots =
+                buildList {
+                    for (i in 0 until rootsArray.length()) {
+                        val parsed = FileSearchRoot.fromJson(rootsArray.optJSONObject(i))
+                        if (parsed != null) add(parsed)
+                    }
+                }
+            val metadataObject = json.optJSONObject("metadata") ?: JSONObject()
+            val metadata = mutableMapOf<String, FileSearchScanMetadata>()
+            val keys = metadataObject.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val parsed = FileSearchScanMetadata.fromJson(metadataObject.optJSONObject(key))
+                if (parsed != null) metadata[key] = parsed
+            }
+            val includeDownloads = json.optBoolean("includeDownloads", false)
+            val loadThumbnails = json.optBoolean("loadThumbnails", true)
+            val cropRaw = json.optString("thumbnailCropMode", FileSearchThumbnailCropMode.FIT.name)
+            val cropMode = FileSearchThumbnailCropMode.fromStorageValue(cropRaw)
+            val sortRaw = json.optString("sortMode", FileSearchSortMode.NAME.name)
+            val sortMode = FileSearchSortMode.fromStorageValue(sortRaw)
+            val sortAscending = json.optBoolean("sortAscending", true)
+            val syncIntervalMinutes =
+                json.optInt(
+                    "syncIntervalMinutes",
+                    DEFAULT_SYNC_INTERVAL_MINUTES,
+                )
+            val syncOnAppOpen = json.optBoolean("syncOnAppOpen", DEFAULT_SYNC_ON_APP_OPEN)
+            val lastSyncTimestamp = json.optLong("lastSyncTimestamp", 0L)
+            return FileSearchSettings(
+                roots = roots,
+                scanMetadata = metadata,
+                includeDownloads = includeDownloads,
+                loadThumbnails = loadThumbnails,
+                thumbnailCropMode = cropMode,
+                sortMode = sortMode,
+                sortAscending = sortAscending,
+                syncIntervalMinutes = syncIntervalMinutes,
+                syncOnAppOpen = syncOnAppOpen,
+                lastSyncTimestamp = lastSyncTimestamp,
+            )
+        }
+    }
+}
+
+data class FileSearchRoot(
+    val id: String,
+    val uri: Uri,
+    val displayName: String,
+    val isEnabled: Boolean = true,
+    val addedAtMillis: Long,
+    val parentDisplayName: String? = null,
+) {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("id", id)
+            put("uri", uri.toString())
+            put("displayName", displayName)
+            put("isEnabled", isEnabled)
+            put("addedAtMillis", addedAtMillis)
+            if (!parentDisplayName.isNullOrBlank()) {
+                put("parentDisplayName", parentDisplayName)
+            }
+        }
+
+    companion object {
+        fun fromJson(json: JSONObject?): FileSearchRoot? {
+            if (json == null) return null
+            val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
+            val uriValue = json.optString("uri").takeIf { it.isNotBlank() } ?: return null
+            val uri = Uri.parse(uriValue)
+            val name = json.optString("displayName").ifBlank { uri.lastPathSegment ?: uriValue }
+            val enabled = json.optBoolean("isEnabled", true)
+            val addedAt = json.optLong("addedAtMillis", 0L)
+            val parent = json.optString("parentDisplayName").takeIf { it.isNotBlank() }
+            return FileSearchRoot(
+                id = id,
+                uri = uri,
+                displayName = name,
+                isEnabled = enabled,
+                addedAtMillis = addedAt,
+                parentDisplayName = parent,
+            )
+        }
+
+        fun downloadsRoot(context: Context): FileSearchRoot? {
+            val directory =
+                Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS,
+                )
+            val uri = directory?.let { Uri.fromFile(it) } ?: return null
+            val parentName = directory.parentFile?.name
+            return FileSearchRoot(
+                id = FileSearchSettings.DOWNLOADS_ROOT_ID,
+                uri = uri,
+                displayName = context.getString(R.string.file_search_downloads),
+                isEnabled = true,
+                addedAtMillis = directory.lastModified(),
+                parentDisplayName = parentName,
+            )
+        }
+    }
+}
+
+data class FileSearchScanMetadata(
+    val state: FileSearchScanState,
+    val indexedItemCount: Int,
+    val updatedAtMillis: Long,
+    val errorMessage: String? = null,
+) {
+    fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("state", state.name)
+            put("indexedItemCount", indexedItemCount)
+            put("updatedAtMillis", updatedAtMillis)
+            if (errorMessage != null) {
+                put("errorMessage", errorMessage)
+            }
+        }
+
+    companion object {
+        fun fromJson(json: JSONObject?): FileSearchScanMetadata? {
+            if (json == null) return null
+            val stateName = json.optString("state", FileSearchScanState.IDLE.name)
+            val state =
+                runCatching { FileSearchScanState.valueOf(stateName) }
+                    .getOrDefault(FileSearchScanState.IDLE)
+            val itemCount = json.optInt("indexedItemCount", 0)
+            val updatedAt = json.optLong("updatedAtMillis", 0L)
+            val rawError = json.optString("errorMessage")
+            val error = rawError.takeIf { it.isNotBlank() }
+            return FileSearchScanMetadata(
+                state = state,
+                indexedItemCount = itemCount,
+                updatedAtMillis = updatedAt,
+                errorMessage = error,
+            )
+        }
+    }
+}
+
+enum class FileSearchScanState {
+    IDLE,
+    INDEXING,
+    SUCCESS,
+    ERROR,
+}
+
+enum class FileSearchThumbnailCropMode {
+    FIT,
+    CENTER_CROP,
+    ;
+
+    companion object {
+        fun fromStorageValue(value: String?): FileSearchThumbnailCropMode {
+            if (value.isNullOrBlank()) return CENTER_CROP
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: CENTER_CROP
+        }
+    }
+}
+
+enum class FileSearchSortMode {
+    DATE,
+    NAME,
+    ;
+
+    companion object {
+        fun fromStorageValue(value: String?): FileSearchSortMode {
+            if (value.isNullOrBlank()) return NAME
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: NAME
+        }
+    }
+}
+
+enum class AppListType(
+    @StringRes val labelResId: Int,
+) {
+    RECENT(R.string.app_list_type_recent),
+    PINNED(R.string.app_list_type_pinned),
+    BOTH(R.string.app_list_type_both),
+    ;
+
+    companion object {
+        fun fromStorageValue(value: String?): AppListType {
+            if (value.isNullOrBlank()) return RECENT
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: RECENT
+        }
+    }
+}
+
+data class AppSearchSettings(
+    val includePackageName: Boolean,
+    val aiAssistantQueriesEnabled: Boolean = true,
+    val appListEnabled: Boolean = false,
+    val appListType: AppListType = AppListType.RECENT,
+    val reverseRecentAppsOrder: Boolean = false,
+    val reversePinnedAppsOrder: Boolean = false,
+    val bothLayoutPinnedOnLeft: Boolean = false,
+    val filterPinnedFromRecentsInBoth: Boolean = true,
+    val centerAppList: Boolean = false,
+    val pinnedApps: List<String> = emptyList(),
+    val hideAppListWhenResultsVisible: Boolean = true,
+    val themedIconsEnabled: Boolean = false,
+    val themeAllIcons: Boolean = false,
+    val iconPackPackageName: String = "",
+    val includeWorkApps: Boolean = true,
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    companion object {
+        const val PROVIDER_ID = "app-list"
+
+        fun default(): AppSearchSettings =
+            AppSearchSettings(
+                includePackageName = false,
+                aiAssistantQueriesEnabled = true,
+                appListEnabled = false,
+                appListType = AppListType.RECENT,
+                reverseRecentAppsOrder = false,
+                reversePinnedAppsOrder = false,
+                bothLayoutPinnedOnLeft = false,
+                filterPinnedFromRecentsInBoth = true,
+                centerAppList = false,
+                pinnedApps = emptyList(),
+                hideAppListWhenResultsVisible = true,
+                themedIconsEnabled = false,
+                themeAllIcons = false,
+                iconPackPackageName = "",
+                includeWorkApps = true,
+            )
+
+        fun fromJson(json: JSONObject?): AppSearchSettings? {
+            if (json == null) return null
+            val pinnedAppsArray = json.optJSONArray("pinnedApps")
+            val pinnedApps =
+                if (pinnedAppsArray != null) {
+                    (0 until pinnedAppsArray.length()).mapNotNull { pinnedAppsArray.optString(it) }
+                } else {
+                    emptyList()
+                }
+            return AppSearchSettings(
+                includePackageName = json.optBoolean("includePackageName", false),
+                aiAssistantQueriesEnabled = json.optBoolean("aiAssistantQueriesEnabled", true),
+                appListEnabled =
+                    json.optBoolean(
+                        "appListEnabled",
+                        json.optBoolean("showRecentApps", false),
+                    ),
+                appListType = AppListType.fromStorageValue(json.optString("appListType")),
+                reverseRecentAppsOrder = json.optBoolean("reverseRecentAppsOrder", false),
+                reversePinnedAppsOrder = json.optBoolean("reversePinnedAppsOrder", false),
+                bothLayoutPinnedOnLeft = json.optBoolean("bothLayoutPinnedOnLeft", false),
+                filterPinnedFromRecentsInBoth =
+                    json.optBoolean(
+                        "filterPinnedFromRecentsInBoth",
+                        true,
+                    ),
+                centerAppList = json.optBoolean("centerAppList", false),
+                pinnedApps = pinnedApps,
+                hideAppListWhenResultsVisible =
+                    json.optBoolean(
+                        "hideAppListWhenResultsVisible",
+                        true,
+                    ),
+                themedIconsEnabled = json.optBoolean("themedIconsEnabled", false),
+                themeAllIcons = json.optBoolean("themeAllIcons", false),
+                iconPackPackageName = json.optString("iconPackPackageName", ""),
+                includeWorkApps = json.optBoolean("includeWorkApps", true),
+            )
+        }
+    }
+
+    override fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("includePackageName", includePackageName)
+            put("aiAssistantQueriesEnabled", aiAssistantQueriesEnabled)
+            put("appListEnabled", appListEnabled)
+            put("appListType", appListType.name)
+            put("reverseRecentAppsOrder", reverseRecentAppsOrder)
+            put("reversePinnedAppsOrder", reversePinnedAppsOrder)
+            put("bothLayoutPinnedOnLeft", bothLayoutPinnedOnLeft)
+            put("filterPinnedFromRecentsInBoth", filterPinnedFromRecentsInBoth)
+            put("centerAppList", centerAppList)
+            put("pinnedApps", JSONArray(pinnedApps))
+            put("hideAppListWhenResultsVisible", hideAppListWhenResultsVisible)
+            put("themedIconsEnabled", themedIconsEnabled)
+            put("themeAllIcons", themeAllIcons)
+            put("iconPackPackageName", iconPackPackageName)
+            put("includeWorkApps", includeWorkApps)
+        }
+
+    fun toJsonString(): String = toJson().toString()
+}
+
+data class SystemSettingsSettings(
+    val developerToggleEnabled: Boolean,
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    companion object {
+        const val PROVIDER_ID = "system-settings"
+
+        fun default(): SystemSettingsSettings =
+            SystemSettingsSettings(
+                developerToggleEnabled = false,
+            )
+
+        fun fromJson(json: JSONObject?): SystemSettingsSettings? {
+            if (json == null) return null
+            return SystemSettingsSettings(
+                developerToggleEnabled = json.optBoolean("developerToggleEnabled", false),
+            )
+        }
+    }
+
+    override fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("developerToggleEnabled", developerToggleEnabled)
+        }
+
+    fun toJsonString(): String = toJson().toString()
+}
+
+data class ContactsSettings(
+    val includePhoneNumbers: Boolean,
+    val showSimNumbers: Boolean,
+) : ProviderSettings {
+    override val providerId: String = PROVIDER_ID
+
+    companion object {
+        const val PROVIDER_ID = "contacts"
+
+        fun default(): ContactsSettings =
+            ContactsSettings(
+                includePhoneNumbers = true,
+                showSimNumbers = false,
+            )
+
+        fun fromJson(json: JSONObject?): ContactsSettings? {
+            if (json == null) return null
+            return ContactsSettings(
+                includePhoneNumbers = json.optBoolean("includePhoneNumbers", true),
+                showSimNumbers = json.optBoolean("showSimNumbers", false),
+            )
+        }
+    }
+
+    override fun toJson(): JSONObject =
+        JSONObject().apply {
+            put("includePhoneNumbers", includePhoneNumbers)
+            put("showSimNumbers", showSimNumbers)
+        }
+
+    fun toJsonString(): String = toJson().toString()
 }

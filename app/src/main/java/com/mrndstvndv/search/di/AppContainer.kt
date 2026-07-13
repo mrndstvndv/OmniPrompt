@@ -13,7 +13,7 @@ import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
 import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
 import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
@@ -26,7 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 class AppContainer(private val context: Context) {
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    val settingsRepository by lazy { ProviderSettingsRepository(context, applicationScope) }
+    val settingsRepository by lazy { SettingsRepository(context, applicationScope) }
     val aliasRepository by lazy { AliasRepository(context, applicationScope) }
 
     val webSearchSettingsRepo by lazy { createWebSearchSettingsRepository(context) }

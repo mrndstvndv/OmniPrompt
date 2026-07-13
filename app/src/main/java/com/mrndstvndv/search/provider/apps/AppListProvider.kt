@@ -15,7 +15,7 @@ import com.mrndstvndv.search.provider.apps.models.AppInfo
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 
 class AppListProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: SettingsRepository<AppSearchSettings>,
+    private val settingsRepository: ProviderSettingsRepository<AppSearchSettings>,
     private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "app-list"

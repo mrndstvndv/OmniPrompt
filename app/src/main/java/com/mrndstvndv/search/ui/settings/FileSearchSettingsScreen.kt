@@ -65,7 +65,7 @@ import com.mrndstvndv.search.provider.settings.FileSearchScanState
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.FileSearchSortMode
 import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -76,7 +76,7 @@ import java.util.UUID
 
 @Composable
 fun FileSearchSettingsScreen(
-    repository: SettingsRepository<FileSearchSettings>,
+    repository: ProviderSettingsRepository<FileSearchSettings>,
     fileSearchRepository: FileSearchRepository,
     onBack: () -> Unit,
 ) {
@@ -901,7 +901,7 @@ private fun formatRelativeTime(
 private fun handleFolderSelection(
     uri: Uri,
     context: android.content.Context,
-    repository: SettingsRepository<FileSearchSettings>,
+    repository: ProviderSettingsRepository<FileSearchSettings>,
     fileSearchRepository: FileSearchRepository,
 ) {
     val existingRoot =

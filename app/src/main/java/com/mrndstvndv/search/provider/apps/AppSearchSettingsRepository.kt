@@ -2,14 +2,14 @@ package com.mrndstvndv.search.provider.apps
 
 import android.content.Context
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 
 /**
  * Factory function to create AppSearch settings repository.
- * Uses existing AppSearchSettings from ProviderSettingsRepository.
+ * Uses existing AppSearchSettings from SettingsRepository.
  */
-fun createAppSearchSettingsRepository(context: Context): SettingsRepository<AppSearchSettings> {
-    return SettingsRepository(
+fun createAppSearchSettingsRepository(context: Context): ProviderSettingsRepository<AppSearchSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = AppSearchSettings.PROVIDER_ID,
         default = { AppSearchSettings.default() },

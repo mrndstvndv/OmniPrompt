@@ -38,7 +38,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.mrndstvndv.search.provider.termux.TermuxProvider
-import com.mrndstvndv.search.settings.AssistantRoleManager
+import com.mrndstvndv.search.manager.AssistantRoleManager
 import com.mrndstvndv.search.ui.settings.About
 import com.mrndstvndv.search.ui.settings.AboutSettingsScreen
 import com.mrndstvndv.search.ui.settings.Aliases

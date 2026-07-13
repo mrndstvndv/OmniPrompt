@@ -21,7 +21,7 @@ import com.mrndstvndv.search.provider.model.TriggerInvocation
 import com.mrndstvndv.search.provider.model.TriggerMatch
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.TextUtilitiesSettings
 import com.mrndstvndv.search.provider.settings.TextUtilityDefaultMode
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,7 @@ import kotlin.math.min
 
 class TextUtilitiesProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: SettingsRepository<TextUtilitiesSettings>,
+    private val settingsRepository: ProviderSettingsRepository<TextUtilitiesSettings>,
 ) : Provider {
     override val id: String = "text-utilities"
     override val displayName: String = activity.getString(R.string.provider_text_utilities)
