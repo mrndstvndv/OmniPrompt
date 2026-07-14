@@ -7,6 +7,7 @@ import android.os.UserManager
 import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
+import androidx.lifecycle.lifecycleScope
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.provider.Provider
@@ -14,18 +15,35 @@ import com.mrndstvndv.search.provider.apps.models.AppInfo
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class AppListProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: SettingsRepository<AppSearchSettings>,
+    private val settingsRepository: ProviderSettingsRepository<AppSearchSettings>,
     private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "app-list"
     override val displayName: String = activity.getString(R.string.provider_applications)
+    override val refreshSignal: SharedFlow<Unit> =
+        appListRepository
+            .getAllApps()
+            .drop(1)
+            .map { Unit }
+            .shareIn(
+                scope = activity.lifecycleScope,
+                started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+                replay = 0,
+            )
 
     private val packageManager = activity.packageManager
 
@@ -73,15 +91,17 @@ class AppListProvider(
                     .filter { it.packageName == askMatch.assistant.packageName }
                     .map { ScoredApp(it, 100, emptyList(), emptyList()) }
             } else {
+                val queryLower = normalized.lowercase()
                 // Apply fuzzy matching and scoring
                 appListRepository
                     .getAllApps()
                     .value
                     .mapNotNull { app ->
-                        val labelMatch = FuzzyMatcher.match(normalized, app.label)
+                        currentCoroutineContext().ensureActive()
+                        val labelMatch = FuzzyMatcher.match(queryLower, app.label, app.labelLower)
                         val packageMatch =
                             if (includePackageName) {
-                                FuzzyMatcher.match(normalized, app.packageName)
+                                FuzzyMatcher.match(queryLower, app.packageName, app.packageNameLower)
                             } else {
                                 null
                             }

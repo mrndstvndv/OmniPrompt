@@ -542,7 +542,6 @@ fun ItemsList(
                 val iconBitmap by produceState<Bitmap?>(
                     initialValue = item.icon,
                     item.id,
-                    item.iconLoader,
                     appSettings.themedIconsEnabled,
                     appSettings.themeAllIcons,
                     appSettings.iconPackPackageName,

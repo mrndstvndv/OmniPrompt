@@ -9,7 +9,7 @@ import android.provider.Settings
 import android.util.Log
 import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.IUserService
-import com.mrndstvndv.search.UserService
+import com.mrndstvndv.search.ShizukuUserService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import rikka.shizuku.Shizuku
@@ -58,7 +58,7 @@ class DeveloperSettingsManager(private val context: Context) {
 
     private val userServiceArgs by lazy {
         Shizuku.UserServiceArgs(
-            ComponentName(BuildConfig.APPLICATION_ID, UserService::class.java.name),
+            ComponentName(BuildConfig.APPLICATION_ID, ShizukuUserService::class.java.name),
         )
             .daemon(false)
             .processNameSuffix("service")
@@ -316,7 +316,7 @@ class DeveloperSettingsManager(private val context: Context) {
             val version = Shizuku.getVersion()
             Log.d(TAG, "Shizuku version: $version")
             if (version >= 10) {
-                val className = UserService::class.java.name
+                val className = ShizukuUserService::class.java.name
                 Log.d(TAG, "UserService class name: $className")
                 Log.d(TAG, "Application ID: ${BuildConfig.APPLICATION_ID}")
                 Log.d(TAG, "Binding user service...")

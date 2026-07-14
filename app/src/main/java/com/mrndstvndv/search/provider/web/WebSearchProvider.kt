@@ -20,7 +20,7 @@ import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.Quicklink
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.FuzzyMatcher
@@ -30,7 +30,7 @@ import kotlinx.coroutines.withContext
 // TODO: the query should be empty if a whitespace between the trigger and query is not yet made. the behavior right now is that the searchitem searches for the trigger if a query is not yet made
 class WebSearchProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: SettingsRepository<WebSearchSettings>,
+    private val settingsRepository: ProviderSettingsRepository<WebSearchSettings>,
 ) : Provider {
     override val id: String = "web-search"
     override val displayName: String = activity.getString(R.string.provider_web_search)
@@ -71,7 +71,7 @@ class WebSearchProvider(
         return listOf(
             createTriggerResult(
                 invocation = invocation,
-                id = "$id:${site.id}:${queryText.hashCode()}",
+                id = "$id:${site.id}",
                 title = activity.getString(R.string.web_search_result_title, queryText),
                 subtitle = site.displayName,
                 providerId = id,
@@ -241,7 +241,7 @@ class WebSearchProvider(
                     triggerToken
                 }
             ProviderResult(
-                id = "$id:${site.id}:${actualQuery.hashCode()}",
+                id = "$id:${site.id}",
                 title = activity.getString(R.string.web_search_result_title, actualQuery),
                 subtitle =
                     if (site.id == defaultSite.id) {

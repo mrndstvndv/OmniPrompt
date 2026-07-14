@@ -44,7 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.R
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.ui.components.MarkdownText
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -59,7 +59,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun UpdatesSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
+    settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current

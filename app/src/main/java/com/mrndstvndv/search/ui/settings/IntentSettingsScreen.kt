@@ -71,7 +71,7 @@ import com.mrndstvndv.search.provider.intent.IntentConfig
 import com.mrndstvndv.search.provider.intent.IntentExtra
 import com.mrndstvndv.search.provider.intent.IntentOption
 import com.mrndstvndv.search.provider.intent.IntentSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
@@ -90,7 +90,7 @@ private enum class AddDialogStep {
 
 @Composable
 fun IntentSettingsScreen(
-    repository: SettingsRepository<IntentSettings>,
+    repository: ProviderSettingsRepository<IntentSettings>,
     appListRepository: AppListRepository,
     onBack: () -> Unit,
 ) {

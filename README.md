@@ -1,17 +1,16 @@
 # OmniPrompt
 
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/mrndstvndv?label=Sponsor&logo=GitHub)](https://github.com/sponsors/mrndstvndv)
+
 A keyboard-first Android command palette that unifies app launching, device search, and system utilities into a single, customizable overlay. Set it as your default assistant for instant access from anywhere.
 
 ## Screenshots
 
-<p float="left">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/app.png" width="45%" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/calculator.png" width="45%" />
-</p>
-<p float="left">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="45%" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/search.png" width="45%" />
-</p>
+| App Launcher | Calculator |
+|:-:|:-:|
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/app.png" width="200" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/calculator.png" width="200" /> |
+| File Search | Web Search |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/file.png" width="200" /> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/search.png" width="200" /> |
 
 ## Providers
 
@@ -30,6 +29,10 @@ A keyboard-first Android command palette that unifies app launching, device sear
 - **Smart Ranking** — Learns from usage with competitive decay
 - **Material 3 UI** — Adjustable blur, opacity, and motion
 - **Power-User Tools** — Termux and Shizuku integration
+
+## Credits
+
+- **[Blue Line Console](https://github.com/nhirokinet/bluelineconsole)** — The keyboard-first Android launcher that inspired OmniPrompt's core interaction model.
 
 ## Building
 

@@ -2,14 +2,14 @@ package com.mrndstvndv.search.provider.files
 
 import android.content.Context
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 
 /**
  * Factory function to create FileSearch settings repository.
- * Uses existing FileSearchSettings from ProviderSettingsRepository.
+ * Uses existing FileSearchSettings from SettingsRepository.
  */
-fun createFileSearchSettingsRepository(context: Context): SettingsRepository<FileSearchSettings> {
-    return SettingsRepository(
+fun createFileSearchSettingsRepository(context: Context): ProviderSettingsRepository<FileSearchSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = FileSearchSettings.PROVIDER_ID,
         default = { FileSearchSettings.empty() },

@@ -11,8 +11,8 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +22,8 @@ import kotlinx.coroutines.withContext
 
 class SettingsProvider(
     private val activity: ComponentActivity,
-    private val globalSettingsRepository: ProviderSettingsRepository,
-    private val settingsRepository: SettingsRepository<SystemSettingsSettings>,
+    private val globalSettingsRepository: SettingsRepository,
+    private val settingsRepository: ProviderSettingsRepository<SystemSettingsSettings>,
     private val developerSettingsManager: DeveloperSettingsManager,
 ) : Provider {
     override val id: String = "system-settings"

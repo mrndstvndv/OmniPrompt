@@ -2,7 +2,7 @@ package com.mrndstvndv.search.provider.intent
 
 import android.content.Context
 import com.mrndstvndv.search.provider.settings.ProviderSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -64,8 +64,8 @@ data class IntentSettings(
  * Factory function to create repository.
  * Called from MainActivity.
  */
-fun createIntentSettingsRepository(context: Context): SettingsRepository<IntentSettings> {
-    return SettingsRepository(
+fun createIntentSettingsRepository(context: Context): ProviderSettingsRepository<IntentSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = IntentSettings.PROVIDER_ID,
         default = { IntentSettings.default() },

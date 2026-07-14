@@ -22,6 +22,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
     id("com.google.android.gms.oss-licenses-plugin")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 abstract class SyncOssLicenseAssetsTask : DefaultTask() {
@@ -142,6 +143,10 @@ dependencies {
     implementation(libs.androidx.documentfile)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.kotlinx.serialization.json)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

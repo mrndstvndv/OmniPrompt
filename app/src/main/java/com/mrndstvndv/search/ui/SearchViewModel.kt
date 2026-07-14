@@ -60,6 +60,7 @@ class SearchViewModel(
         val aliasDialogError: String? = null,
         val contactActionData: ContactActionData? = null,
         val matchedAlias: Pair<AliasEntry, String>? = null,
+        val isPerformingAction: Boolean = false,
     )
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -104,6 +105,22 @@ class SearchViewModel(
                     executeSearch()
                 }
         }
+        viewModelScope.launch {
+            aliasRepository.aliases.collect {
+                executeSearch()
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.enabledProviders.collect {
+                updateAvailableTriggers()
+                executeSearch()
+            }
+        }
+        viewModelScope.launch {
+            rankingRepository.useFrequencyRanking.collect {
+                executeSearch()
+            }
+        }
     }
 
     fun executeSearch() {
@@ -117,7 +134,7 @@ class SearchViewModel(
 
         pendingQueryJob =
             viewModelScope.launch {
-                delay(50)
+                delay(80)
 
                 if (currentTriggerState != null) {
                     val triggerFrequencyQuery =
@@ -379,6 +396,22 @@ class SearchViewModel(
 
     fun setShowLoadingOverlay(show: Boolean) {
         _uiState.update { it.copy(showLoadingOverlay = show) }
+    }
+
+    fun setIsPerformingAction(performing: Boolean) {
+        _uiState.update { it.copy(isPerformingAction = performing) }
+    }
+
+    fun setContactActionData(data: ContactActionData?) {
+        _uiState.update { it.copy(contactActionData = data) }
+    }
+
+    fun clearState() {
+        pendingQueryJob?.cancel()
+        suppressedTriggerMatch = null
+        pendingActivationEchoToken = null
+        _textState.value = TextFieldValue("")
+        _uiState.value = SearchUiState()
     }
 
     private fun ensureTrailingSpace(input: String): String {

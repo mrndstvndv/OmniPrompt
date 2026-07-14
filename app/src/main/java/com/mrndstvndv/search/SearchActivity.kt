@@ -15,6 +15,10 @@ import android.provider.Settings
 import android.util.Patterns
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.viewModels
+import com.mrndstvndv.search.ui.SearchViewModel
+import com.mrndstvndv.search.ui.SearchViewModelFactory
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.FastOutLinearInEasing
@@ -68,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
@@ -107,7 +112,7 @@ import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
@@ -174,10 +179,14 @@ private fun buildTriggerText(
         else -> "$matchedToken $payload"
     }
 
-class MainActivity : ComponentActivity() {
+class SearchActivity : ComponentActivity() {
     companion object {
         private const val MAX_BACKGROUND_BLUR_RADIUS = 80
         private val SLOW_PROVIDER_IDS = setOf("contacts", "file-search", "termux")
+    }
+
+    private val viewModel: SearchViewModel by viewModels {
+        SearchViewModelFactory((application as SearchApplication).container)
     }
 
     private val defaultAppIconSize by lazy { resources.getDimensionPixelSize(android.R.dimen.app_icon_size) }
@@ -194,6 +203,8 @@ class MainActivity : ComponentActivity() {
     private var launchedFromAssist = false
 
     private var isExiting = false
+    private var finishRequestedDuringAction = false
+    private var forceFinish = false
     private var isLaunched by mutableStateOf(false)
     private var launchTrigger by mutableStateOf(0)
 
@@ -209,8 +220,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun finish() {
+        if (viewModel.uiState.value.isPerformingAction && !finishRequestedDuringAction && !forceFinish) {
+            finishRequestedDuringAction = true
+            return
+        }
+        forceFinish = false
+        val isResumed = lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
         val revealEnabled = (application as SearchApplication).container.settingsRepository.revealAnimationEnabled.value
-        if (revealEnabled && !isExiting) {
+        if (revealEnabled && !isExiting && isResumed) {
             isExiting = true
             isLaunched = false
         } else {
@@ -224,9 +241,19 @@ class MainActivity : ComponentActivity() {
         launchTrigger++
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (finishRequestedDuringAction) {
+            finishRequestedDuringAction = false
+            super.finish()
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         isExiting = false
+        finishRequestedDuringAction = false
         super.onNewIntent(intent)
+        viewModel.clearState()
 
         val isAssistAction = intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS"
         // Rewrite assist actions to escape session lifecycle
@@ -262,7 +289,7 @@ class MainActivity : ComponentActivity() {
             if (!hasReorderPermission) {
                 try {
                     val relaunchIntent =
-                        Intent(this, MainActivity::class.java).apply {
+                        Intent(this, SearchActivity::class.java).apply {
                             action = Intent.ACTION_MAIN
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                         }
@@ -294,6 +321,18 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    forceFinish = true
+                    finish()
+                }
+            }
+        )
+        if (savedInstanceState == null) {
+            viewModel.clearState()
+        }
 
         // When launched via ACTION_ASSIST, the system treats this activity as an ephemeral
         // assist session and may immediately pause/stop it once the gesture animation completes.
@@ -313,8 +352,9 @@ class MainActivity : ComponentActivity() {
         // causing a white flash on first launch. Reset it.
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         setContent {
-            val container = remember(this@MainActivity) { (application as SearchApplication).container }
-            val textState = rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
+            val container = remember(this@SearchActivity) { (application as SearchApplication).container }
+            val textState by viewModel.textState.collectAsState()
+            val uiState by viewModel.uiState.collectAsState()
             val focusRequester = remember { FocusRequester() }
             val coroutineScope = rememberCoroutineScope()
             val settingsRepository = container.settingsRepository
@@ -414,17 +454,17 @@ class MainActivity : ComponentActivity() {
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
             val providers =
-                remember(this@MainActivity) {
+                remember(this@SearchActivity) {
                     buildList {
-                        add(AppListProvider(this@MainActivity, appSearchSettingsRepo, appListRepository))
-                        add(SettingsProvider(this@MainActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
-                        add(CalculatorProvider(this@MainActivity))
-                        add(TextUtilitiesProvider(this@MainActivity, textUtilitiesSettingsRepo))
-                        add(FileSearchProvider(this@MainActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(this@MainActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
-                        add(WebSearchProvider(this@MainActivity, webSearchSettingsRepo))
-                        add(TermuxProvider(this@MainActivity, settingsRepository, termuxSettingsRepo))
-                        add(IntentProvider(this@MainActivity, settingsRepository, intentSettingsRepo, appListRepository))
+                        add(AppListProvider(this@SearchActivity, appSearchSettingsRepo, appListRepository))
+                        add(SettingsProvider(this@SearchActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
+                        add(CalculatorProvider(this@SearchActivity))
+                        add(TextUtilitiesProvider(this@SearchActivity, textUtilitiesSettingsRepo))
+                        add(FileSearchProvider(this@SearchActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
+                        add(ContactsProvider(this@SearchActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
+                        add(WebSearchProvider(this@SearchActivity, webSearchSettingsRepo))
+                        add(TermuxProvider(this@SearchActivity, settingsRepository, termuxSettingsRepo))
+                        add(IntentProvider(this@SearchActivity, settingsRepository, intentSettingsRepo, appListRepository))
                     }
                 }
 
@@ -497,53 +537,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            var providerResults by remember { mutableStateOf(listOf<ProviderResult>()) }
-            var shouldShowResults by remember { mutableStateOf(false) }
-            var pendingQueryJob by remember { mutableStateOf<Job?>(null) }
-            var refreshTrigger by remember { mutableStateOf(0) }
-            var triggerState by remember { mutableStateOf<TriggerState?>(null) }
-            // Some IMEs echo the just-consumed trigger token once after activation.
-            // Ignore that one stale value so the payload stays empty.
-            var pendingActivationEchoToken by remember { mutableStateOf<String?>(null) }
-            var suppressedTriggerMatch by remember { mutableStateOf<SuppressedTriggerMatch?>(null) }
+            val aliasResult = uiState.matchedAlias?.let { (entry, normalizedText) ->
+                buildAliasResult(entry, normalizedText, webSearchSettings, appSearchSettings)
+            }
+            val displayedResults = remember(uiState.providerResults, aliasResult) {
+                buildList {
+                    aliasResult?.let { add(it) }
+                    addAll(uiState.providerResults)
+                }
+            }
 
-            val activeProviders = providers.filter { enabledProviders[it.id] ?: true }
-            val availableTriggers = activeProviders.flatMap { it.triggers }
-            val providersById = remember(providers) { providers.associateBy { it.id } }
-
-            // Listen for provider refresh signals
             LaunchedEffect(providers) {
-                merge(*providers.map { it.refreshSignal }.toTypedArray())
-                    .collect { refreshTrigger++ }
+                viewModel.initProviders(providers)
             }
 
-            var aliasDialogCandidate by remember { mutableStateOf<AliasCreationCandidate?>(null) }
-            var aliasDialogValue by remember { mutableStateOf("") }
-            var aliasDialogError by remember { mutableStateOf<String?>(null) }
-            var isPerformingAction by remember { mutableStateOf(false) }
-            var showLoadingOverlay by remember { mutableStateOf(false) }
             var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
-            var contactActionData by remember { mutableStateOf<ContactActionData?>(null) }
-            var currentNormalizedQuery by remember { mutableStateOf("") }
-
-            fun recordResultUsage(result: ProviderResult) {
-                if (result.excludeFromFrequencyRanking) return
-                val freqId = result.frequencyKey
-                val freqQuery = result.frequencyQuery ?: currentNormalizedQuery
-                rankingRepository.incrementResultUsage(freqId, freqQuery)
-            }
 
             fun startPendingAction(result: ProviderResult?) {
                 val action = result?.onSelect ?: return
-                if (isPerformingAction) return
-                isPerformingAction = true
-                recordResultUsage(result)
+                if (uiState.isPerformingAction) return
+                viewModel.setIsPerformingAction(true)
+                viewModel.recordResultUsage(result)
                 pendingAction = PendingAction(action, result.keepOverlayUntilExit)
-            }
-
-            fun ensureTrailingSpace(input: String): String {
-                val trimmed = input.trimEnd()
-                return if (trimmed.isEmpty()) " " else "$trimmed "
             }
 
             fun textFieldValueAtEnd(text: String): TextFieldValue =
@@ -552,104 +567,13 @@ class MainActivity : ComponentActivity() {
                     selection = TextRange(text.length),
                 )
 
-            fun applyPrefillQuery(prefillQuery: String) {
-                val completedPrefill = ensureTrailingSpace(prefillQuery)
-                val parsedTrigger = TriggerParser.parse(completedPrefill)
-                val match =
-                    if (parsedTrigger.hasPayloadSeparator && parsedTrigger.firstToken.isNotBlank()) {
-                        findTriggerMatch(parsedTrigger.firstToken, availableTriggers)
-                    } else {
-                        null
-                    }
-
-                if (match != null) {
-                    suppressedTriggerMatch = null
-                    pendingActivationEchoToken = parsedTrigger.firstToken
-                    triggerState =
-                        TriggerState(
-                            trigger = match.trigger,
-                            matchedToken = parsedTrigger.firstToken,
-                            payload = parsedTrigger.payload,
-                        )
-                    textState.value = textFieldValueAtEnd(parsedTrigger.payload)
-                    return
-                }
-
-                pendingActivationEchoToken = null
-                textState.value = textFieldValueAtEnd(completedPrefill)
-            }
-
-            fun deduplicateResults(results: List<ProviderResult>): List<ProviderResult> {
-                val seenIds = mutableSetOf<String>()
-                return results.filter { seenIds.add(it.id) }
-            }
-
-            fun queryProvidersFlow(
-                query: Query,
-                providersToQuery: List<Provider>,
-            ): kotlinx.coroutines.flow.Flow<Pair<String, List<ProviderResult>>> {
-                if (providersToQuery.isEmpty()) return flowOf()
-                val providerFlows =
-                    providersToQuery.map { provider ->
-                        flow {
-                            val results =
-                                try {
-                                    withContext(Dispatchers.IO) { provider.query(query) }
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (_: Exception) {
-                                    emptyList()
-                                }
-                            emit(provider.id to results)
-                        }
-                    }
-                return merge(*providerFlows.toTypedArray())
-            }
-
-            fun sortResults(
-                results: List<ProviderResult>,
-                normalizedText: String,
-            ): List<ProviderResult> {
-                val sortMetadata =
-                    results.map { result ->
-                        val providerRank = rankingRepository.getProviderRank(result.providerId)
-                        val frequencyQuery = result.frequencyQuery ?: normalizedText
-                        val frequencyScore =
-                            if (useFrequencyRanking) {
-                                rankingRepository.getResultFrequency(result.frequencyKey, frequencyQuery)
-                            } else {
-                                0f
-                            }
-                        ResultSortMetadata(
-                            result = result,
-                            providerRank = providerRank,
-                            frequencyScore = frequencyScore,
-                        )
-                    }
-
-                if (!useFrequencyRanking) {
-                    return sortMetadata
-                        .sortedBy { it.providerRank }
-                        .map { it.result }
-                }
-
-                return sortMetadata
-                    .sortedWith(
-                        compareBy<ResultSortMetadata>(
-                            { if (it.hasFrequency) 0 else 1 },
-                            { if (it.hasFrequency) -it.frequencyScore else it.providerRank.toFloat() },
-                        ),
-                    ).map { it.result }
-            }
-
             fun handleResultSelection(result: ProviderResult?): Boolean {
                 val candidate = result ?: return false
                 val prefillQuery = candidate.extras[TextUtilitiesProvider.PREFILL_QUERY_EXTRA] as? String
                 if (prefillQuery != null) {
-                    recordResultUsage(candidate)
-                    if (triggerState != null) return true
-                    applyPrefillQuery(prefillQuery)
-                    shouldShowResults = true
+                    viewModel.recordResultUsage(candidate)
+                    if (uiState.triggerState != null) return true
+                    viewModel.applyPrefillQuery(prefillQuery)
                     return true
                 }
                 if (candidate.providerId == "contacts") {
@@ -657,7 +581,7 @@ class MainActivity : ComponentActivity() {
                     val phoneNumbers = candidate.extras[ContactsProvider.EXTRA_PHONE_NUMBERS] as? List<PhoneNumber> ?: emptyList()
                     val displayName = candidate.extras[ContactsProvider.EXTRA_DISPLAY_NAME] as? String ?: candidate.title
                     val isSimNumber = candidate.extras[ContactsProvider.EXTRA_IS_SIM_NUMBER] as? Boolean ?: false
-                    contactActionData =
+                    viewModel.setContactActionData(
                         ContactActionData(
                             contactId = candidate.extras[ContactsProvider.EXTRA_CONTACT_ID] as? String,
                             lookupKey = candidate.extras[ContactsProvider.EXTRA_LOOKUP_KEY] as? String,
@@ -665,7 +589,8 @@ class MainActivity : ComponentActivity() {
                             phoneNumbers = phoneNumbers,
                             isSimNumber = isSimNumber,
                         )
-                    recordResultUsage(candidate)
+                    )
+                    viewModel.recordResultUsage(candidate)
                     return true
                 }
                 if (candidate.onSelect != null) {
@@ -675,248 +600,17 @@ class MainActivity : ComponentActivity() {
                 return false
             }
 
-            fun dismissTrigger() {
-                val activeTrigger = triggerState ?: return
-                val restoredText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload)
-
-                suppressedTriggerMatch =
-                    SuppressedTriggerMatch(
-                        triggerId = activeTrigger.trigger.id,
-                        matchedToken = activeTrigger.matchedToken,
-                    )
-                pendingActivationEchoToken = null
-                triggerState = null
-                textState.value = textFieldValueAtEnd(restoredText)
-            }
-
-            fun onSearchChange(newValue: TextFieldValue) {
-                val activeTrigger = triggerState
-                if (activeTrigger != null) {
-                    val activationEchoToken = pendingActivationEchoToken
-                    val normalizedValue =
-                        when {
-                            activationEchoToken == null -> newValue
-                            newValue.text == activationEchoToken || newValue.text == "$activationEchoToken " -> {
-                                pendingActivationEchoToken = null
-                                newValue.copy(text = "", selection = TextRange.Zero)
-                            }
-                            else -> {
-                                pendingActivationEchoToken = null
-                                newValue
-                            }
-                        }
-
-                    triggerState = activeTrigger.copy(payload = normalizedValue.text)
-                    textState.value = normalizedValue
-                    return
-                }
-
-                val text = newValue.text
-                if (text.isBlank()) {
-                    suppressedTriggerMatch = null
-                }
-
-                val parsedTrigger = TriggerParser.parse(text)
-                if (parsedTrigger.hasPayloadSeparator && parsedTrigger.firstToken.isNotBlank()) {
-                    val firstToken = parsedTrigger.firstToken
-                    val payload = parsedTrigger.payload
-                    val match = findTriggerMatch(firstToken, availableTriggers)
-                    if (match != null) {
-                        val suppressed = suppressedTriggerMatch
-                        val isSuppressed =
-                            suppressed?.triggerId == match.trigger.id &&
-                                suppressed?.matchedToken?.equals(firstToken, ignoreCase = true) == true
-                        if (!isSuppressed) {
-                            suppressedTriggerMatch = null
-                            pendingActivationEchoToken = firstToken
-                            triggerState =
-                                TriggerState(
-                                    trigger = match.trigger,
-                                    matchedToken = firstToken,
-                                    payload = payload,
-                                )
-                            textState.value = textFieldValueAtEnd(payload)
-                            return
-                        }
-                    }
-                }
-
-                pendingActivationEchoToken = null
-                textState.value = newValue
-            }
-
-            LaunchedEffect(triggerState?.trigger?.id, triggerState?.matchedToken) {
-                val activeTrigger = triggerState
-                if (activeTrigger != null && textState.value.text != activeTrigger.payload) {
-                    textState.value = textFieldValueAtEnd(activeTrigger.payload)
+            LaunchedEffect(uiState.triggerState?.trigger?.id, uiState.triggerState?.matchedToken) {
+                val activeTrigger = uiState.triggerState
+                if (activeTrigger != null && textState.text != activeTrigger.payload) {
+                    viewModel.onSearchChange(textFieldValueAtEnd(activeTrigger.payload))
                 }
                 focusRequester.requestFocus()
             }
 
-            LaunchedEffect(textState.value.text, aliasEntries, webSearchSettings, enabledProviders, refreshTrigger, queryBasedRankingEnabled, useFrequencyRanking, triggerState) {
-                pendingQueryJob?.cancel()
-
-                pendingQueryJob =
-                    launch {
-                        delay(50)
-
-                        val activeTrigger = triggerState
-                        if (activeTrigger != null) {
-                            val triggerFrequencyQuery = dynamicTriggerFrequencyQuery(activeTrigger.matchedToken)
-                            currentNormalizedQuery = triggerFrequencyQuery
-                            try {
-                                val triggerResults =
-                                    withContext(Dispatchers.IO) {
-                                        activeTrigger.trigger.execute(activeTrigger.matchedToken, activeTrigger.payload)
-                                    }
-                                val payloadQuery =
-                                    Query(
-                                        text = activeTrigger.payload,
-                                        originalText = buildTriggerText(activeTrigger.matchedToken, activeTrigger.payload),
-                                    )
-                                val supplementalProviders =
-                                    when (activeTrigger.trigger.resultPolicy) {
-                                        TriggerResultPolicy.EXCLUSIVE -> emptyList()
-                                        TriggerResultPolicy.INCLUDE_OWNER_RESULTS -> {
-                                            val ownerProvider = providersById[activeTrigger.trigger.ownerProviderId]
-                                            if (ownerProvider != null && (enabledProviders[ownerProvider.id] ?: true) && ownerProvider.canHandle(payloadQuery)) {
-                                                listOf(ownerProvider)
-                                            } else {
-                                                emptyList()
-                                            }
-                                        }
-                                        TriggerResultPolicy.INCLUDE_ALL_RESULTS -> {
-                                            activeProviders.filter { provider -> provider.canHandle(payloadQuery) }
-                                        }
-                                    }
-
-                                // Show trigger results immediately
-                                providerResults = triggerResults
-                                shouldShowResults = triggerResults.isNotEmpty()
-
-                                val supplementalMap = mutableMapOf<String, List<ProviderResult>>()
-                                val (slowSupplemental, fastSupplemental) = supplementalProviders.partition { it.id in SLOW_PROVIDER_IDS }
-
-                                // 1. Query fast supplemental providers concurrently
-                                if (fastSupplemental.isNotEmpty()) {
-                                    val fastResults =
-                                        supervisorScope {
-                                            fastSupplemental.map { provider ->
-                                                async {
-                                                    try {
-                                                        withContext(Dispatchers.IO) { provider.query(payloadQuery) }
-                                                    } catch (e: CancellationException) {
-                                                        throw e
-                                                    } catch (_: Exception) {
-                                                        emptyList()
-                                                    }
-                                                }
-                                            }.awaitAll()
-                                        }
-                                    fastSupplemental.forEachIndexed { index, provider ->
-                                        supplementalMap[provider.id] = fastResults[index]
-                                    }
-                                }
-
-                                val initialSorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
-                                val initialMerged = deduplicateResults(triggerResults + initialSorted)
-                                if (providerResults != initialMerged) {
-                                    providerResults = initialMerged
-                                }
-                                shouldShowResults = initialMerged.isNotEmpty()
-
-                                // 2. Query slow supplemental providers incrementally
-                                if (slowSupplemental.isNotEmpty()) {
-                                    queryProvidersFlow(payloadQuery, slowSupplemental).collect { (providerId, batch) ->
-                                        supplementalMap[providerId] = batch
-                                        val sorted = sortResults(supplementalMap.values.flatten(), triggerFrequencyQuery)
-                                        val merged = deduplicateResults(triggerResults + sorted)
-                                        if (providerResults != merged) {
-                                            providerResults = merged
-                                        }
-                                        shouldShowResults = merged.isNotEmpty()
-                                    }
-                                }
-                            } catch (_: Exception) {
-                                providerResults = emptyList()
-                                shouldShowResults = false
-                            }
-                            return@launch
-                        }
-
-                        val currentText = textState.value.text
-                        val match = aliasRepository.matchAlias(currentText)
-                        val normalizedText = match?.remainingQuery ?: currentText
-                        currentNormalizedQuery = normalizedText
-                        val query = Query(normalizedText, originalText = currentText)
-                        val matchingProviders = activeProviders.filter { provider -> provider.canHandle(query) }
-                        val aliasResult = match?.let { buildAliasResult(it.entry, normalizedText, webSearchSettings, appSearchSettings) }
-
-                        shouldShowResults = normalizedText.isNotBlank() || match != null
-
-                        val resultsMap = mutableMapOf<String, List<ProviderResult>>()
-                        val (slowProviders, fastProviders) = matchingProviders.partition { it.id in SLOW_PROVIDER_IDS }
-
-                        // 1. Query fast providers concurrently
-                        if (fastProviders.isNotEmpty()) {
-                            val fastResults =
-                                supervisorScope {
-                                    fastProviders.map { provider ->
-                                        async {
-                                            try {
-                                                withContext(Dispatchers.IO) { provider.query(query) }
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (_: Exception) {
-                                                emptyList()
-                                            }
-                                        }
-                                    }.awaitAll()
-                                }
-                            fastProviders.forEachIndexed { index, provider ->
-                                resultsMap[provider.id] = fastResults[index]
-                            }
-                        }
-
-                        val initialFiltered =
-                            match?.entry?.target?.let { aliasTarget ->
-                                resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
-                            } ?: resultsMap.values.flatten()
-                        val initialSorted = sortResults(initialFiltered, normalizedText)
-                        val initialResults =
-                            buildList {
-                                aliasResult?.let { add(it) }
-                                addAll(initialSorted)
-                            }
-                        if (providerResults != initialResults) {
-                            providerResults = initialResults
-                        }
-
-                        // 2. Query slow providers incrementally
-                        if (slowProviders.isNotEmpty()) {
-                            queryProvidersFlow(query, slowProviders).collect { (providerId, batch) ->
-                                resultsMap[providerId] = batch
-                                val filtered =
-                                    match?.entry?.target?.let { aliasTarget ->
-                                        resultsMap.values.flatten().filterNot { it.aliasTarget == aliasTarget }
-                                    } ?: resultsMap.values.flatten()
-                                val sortedResults = sortResults(filtered, normalizedText)
-                                val newResults =
-                                    buildList {
-                                        aliasResult?.let { add(it) }
-                                        addAll(sortedResults)
-                                    }
-                                if (providerResults != newResults) {
-                                    providerResults = newResults
-                                }
-                            }
-                        }
-                    }
-            }
-
             fun openSettingsScreen() {
                 val intent =
-                    Intent(this@MainActivity, SettingsActivity::class.java)
+                    Intent(this@SearchActivity, SettingsActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
                 finish()
@@ -928,8 +622,8 @@ class MainActivity : ComponentActivity() {
             }
 
             fun submitSearch() {
-                val primaryResult = providerResults.firstOrNull()
-                val query = textState.value.text.trim()
+                val primaryResult = displayedResults.firstOrNull()
+                val query = textState.text.trim()
                 val hasSubmissionTarget = primaryResult != null || query.isNotEmpty()
 
                 if (hasSubmissionTarget) {
@@ -1043,14 +737,14 @@ class MainActivity : ComponentActivity() {
                             Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester),
-                        value = textState.value,
-                        onValueChange = ::onSearchChange,
+                        value = textState,
+                        onValueChange = viewModel::onSearchChange,
                         triggerChip =
-                            triggerState?.let { activeTrigger ->
+                            uiState.triggerState?.let { activeTrigger ->
                                 {
                                     TriggerChip(
                                         item = activeTrigger.trigger,
-                                        onDismiss = ::dismissTrigger,
+                                        onDismiss = viewModel::dismissTrigger,
                                     )
                                 }
                             },
@@ -1064,13 +758,13 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         },
-                        onClear = { onSearchChange(TextFieldValue("")) },
+                        onClear = { viewModel.onSearchChange(TextFieldValue("")) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { submitSearch() }),
-                        onBackspaceAtStart = triggerState?.let { { dismissTrigger() } },
+                        onBackspaceAtStart = uiState.triggerState?.let { { viewModel.dismissTrigger() } },
                     )
 
-                    if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.value.text.isEmpty()) {
+                    if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.text.isEmpty()) {
                         Box(
                             modifier =
                                 Modifier
@@ -1089,7 +783,7 @@ class MainActivity : ComponentActivity() {
             }
 
             SearchTheme(motionPreferences = motionPreferences) {
-                val hasVisibleResults = shouldShowResults && providerResults.isNotEmpty()
+                val hasVisibleResults = uiState.shouldShowResults && displayedResults.isNotEmpty()
 
                 // No spacer-weight animation — per-frame Animatable.value reads in composition
                 // would force recomposition on every animation frame under SSM.
@@ -1120,14 +814,25 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .drawBehind {
                                 val center = this.center
-                                val maxRadius = kotlin.math.hypot(size.width, size.height) / 2f
+                                val featherWidthPx = 80.dp.toPx()
+                                val maxRadius = (kotlin.math.hypot(size.width, size.height) / 2f) + featherWidthPx
                                 val currentRadius = maxRadius * animatedFraction
                                 val color = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
-                                drawCircle(
-                                    color = color,
-                                    radius = currentRadius,
-                                    center = center,
-                                )
+                                if (currentRadius > 0f) {
+                                    val startFadeRatio = ((currentRadius - featherWidthPx) / currentRadius).coerceIn(0f, 1f)
+                                    val brush = Brush.radialGradient(
+                                        0f to color,
+                                        startFadeRatio to color,
+                                        1f to color.copy(alpha = 0f),
+                                        center = center,
+                                        radius = currentRadius,
+                                    )
+                                    drawCircle(
+                                        brush = brush,
+                                        radius = currentRadius,
+                                        center = center,
+                                    )
+                                }
                             }
                     )
                     Box(
@@ -1174,19 +879,18 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 ItemsList(
                                     modifier = Modifier.fillMaxSize(),
-                                    results = providerResults,
+                                    results = displayedResults,
                                     onItemClick = { result -> handleResultSelection(result) },
                                     onItemLongPress = onItemLongPress@{ result ->
                                         val target = result.aliasTarget ?: return@onItemLongPress
                                         val suggestion = sanitizeAliasSuggestion(result.title)
-                                        aliasDialogValue = suggestion
-                                        aliasDialogError = null
-                                        aliasDialogCandidate =
+                                        viewModel.showAliasDialog(
                                             AliasCreationCandidate(
                                                 target = target,
                                                 suggestion = suggestion,
                                                 description = result.subtitle ?: result.title,
                                             )
+                                        )
                                     },
                                     translucentItems = translucentResultsEnabled,
                                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.Bottom),
@@ -1302,7 +1006,7 @@ class MainActivity : ComponentActivity() {
                                         showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                         onSettingsClick = {
                                             val intent =
-                                                Intent(this@MainActivity, SettingsActivity::class.java)
+                                                Intent(this@SearchActivity, SettingsActivity::class.java)
                                                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                             startActivity(intent)
                                             finish()
@@ -1369,7 +1073,7 @@ class MainActivity : ComponentActivity() {
                                     showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                     onSettingsClick = {
                                         val intent =
-                                            Intent(this@MainActivity, SettingsActivity::class.java)
+                                            Intent(this@SearchActivity, SettingsActivity::class.java)
                                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         startActivity(intent)
                                         finish()
@@ -1426,19 +1130,18 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 ItemsList(
                                     modifier = Modifier.fillMaxSize(),
-                                    results = providerResults,
+                                    results = displayedResults,
                                     onItemClick = { result -> handleResultSelection(result) },
                                     onItemLongPress = onItemLongPress@{ result ->
                                         val target = result.aliasTarget ?: return@onItemLongPress
                                         val suggestion = sanitizeAliasSuggestion(result.title)
-                                        aliasDialogValue = suggestion
-                                        aliasDialogError = null
-                                        aliasDialogCandidate =
+                                        viewModel.showAliasDialog(
                                             AliasCreationCandidate(
                                                 target = target,
                                                 suggestion = suggestion,
                                                 description = result.subtitle ?: result.title,
                                             )
+                                        )
                                     },
                                     translucentItems = translucentResultsEnabled,
                                     showEnterBadge = showEnterBadge,
@@ -1452,7 +1155,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (isPerformingAction) {
+                    if (uiState.isPerformingAction) {
                         Box(
                             modifier =
                                 Modifier
@@ -1462,7 +1165,7 @@ class MainActivity : ComponentActivity() {
                                         indication = null,
                                     ) { },
                         ) {
-                            if (showLoadingOverlay) {
+                            if (uiState.showLoadingOverlay) {
                                 Box(
                                     modifier =
                                         Modifier
@@ -1487,60 +1190,42 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-                aliasDialogCandidate?.let { candidate ->
+                uiState.aliasDialogCandidate?.let { candidate ->
                     AliasCreationDialog(
                         candidate = candidate,
-                        alias = aliasDialogValue,
-                        errorMessage = aliasDialogError,
-                        onAliasChange = { aliasDialogValue = it },
-                        onDismiss = {
-                            aliasDialogCandidate = null
-                            aliasDialogError = null
-                        },
-                        onSave = {
-                            when (aliasRepository.addAlias(aliasDialogValue, candidate.target)) {
-                                AliasRepository.SaveResult.SUCCESS -> {
-                                    aliasDialogCandidate = null
-                                    aliasDialogError = null
-                                }
-
-                                AliasRepository.SaveResult.DUPLICATE -> {
-                                    aliasDialogError = this@MainActivity.getString(R.string.alias_already_exists)
-                                }
-
-                                AliasRepository.SaveResult.INVALID_ALIAS -> {
-                                    aliasDialogError = this@MainActivity.getString(R.string.alias_cannot_be_empty)
-                                }
-                            }
-                        },
+                        alias = uiState.aliasDialogValue,
+                        errorMessage = uiState.aliasDialogError,
+                        onAliasChange = { viewModel.onAliasDialogValueChange(it) },
+                        onDismiss = { viewModel.dismissAliasDialog() },
+                        onSave = { viewModel.confirmAliasCreation() },
                     )
                 }
 
                 // Contact action sheet
-                contactActionData?.let { contact ->
+                uiState.contactActionData?.let { contact ->
                     ContactActionSheet(
                         contact = contact,
-                        onDismiss = { contactActionData = null },
+                        onDismiss = { viewModel.dismissContactActionSheet() },
                         onActionComplete = {
-                            contactActionData = null
+                            viewModel.dismissContactActionSheet()
                             finish()
                         },
                     )
                 }
             }
 
-            LaunchedEffect(isPerformingAction, activityIndicatorDelayMs) {
-                if (isPerformingAction) {
-                    showLoadingOverlay = false
+            LaunchedEffect(uiState.isPerformingAction, activityIndicatorDelayMs) {
+                if (uiState.isPerformingAction) {
+                    viewModel.setShowLoadingOverlay(false)
                     val delayDuration = activityIndicatorDelayMs.coerceAtLeast(0)
                     if (delayDuration > 0) {
                         delay(delayDuration.toLong())
                     }
-                    if (isPerformingAction) {
-                        showLoadingOverlay = true
+                    if (uiState.isPerformingAction) {
+                        viewModel.setShowLoadingOverlay(true)
                     }
                 } else {
-                    showLoadingOverlay = false
+                    viewModel.setShowLoadingOverlay(false)
                 }
             }
 
@@ -1555,9 +1240,12 @@ class MainActivity : ComponentActivity() {
                 } finally {
                     pendingAction = null
                     val shouldDismissOverlay =
-                        !action.keepOverlayUntilExit || !completed || !this@MainActivity.isFinishing
+                        !action.keepOverlayUntilExit || !completed || (!this@SearchActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
                     if (shouldDismissOverlay) {
-                        isPerformingAction = false
+                        viewModel.setIsPerformingAction(false)
+                    }
+                    if (finishRequestedDuringAction) {
+                        finish()
                     }
                 }
             }
@@ -1610,7 +1298,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 ProviderResult(
-                    id = "alias:web:${entry.alias}:${query.hashCode()}",
+                    id = "alias:web:${entry.alias}",
                     title = if (query.isBlank()) resolvedSite.displayName else query,
                     subtitle = getString(R.string.alias_web_subtitle, entry.alias, resolvedSite.displayName),
                     providerId = target.providerId,
@@ -1620,7 +1308,7 @@ class MainActivity : ComponentActivity() {
                     // Aggregate frequency by site rather than per-query
                     frequencyKey = "web-search:${resolvedSite.id}",
                     // Load favicon from the site's URL
-                    iconLoader = { FaviconLoader.loadFavicon(this@MainActivity, resolvedSite.id) },
+                    iconLoader = { FaviconLoader.loadFavicon(this@SearchActivity, resolvedSite.id) },
                 )
             }
 
@@ -1661,7 +1349,7 @@ class MainActivity : ComponentActivity() {
                     // Load app icon from PackageManager with profile badging and theming/icon pack support
                     iconLoader = {
                         loadAppIconBitmap(
-                            context = this@MainActivity,
+                            context = this@SearchActivity,
                             packageName = target.packageName,
                             iconSize = defaultAppIconSize,
                             themedIconsEnabled = appSearchSettings.themedIconsEnabled,

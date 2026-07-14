@@ -2,7 +2,7 @@ package com.mrndstvndv.search.provider.termux
 
 import android.content.Context
 import com.mrndstvndv.search.provider.settings.ProviderSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -64,8 +64,8 @@ data class TermuxSettings(
  * Factory function to create repository.
  * Called from MainActivity.
  */
-fun createTermuxSettingsRepository(context: Context): SettingsRepository<TermuxSettings> {
-    return SettingsRepository(
+fun createTermuxSettingsRepository(context: Context): ProviderSettingsRepository<TermuxSettings> {
+    return ProviderSettingsRepository(
         context = context,
         providerId = TermuxSettings.PROVIDER_ID,
         default = { TermuxSettings.default() },

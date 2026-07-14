@@ -43,14 +43,14 @@ import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.settings.ContactsSettings
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
 
 @Composable
 fun ContactsSettingsScreen(
-    repository: SettingsRepository<ContactsSettings>,
+    repository: ProviderSettingsRepository<ContactsSettings>,
     contactsRepository: ContactsRepository,
     onBack: () -> Unit,
 ) {

@@ -15,8 +15,8 @@ import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 
@@ -30,8 +30,8 @@ import kotlinx.coroutines.withContext
  */
 class IntentProvider(
     private val activity: ComponentActivity,
-    private val globalSettingsRepository: ProviderSettingsRepository,
-    private val settingsRepository: SettingsRepository<IntentSettings>,
+    private val globalSettingsRepository: SettingsRepository,
+    private val settingsRepository: ProviderSettingsRepository<IntentSettings>,
     private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "intent"

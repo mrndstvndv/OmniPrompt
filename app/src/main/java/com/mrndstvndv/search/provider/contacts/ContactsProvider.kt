@@ -8,8 +8,8 @@ import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ContactsSettings
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 
 /**
@@ -17,8 +17,8 @@ import com.mrndstvndv.search.util.FuzzyMatcher
  */
 class ContactsProvider(
     private val context: Context,
-    private val globalSettingsRepository: ProviderSettingsRepository,
-    private val settingsRepository: SettingsRepository<ContactsSettings>,
+    private val globalSettingsRepository: SettingsRepository,
+    private val settingsRepository: ProviderSettingsRepository<ContactsSettings>,
     private val contactsRepository: ContactsRepository,
 ) : Provider {
     override val id: String = "contacts"

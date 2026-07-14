@@ -26,14 +26,14 @@ import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.FileSearchThumbnailCropMode
-import com.mrndstvndv.search.provider.settings.SettingsRepository
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class FileSearchProvider(
     private val activity: ComponentActivity,
-    private val settingsRepository: SettingsRepository<FileSearchSettings>,
+    private val settingsRepository: ProviderSettingsRepository<FileSearchSettings>,
     private val repository: FileSearchRepository,
     private val thumbnailRepository: FileThumbnailRepository,
 ) : Provider {

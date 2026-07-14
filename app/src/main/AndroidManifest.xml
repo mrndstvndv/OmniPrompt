@@ -64,7 +64,7 @@
             </intent-filter>
         </activity>
         <activity
-                android:name=".MainActivity"
+                android:name=".SearchActivity"
                 android:excludeFromRecents="true"
                 android:launchMode="singleTop"
                 android:exported="true"

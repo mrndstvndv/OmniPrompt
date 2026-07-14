@@ -8,12 +8,12 @@ import org.json.JSONObject
  * Used by BackupRestoreManager for auto-discovery.
  */
 object SettingsRegistry {
-    private val repositories = mutableMapOf<String, SettingsRepository<*>>()
+    private val repositories = mutableMapOf<String, ProviderSettingsRepository<*>>()
 
     /**
-     * Register a repository. Called automatically in SettingsRepository.init.
+     * Register a repository. Called automatically in ProviderSettingsRepository.init.
      */
-    fun register(repository: SettingsRepository<*>) {
+    fun register(repository: ProviderSettingsRepository<*>) {
         // Get providerId from the current value
         repositories[repository.value.providerId] = repository
     }
@@ -21,12 +21,12 @@ object SettingsRegistry {
     /**
      * Get all registered repositories.
      */
-    fun getAll(): List<SettingsRepository<*>> = repositories.values.toList()
+    fun getAll(): List<ProviderSettingsRepository<*>> = repositories.values.toList()
 
     /**
      * Get a specific repository by provider ID.
      */
-    fun get(providerId: String): SettingsRepository<*>? = repositories[providerId]
+    fun get(providerId: String): ProviderSettingsRepository<*>? = repositories[providerId]
 
     /**
      * Export all settings for backup.

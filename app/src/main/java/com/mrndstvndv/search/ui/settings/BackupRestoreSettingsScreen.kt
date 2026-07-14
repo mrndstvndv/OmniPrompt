@@ -52,9 +52,9 @@ import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.settings.FileSearchRoot
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
-import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
-import com.mrndstvndv.search.settings.BackupRestoreManager
+import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.manager.BackupRestoreManager
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
@@ -63,8 +63,8 @@ import org.json.JSONObject
 
 @Composable
 fun BackupRestoreSettingsScreen(
-    settingsRepository: ProviderSettingsRepository,
-    fileSearchSettingsRepo: SettingsRepository<FileSearchSettings>,
+    settingsRepository: SettingsRepository,
+    fileSearchSettingsRepo: ProviderSettingsRepository<FileSearchSettings>,
     rankingRepository: ProviderRankingRepository,
     aliasRepository: AliasRepository,
     onBack: () -> Unit,
