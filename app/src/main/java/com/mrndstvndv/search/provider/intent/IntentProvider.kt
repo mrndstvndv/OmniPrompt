@@ -252,7 +252,13 @@ class IntentProvider(
 
         withContext(Dispatchers.Main) {
             try {
-                activity.startActivity(intent)
+                val oldPolicy = android.os.StrictMode.getVmPolicy()
+                try {
+                    android.os.StrictMode.setVmPolicy(android.os.StrictMode.VmPolicy.Builder().build())
+                    activity.startActivity(intent)
+                } finally {
+                    android.os.StrictMode.setVmPolicy(oldPolicy)
+                }
                 activity.finish()
             } catch (e: Exception) {
                 // Fallback for ACTION_SEND with URL
@@ -267,10 +273,16 @@ class IntentProvider(
                     try {
                         activity.startActivity(fallbackIntent)
                         activity.finish()
+                        return@withContext
                     } catch (e2: Exception) {
                         // Both failed
                     }
                 }
+                android.widget.Toast.makeText(
+                    activity,
+                    e.localizedMessage ?: activity.getString(R.string.toast_cant_open),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
