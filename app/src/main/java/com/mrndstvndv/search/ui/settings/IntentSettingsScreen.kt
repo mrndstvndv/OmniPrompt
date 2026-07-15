@@ -1075,6 +1075,10 @@ private fun IntentConfigDialogContent(
 ) {
     var typeExpanded by remember { mutableStateOf(false) }
     var actionExpanded by remember { mutableStateOf(false) }
+    var showCustomField by remember(packageName) {
+        val isCustom = type.isNotEmpty() && type != anyMimeTypeLabel && type !in typeOptions && type !in listOf("text/plain", "text/*", "*/*")
+        mutableStateOf(isCustom)
+    }
 
     val standardActions =
         listOf(
@@ -1313,7 +1317,12 @@ private fun IntentConfigDialogContent(
                     onExpandedChange = { typeExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = type.ifEmpty { anyMimeTypeLabel },
+                        value =
+                            if (showCustomField) {
+                                stringResource(R.string.intent_custom_mime_type)
+                            } else {
+                                type.ifEmpty { anyMimeTypeLabel }
+                            },
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.intent_label_mime_type)) },
@@ -1337,11 +1346,33 @@ private fun IntentConfigDialogContent(
                                 text = { Text(option) },
                                 onClick = {
                                     onTypeChange(option)
+                                    showCustomField = false
                                     typeExpanded = false
                                 },
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.intent_custom_mime_type)) },
+                            onClick = {
+                                showCustomField = true
+                                typeExpanded = false
+                                if (type in (typeOptions + listOf("text/plain", "text/*", "*/*", anyMimeTypeLabel))) {
+                                    onTypeChange("")
+                                }
+                            },
+                        )
                     }
+                }
+
+                if (showCustomField) {
+                    OutlinedTextField(
+                        value = type,
+                        onValueChange = onTypeChange,
+                        label = { Text(stringResource(R.string.intent_label_custom_mime_type)) },
+                        placeholder = { Text("application/pdf") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
 
                 OutlinedTextField(

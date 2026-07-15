@@ -313,6 +313,8 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_label_action_auto">Action (auto-selected)</string>
     <string name="intent_label_action">Action</string>
     <string name="intent_label_mime_type">MIME Type</string>
+    <string name="intent_custom_mime_type">Custom…</string>
+    <string name="intent_label_custom_mime_type">Custom MIME Type</string>
     <string name="intent_label_payload_template">Payload Template (optional)</string>
     <string name="intent_placeholder_payload">yabai $query</string>
     <string name="intent_supporting_payload">💡 $query = user input after title</string>
