@@ -195,7 +195,6 @@ class IntentProvider(
         val intent =
             Intent().apply {
                 action = config.action
-                type = config.type
 
                 // Set package or class name if specified
                 if (config.packageName.isNotEmpty()) {
@@ -209,17 +208,35 @@ class IntentProvider(
                 // Standard intent handling based on action
                 when (config.action) {
                     Intent.ACTION_SEND -> {
+                        type = config.type
                         putExtra(Intent.EXTRA_TEXT, resolvedPayload)
                     }
                     Intent.ACTION_VIEW -> {
                         if (resolvedPayload.isNotEmpty()) {
-                            data = android.net.Uri.parse(resolvedPayload)
+                            val uri = android.net.Uri.parse(resolvedPayload)
+                            if (!config.type.isNullOrEmpty()) {
+                                setDataAndType(uri, config.type)
+                            } else {
+                                data = uri
+                            }
+                        } else {
+                            type = config.type
                         }
                     }
                     Intent.ACTION_SENDTO -> {
                         if (resolvedPayload.isNotEmpty()) {
-                            data = android.net.Uri.parse(resolvedPayload)
+                            val uri = android.net.Uri.parse(resolvedPayload)
+                            if (!config.type.isNullOrEmpty()) {
+                                setDataAndType(uri, config.type)
+                            } else {
+                                data = uri
+                            }
+                        } else {
+                            type = config.type
                         }
+                    }
+                    else -> {
+                        type = config.type
                     }
                 }
 
