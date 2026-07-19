@@ -2,16 +2,12 @@ package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,11 +39,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.mrndstvndv.search.SearchApplication
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,8 +51,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -79,11 +73,7 @@ import androidx.compose.ui.zIndex
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
-import com.mrndstvndv.search.ui.theme.LocalMotionPreferences
 import com.mrndstvndv.search.ui.theme.motionAwareTween
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-
 /**
  * Renders text with highlighted characters at specified indices.
  * Used for displaying fuzzy search matches with visual feedback.
@@ -201,8 +191,6 @@ private fun primaryActionContainerColor(
 }
 
 private val primaryActionViewportBreathingRoom = 4.dp
-private val pressedResultCornerRadius = 28.dp
-private const val tappedResultFeedbackDelayMillis = 80L
 
 private fun Modifier.verticalEdgeFade(
     showTop: Boolean,
@@ -284,13 +272,6 @@ fun ItemsList(
     val appSettings by appSearchSettingsRepo.flow.collectAsState()
 
     val listState = rememberLazyListState()
-    val motionPreferences = LocalMotionPreferences.current
-    val tapFeedbackDelayMillis =
-        if (motionPreferences.animationsEnabled) {
-            tappedResultFeedbackDelayMillis
-        } else {
-            0L
-        }
     val primaryActionResultId = results.firstOrNull()?.id
     val primaryActionCue = remember { Animatable(0f) }
     var previousPrimaryActionResultId by remember { mutableStateOf(primaryActionResultId) }
@@ -375,32 +356,6 @@ fun ItemsList(
                 val isVisualTopItem = if (reverseOrder) index == results.lastIndex else index == 0
                 val isVisualBottomItem = if (reverseOrder) index == 0 else index == results.lastIndex
 
-                val targetTopStart =
-                    when {
-                        singleItem || isVisualTopItem -> 20.dp
-                        else -> 5.dp
-                    }
-                val targetTopEnd =
-                    when {
-                        singleItem || isVisualTopItem -> 20.dp
-                        else -> 5.dp
-                    }
-                val targetBottomStart =
-                    when {
-                        singleItem || isVisualBottomItem -> 20.dp
-                        else -> 5.dp
-                    }
-                val targetBottomEnd =
-                    when {
-                        singleItem || isVisualBottomItem -> 20.dp
-                        else -> 5.dp
-                    }
-
-                val interactionSource = remember { MutableInteractionSource() }
-                val itemCoroutineScope = rememberCoroutineScope()
-                var tapFeedbackActive by remember { mutableStateOf(false) }
-                val isPressed by interactionSource.collectIsPressedAsState()
-                val showTapShapeFeedback = isPressed || tapFeedbackActive
                 val primaryActionCueProgress =
                     if (isPrimaryActionItem && item.id == primaryActionResultId) {
                         primaryActionCue.value
@@ -422,44 +377,15 @@ fun ItemsList(
                         isVisualTopItem -> TransformOrigin(0.5f, 1f)
                         else -> TransformOrigin.Center
                     }
-                val pressedShapeProgress by animateFloatAsState(
-                    targetValue = if (showTapShapeFeedback) 1f else 0f,
-                    animationSpec =
-                        motionAwareTween(
-                            durationMillis = if (showTapShapeFeedback) 120 else 180,
-                        ),
-                    label = "resultItemPressedShapeProgress",
-                )
 
-                // Edge corner ownership still snaps from the current visual slot.
-                // Only the press progress animates, so slot-derived corners never trail.
-                val shape =
-                    RoundedCornerShape(
-                        topStart =
-                            lerp(
-                                targetTopStart,
-                                maxOf(targetTopStart, pressedResultCornerRadius),
-                                pressedShapeProgress,
-                            ),
-                        topEnd =
-                            lerp(
-                                targetTopEnd,
-                                maxOf(targetTopEnd, pressedResultCornerRadius),
-                                pressedShapeProgress,
-                            ),
-                        bottomEnd =
-                            lerp(
-                                targetBottomEnd,
-                                maxOf(targetBottomEnd, pressedResultCornerRadius),
-                                pressedShapeProgress,
-                            ),
-                        bottomStart =
-                            lerp(
-                                targetBottomStart,
-                                maxOf(targetBottomStart, pressedResultCornerRadius),
-                                pressedShapeProgress,
-                            ),
-                    )
+                // Edge corner ownership snaps from the current visual slot — no animation to trail.
+                val shape = remember(singleItem, isVisualTopItem, isVisualBottomItem) {
+                    val topStart = when { singleItem || isVisualTopItem -> 20.dp; else -> 5.dp }
+                    val topEnd = when { singleItem || isVisualTopItem -> 20.dp; else -> 5.dp }
+                    val bottomStart = when { singleItem || isVisualBottomItem -> 20.dp; else -> 5.dp }
+                    val bottomEnd = when { singleItem || isVisualBottomItem -> 20.dp; else -> 5.dp }
+                    RoundedCornerShape(topStart, topEnd, bottomEnd, bottomStart)
+                }
 
                 val baseContainerColor =
                     if (translucentItems) {
@@ -539,46 +465,21 @@ fun ItemsList(
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
 
-                val iconBitmap by produceState<Bitmap?>(
-                    initialValue = item.icon,
-                    item.id,
-                    appSettings.themedIconsEnabled,
-                    appSettings.themeAllIcons,
-                    appSettings.iconPackPackageName,
-                ) {
-                    if (value != null) return@produceState
-                    val loader = item.iconLoader ?: return@produceState
-                    value = loader()
+                var iconBitmap by remember(item.id) { mutableStateOf(item.icon) }
+                LaunchedEffect(item.id, item.iconLoader) {
+                    val bitmap = item.icon ?: item.iconLoader?.invoke()
+                    if (bitmap != null) iconBitmap = bitmap
                 }
 
-                val rippleIndication = LocalIndication.current
-                val handleItemClick = click@{
-                    if (tapFeedbackActive) return@click
-
-                    itemCoroutineScope.launch {
-                        tapFeedbackActive = true
-                        if (tapFeedbackDelayMillis > 0L) {
-                            delay(tapFeedbackDelayMillis)
-                        }
-                        onItemClick(item)
-                        tapFeedbackActive = false
-                    }
-                }
+                val handleItemClick: () -> Unit = { onItemClick(item) }
                 val clickModifier =
                     if (onItemLongPress != null) {
                         Modifier.combinedClickable(
-                            interactionSource = interactionSource,
-                            indication = rippleIndication,
                             onClick = handleItemClick,
-                            onLongClick = {
-                                tapFeedbackActive = false
-                                onItemLongPress(item)
-                            },
+                            onLongClick = { onItemLongPress(item) },
                         )
                     } else {
                         Modifier.clickable(
-                            interactionSource = interactionSource,
-                            indication = rippleIndication,
                             onClick = handleItemClick,
                         )
                     }
