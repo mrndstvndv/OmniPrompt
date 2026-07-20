@@ -65,6 +65,8 @@
     <string name="settings_backup_restore_subtitle">Export or import your settings</string>
     <string name="settings_about">About</string>
     <string name="settings_about_subtitle">App version, project links, and licenses</string>
+    <string name="settings_sponsor">Sponsor</string>
+    <string name="settings_sponsor_subtitle">Support the project or buy me a coffee</string>
     <string name="about_version">Version</string>
     <string name="about_github">GitHub repository</string>
     <string name="about_open_source_licenses">Open source licenses</string>
