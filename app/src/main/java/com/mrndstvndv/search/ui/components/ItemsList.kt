@@ -98,27 +98,40 @@ fun HighlightedText(
             modifier = modifier,
         )
     } else {
-        val matchedSet = remember(matchedIndices) { matchedIndices.toSet() }
-        Text(
-            text =
+        val annotatedString =
+            remember(text, matchedIndices, highlightColor) {
                 buildAnnotatedString {
-                    text.forEachIndexed { index, char ->
-                        if (index in matchedSet) {
-                            withStyle(
-                                SpanStyle(
-                                    color = highlightColor,
-                                    fontWeight = FontWeight.SemiBold,
-                                ),
-                            ) {
-                                append(char)
-                            }
-                        } else {
-                            withStyle(SpanStyle(color = color)) {
-                                append(char)
+                    append(text)
+                    val sortedIndices = matchedIndices.sorted()
+                    if (sortedIndices.isNotEmpty()) {
+                        val spanStyle =
+                            SpanStyle(
+                                color = highlightColor,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        var start = sortedIndices[0]
+                        var prev = start
+                        for (i in 1 until sortedIndices.size) {
+                            val curr = sortedIndices[i]
+                            if (curr == prev + 1) {
+                                prev = curr
+                            } else {
+                                if (start < text.length) {
+                                    addStyle(spanStyle, start, minOf(prev + 1, text.length))
+                                }
+                                start = curr
+                                prev = curr
                             }
                         }
+                        if (start < text.length) {
+                            addStyle(spanStyle, start, minOf(prev + 1, text.length))
+                        }
                     }
-                },
+                }
+            }
+        Text(
+            text = annotatedString,
+            color = color,
             style = style,
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
