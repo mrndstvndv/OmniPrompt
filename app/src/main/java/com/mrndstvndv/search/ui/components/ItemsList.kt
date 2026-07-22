@@ -143,12 +143,13 @@ fun HighlightedText(
 @Composable
 private fun TopResultBadge(
     modifier: Modifier = Modifier,
-    cueProgress: Float = 0f,
+    cueProgress: () -> Float = { 0f },
 ) {
     Surface(
         modifier =
             modifier.graphicsLayer {
-                val scale = 1f + (cueProgress * 0.05f)
+                val progress = cueProgress()
+                val scale = 1f + (progress * 0.05f)
                 scaleX = scale
                 scaleY = scale
             },
@@ -378,13 +379,11 @@ fun ItemsList(
                         0f
                     }
                 val colorPulseProgress =
-                    if (animateFirstResultColorPulse && showPrimaryActionHighlight) {
-                        primaryActionCueProgress
+                    if (animateFirstResultColorPulse && showPrimaryActionHighlight && item.id == primaryActionResultId) {
+                        primaryActionCue.value
                     } else {
                         0f
                     }
-                val itemScaleX = 1f + (primaryActionCueProgress * 0.008f)
-                val itemScaleY = 1f + (primaryActionCueProgress * 0.018f)
                 val itemTransformOrigin =
                     when {
                         singleItem -> TransformOrigin.Center
@@ -505,8 +504,11 @@ fun ItemsList(
                             .zIndex(if (showPrimaryActionHighlight) 1f else 0f)
                             .graphicsLayer {
                                 transformOrigin = itemTransformOrigin
-                                scaleX = itemScaleX
-                                scaleY = itemScaleY
+                                if (isPrimaryActionItem && item.id == primaryActionResultId) {
+                                    val progress = primaryActionCue.value
+                                    scaleX = 1f + (progress * 0.008f)
+                                    scaleY = 1f + (progress * 0.018f)
+                                }
                             }
                             .then(clickModifier),
                     shape = shape,
@@ -614,7 +616,15 @@ fun ItemsList(
                                 }
 
                                 if (showEnterBadge && isPrimaryActionItem) {
-                                    TopResultBadge(cueProgress = primaryActionCueProgress)
+                                    TopResultBadge(
+                                        cueProgress = {
+                                            if (isPrimaryActionItem && item.id == primaryActionResultId) {
+                                                primaryActionCue.value
+                                            } else {
+                                                0f
+                                            }
+                                        },
+                                    )
                                 }
                             }
                         }
