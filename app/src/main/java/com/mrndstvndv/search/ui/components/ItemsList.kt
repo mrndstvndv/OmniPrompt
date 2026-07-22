@@ -206,57 +206,60 @@ private fun primaryActionContainerColor(
 private val primaryActionViewportBreathingRoom = 4.dp
 
 private fun Modifier.verticalEdgeFade(
-    showTop: Boolean,
-    showBottom: Boolean,
+    showTop: () -> Boolean,
+    showBottom: () -> Boolean,
     fadeHeight: Dp = 10.dp,
     horizontalOverflowAllowance: Dp = 12.dp,
 ): Modifier =
-    if (!showTop && !showBottom) {
-        this
-    } else {
-        drawWithContent {
-            val fadeHeightPx = fadeHeight.toPx()
-            val horizontalOverflowPx = horizontalOverflowAllowance.toPx()
-            val layerBounds =
-                Rect(
-                    left = -horizontalOverflowPx,
-                    top = 0f,
-                    right = size.width + horizontalOverflowPx,
-                    bottom = size.height,
-                )
-
-            drawContext.canvas.saveLayer(layerBounds, Paint())
+    drawWithContent {
+        val top = showTop()
+        val bottom = showBottom()
+        if (!top && !bottom) {
             drawContent()
-
-            if (showTop) {
-                drawRect(
-                    brush =
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black),
-                            startY = 0f,
-                            endY = fadeHeightPx,
-                        ),
-                    topLeft = Offset(-horizontalOverflowPx, 0f),
-                    size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
-                    blendMode = BlendMode.DstIn,
-                )
-            }
-            if (showBottom) {
-                drawRect(
-                    brush =
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Black, Color.Transparent),
-                            startY = size.height - fadeHeightPx,
-                            endY = size.height,
-                        ),
-                    topLeft = Offset(-horizontalOverflowPx, size.height - fadeHeightPx),
-                    size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
-                    blendMode = BlendMode.DstIn,
-                )
-            }
-
-            drawContext.canvas.restore()
+            return@drawWithContent
         }
+
+        val fadeHeightPx = fadeHeight.toPx()
+        val horizontalOverflowPx = horizontalOverflowAllowance.toPx()
+        val layerBounds =
+            Rect(
+                left = -horizontalOverflowPx,
+                top = 0f,
+                right = size.width + horizontalOverflowPx,
+                bottom = size.height,
+            )
+
+        drawContext.canvas.saveLayer(layerBounds, Paint())
+        drawContent()
+
+        if (top) {
+            drawRect(
+                brush =
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black),
+                        startY = 0f,
+                        endY = fadeHeightPx,
+                    ),
+                topLeft = Offset(-horizontalOverflowPx, 0f),
+                size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+        if (bottom) {
+            drawRect(
+                brush =
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Black, Color.Transparent),
+                        startY = size.height - fadeHeightPx,
+                        endY = size.height,
+                    ),
+                topLeft = Offset(-horizontalOverflowPx, size.height - fadeHeightPx),
+                size = Size(size.width + (horizontalOverflowPx * 2f), fadeHeightPx),
+                blendMode = BlendMode.DstIn,
+            )
+        }
+
+        drawContext.canvas.restore()
     }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -318,23 +321,22 @@ fun ItemsList(
         primaryActionCue.animateTo(0f, animationSpec = cueSettleSpec)
     }
 
-    val showTopFade by remember(listState, reverseOrder) {
-        derivedStateOf {
+    val fadeModifier = Modifier.verticalEdgeFade(
+        showTop = {
             if (reverseOrder) listState.canScrollForward else listState.canScrollBackward
-        }
-    }
-    val showBottomFade by remember(listState, reverseOrder) {
-        derivedStateOf {
-            if (!reverseOrder) return@derivedStateOf listState.canScrollForward
+        },
+        showBottom = {
+            if (!reverseOrder) {
+                listState.canScrollForward
+            } else {
+                val anchoredToPrimaryAction =
+                    listState.firstVisibleItemIndex == 0 &&
+                        listState.firstVisibleItemScrollOffset == 0
 
-            val anchoredToPrimaryAction =
-                listState.firstVisibleItemIndex == 0 &&
-                    listState.firstVisibleItemScrollOffset == 0
-
-            listState.canScrollBackward && !anchoredToPrimaryAction
-        }
-    }
-    val fadeModifier = Modifier.verticalEdgeFade(showTop = showTopFade, showBottom = showBottomFade)
+                listState.canScrollBackward && !anchoredToPrimaryAction
+            }
+        },
+    )
     // LazyColumn clips on its scroll axis. Keep a tiny outer buffer so the
     // first-result cue grows into the viewport instead of into the clip edge.
     val primaryActionContentPadding =
