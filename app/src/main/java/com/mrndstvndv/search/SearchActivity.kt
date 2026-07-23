@@ -446,8 +446,8 @@ class SearchActivity : ComponentActivity() {
                 }
             )
 
-            LaunchedEffect(animatedBlurStrength) {
-                PerformanceLogger.log(this@SearchActivity, "ISSUE_3_ANIMATION_CHURN", "LaunchedEffect(animatedBlurStrength) restarted for strength: $animatedBlurStrength")
+            SideEffect {
+                PerformanceLogger.log(this@SearchActivity, "ISSUE_3_ANIMATION_CHURN", "SideEffect running for strength: $animatedBlurStrength")
                 applyWindowBlur(animatedBlurStrength)
             }
 
