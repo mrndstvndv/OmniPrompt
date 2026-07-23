@@ -1,8 +1,8 @@
 package com.mrndstvndv.search.provider.web
 
+import android.content.Context
 import android.content.Intent
 import android.util.Patterns
-import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Search
@@ -29,11 +29,11 @@ import kotlinx.coroutines.withContext
 
 // TODO: the query should be empty if a whitespace between the trigger and query is not yet made. the behavior right now is that the searchitem searches for the trigger if a query is not yet made
 class WebSearchProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val settingsRepository: ProviderSettingsRepository<WebSearchSettings>,
 ) : Provider {
     override val id: String = "web-search"
-    override val displayName: String = activity.getString(R.string.provider_web_search)
+    override val displayName: String = context.getString(R.string.provider_web_search)
 
     override val triggers: List<SearchTrigger>
         get() {
@@ -63,16 +63,15 @@ class WebSearchProvider(
         val searchUrl = site.buildUrl(queryText)
         val action: suspend () -> Unit = {
             withContext(Dispatchers.Main) {
-                val intent = Intent(Intent.ACTION_VIEW, searchUrl.toUri())
-                activity.startActivity(intent)
-                activity.finish()
+                val intent = Intent(Intent.ACTION_VIEW, searchUrl.toUri()).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                context.startActivity(intent)
             }
         }
         return listOf(
             createTriggerResult(
                 invocation = invocation,
                 id = "$id:${site.id}",
-                title = activity.getString(R.string.web_search_result_title, queryText),
+                title = context.getString(R.string.web_search_result_title, queryText),
                 subtitle = site.displayName,
                 providerId = id,
                 triggerId = site.id,
@@ -161,9 +160,8 @@ class WebSearchProvider(
         return scored.map { (quicklink, _, matchedTitleIndices, matchedSubtitleIndices) ->
             val action: suspend () -> Unit = {
                 withContext(Dispatchers.Main) {
-                    val intent = Intent(Intent.ACTION_VIEW, quicklink.url.toUri())
-                    activity.startActivity(intent)
-                    activity.finish()
+                    val intent = Intent(Intent.ACTION_VIEW, quicklink.url.toUri()).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                    context.startActivity(intent)
                 }
             }
 
@@ -174,7 +172,7 @@ class WebSearchProvider(
                 defaultVectorIcon = Icons.Outlined.Link,
                 iconLoader =
                     if (quicklink.hasFavicon) {
-                        { FaviconLoader.loadFavicon(activity, quicklink.id) }
+                        { FaviconLoader.loadFavicon(context, quicklink.id) }
                     } else {
                         null
                     },
@@ -229,9 +227,8 @@ class WebSearchProvider(
             val searchUrl = site.buildUrl(actualQuery)
             val action: suspend () -> Unit = {
                 withContext(Dispatchers.Main) {
-                    val intent = Intent(Intent.ACTION_VIEW, searchUrl.toUri())
-                    activity.startActivity(intent)
-                    activity.finish()
+                    val intent = Intent(Intent.ACTION_VIEW, searchUrl.toUri()).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                    context.startActivity(intent)
                 }
             }
             val frequencyQuery =
@@ -242,10 +239,10 @@ class WebSearchProvider(
                 }
             ProviderResult(
                 id = "$id:${site.id}",
-                title = activity.getString(R.string.web_search_result_title, actualQuery),
+                title = context.getString(R.string.web_search_result_title, actualQuery),
                 subtitle =
                     if (site.id == defaultSite.id) {
-                        activity.getString(R.string.web_search_default_site, site.displayName)
+                        context.getString(R.string.web_search_default_site, site.displayName)
                     } else {
                         site.displayName
                     },

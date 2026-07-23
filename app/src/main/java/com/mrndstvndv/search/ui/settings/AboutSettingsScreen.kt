@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Info
+import com.mrndstvndv.search.util.PerformanceLogger
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -88,6 +90,15 @@ fun AboutSettingsScreen(
                     title = stringResource(R.string.about_open_source_licenses),
                     subtitle = stringResource(R.string.about_open_source_licenses_subtitle),
                     onClick = onOpenLicenses,
+                )
+                SettingsDivider()
+                SettingsNavigationRow(
+                    icon = Icons.Rounded.BugReport,
+                    title = stringResource(R.string.settings_extract_logs),
+                    subtitle = stringResource(R.string.settings_extract_logs_subtitle),
+                    onClick = {
+                        PerformanceLogger.shareLogFile(context)
+                    },
                 )
             }
         }

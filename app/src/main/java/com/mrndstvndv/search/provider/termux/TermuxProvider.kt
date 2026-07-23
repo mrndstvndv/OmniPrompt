@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.core.content.ContextCompat
@@ -32,12 +31,12 @@ import kotlinx.coroutines.withContext
  * Commands are executed via Termux's RUN_COMMAND intent.
  */
 class TermuxProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<TermuxSettings>,
 ) : Provider {
     override val id: String = "termux"
-    override val displayName: String = activity.getString(R.string.provider_termux)
+    override val displayName: String = context.getString(R.string.provider_termux)
 
     override val triggers: List<SearchTrigger>
         get() {
@@ -77,7 +76,7 @@ class TermuxProvider(
                     if (invocation.payload.isBlank()) {
                         command.displayName
                     } else {
-                        activity.getString(
+                        context.getString(
                             R.string.termux_result_title_with_args,
                             command.displayName,
                             invocation.payload,
@@ -93,7 +92,7 @@ class TermuxProvider(
     }
 
     private val isTermuxInstalled: Boolean by lazy {
-        activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
+        context.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
     }
 
     override fun canHandle(query: Query): Boolean {
@@ -182,7 +181,7 @@ class TermuxProvider(
                     if (argsText.isBlank()) {
                         command.displayName
                     } else {
-                        activity.getString(
+                        context.getString(
                             R.string.termux_result_title_with_args,
                             command.displayName,
                             argsText,
@@ -263,7 +262,7 @@ class TermuxProvider(
         resolvedArgs: List<String>,
     ): String {
         if (resolvedArgs.isEmpty()) return executablePath
-        return activity.getString(
+        return context.getString(
             R.string.termux_command_preview,
             executablePath,
             resolvedArgs.joinToString(" "),
@@ -277,13 +276,12 @@ class TermuxProvider(
     ) {
         withContext(Dispatchers.Main) {
             // 1. Check permission first to provide clear feedback
-            if (!hasRunCommandPermission(activity)) {
+            if (!hasRunCommandPermission(context)) {
                 Toast.makeText(
-                    activity,
-                    activity.getString(R.string.termux_permission_denied_toast),
+                    context,
+                    context.getString(R.string.termux_permission_denied_toast),
                     Toast.LENGTH_LONG,
                 ).show()
-                activity.finish()
                 return@withContext
             }
 
@@ -291,7 +289,7 @@ class TermuxProvider(
 
             // 2. Create a valid PendingIntent for results (mandatory for Android 12+ background start)
             val resultIntent = Intent("com.mrndstvndv.search.TERMUX_RESULT")
-            resultIntent.setPackage(activity.packageName)
+            resultIntent.setPackage(context.packageName)
             val flags =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
@@ -300,7 +298,7 @@ class TermuxProvider(
                 }
             val pendingIntent =
                 android.app.PendingIntent.getBroadcast(
-                    activity,
+                    context,
                     0,
                     resultIntent,
                     flags,
@@ -352,41 +350,37 @@ class TermuxProvider(
                     val pi =
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             android.app.PendingIntent.getForegroundService(
-                                activity,
+                                context,
                                 0,
                                 serviceIntent,
                                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
                             )
                         } else {
                             android.app.PendingIntent.getService(
-                                activity,
+                                context,
                                 0,
                                 serviceIntent,
                                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
                             )
                         }
 
-                    pi.send(activity, 0, null, null, null, null, options.toBundle())
+                    pi.send(context, 0, null, null, null, null, options.toBundle())
                 } catch (e: Exception) {
                     // Direct start as fallback
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        activity.startForegroundService(serviceIntent)
+                        context.startForegroundService(serviceIntent)
                     } else {
-                        activity.startService(serviceIntent)
+                        context.startService(serviceIntent)
                     }
                 }
             } catch (e: Exception) {
-                val message = e.message ?: activity.getString(R.string.unknown_error)
+                val message = e.message ?: context.getString(R.string.unknown_error)
                 Toast.makeText(
-                    activity,
-                    activity.getString(R.string.toast_command_failed, message),
+                    context,
+                    context.getString(R.string.toast_command_failed, message),
                     Toast.LENGTH_LONG,
                 ).show()
             }
-
-            // 6. CRITICAL: Stay in foreground long enough for delivery to complete.
-            kotlinx.coroutines.delay(800)
-            activity.finish()
         }
     }
 
@@ -418,8 +412,8 @@ class TermuxProvider(
         /**
          * Static helper to check if Termux is installed without needing a provider instance.
          */
-        fun isTermuxInstalled(activity: ComponentActivity): Boolean =
-            activity.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
+        fun isTermuxInstalled(context: Context): Boolean =
+            context.packageManager.getLaunchIntentForPackage(TERMUX_PACKAGE) != null
 
         /**
          * Static helper to check if RUN_COMMAND permission is granted.

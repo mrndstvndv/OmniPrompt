@@ -2,28 +2,38 @@ package com.mrndstvndv.search.di
 
 import android.content.Context
 import com.mrndstvndv.search.alias.AliasRepository
+import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.apps.AppListProvider
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.apps.createAppSearchSettingsRepository
+import com.mrndstvndv.search.provider.calculator.CalculatorProvider
+import com.mrndstvndv.search.provider.contacts.ContactsProvider
 import com.mrndstvndv.search.provider.contacts.ContactsRepository
 import com.mrndstvndv.search.provider.contacts.createContactsSettingsRepository
+import com.mrndstvndv.search.provider.files.FileSearchProvider
 import com.mrndstvndv.search.provider.files.FileSearchRepository
 import com.mrndstvndv.search.provider.files.FileThumbnailRepository
 import com.mrndstvndv.search.provider.files.createFileSearchSettingsRepository
+import com.mrndstvndv.search.provider.intent.IntentProvider
 import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
+import com.mrndstvndv.search.provider.system.SettingsProvider
 import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
+import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.provider.termux.createTermuxSettingsRepository
+import com.mrndstvndv.search.provider.text.TextUtilitiesProvider
 import com.mrndstvndv.search.provider.text.createTextUtilitiesSettingsRepository
+import com.mrndstvndv.search.provider.web.WebSearchProvider
 import com.mrndstvndv.search.provider.web.createWebSearchSettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
-class AppContainer(private val context: Context) {
+class AppContainer(val context: Context) {
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val settingsRepository by lazy { SettingsRepository(context, applicationScope) }
@@ -57,4 +67,18 @@ class AppContainer(private val context: Context) {
         PinnedAppsRepository(context, appSearchSettingsRepo, appListRepository)
     }
     val developerSettingsManager by lazy { DeveloperSettingsManager.getInstance(context) }
+
+    val providers: List<Provider> by lazy {
+        buildList {
+            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope))
+            add(SettingsProvider(context.applicationContext, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
+            add(CalculatorProvider(context.applicationContext))
+            add(TextUtilitiesProvider(context.applicationContext, textUtilitiesSettingsRepo))
+            add(FileSearchProvider(context.applicationContext, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
+            add(ContactsProvider(context.applicationContext, settingsRepository, contactsSettingsRepo, contactsRepository))
+            add(WebSearchProvider(context.applicationContext, webSearchSettingsRepo))
+            add(TermuxProvider(context.applicationContext, settingsRepository, termuxSettingsRepo))
+            add(IntentProvider(context.applicationContext, settingsRepository, intentSettingsRepo, appListRepository))
+        }
+    }
 }

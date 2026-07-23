@@ -2,6 +2,7 @@ package com.mrndstvndv.search.provider.files
 
 import android.content.ActivityNotFoundException
 import android.content.ContentResolver
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -9,7 +10,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Description
@@ -32,15 +32,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class FileSearchProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val settingsRepository: ProviderSettingsRepository<FileSearchSettings>,
     private val repository: FileSearchRepository,
     private val thumbnailRepository: FileThumbnailRepository,
 ) : Provider {
-    private val fileProviderAuthority: String = "${activity.packageName}.fileprovider"
+    private val fileProviderAuthority: String = "${context.packageName}.fileprovider"
 
     override val id: String = "file-search"
-    override val displayName: String = activity.getString(R.string.provider_file_search)
+    override val displayName: String = context.getString(R.string.provider_file_search)
 
     override fun canHandle(query: Query): Boolean {
         if (query.isBlank) return false
@@ -229,8 +229,8 @@ class FileSearchProvider(
             val shareableUri = resolveSharableUri(originalUri)
             if (shareableUri == null) {
                 Toast.makeText(
-                    activity,
-                    activity.getString(R.string.toast_cant_open),
+                    context,
+                    context.getString(R.string.toast_cant_open),
                     Toast.LENGTH_SHORT,
                 ).show()
                 return@withContext
@@ -239,21 +239,20 @@ class FileSearchProvider(
                 Intent(Intent.ACTION_VIEW)
                     .setDataAndType(shareableUri, targetMime)
                     .addFlags(
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK,
                     )
             try {
-                activity.startActivity(intent)
-                activity.finish()
+                context.startActivity(intent)
             } catch (error: ActivityNotFoundException) {
                 Toast.makeText(
-                    activity,
-                    activity.getString(R.string.toast_no_app_open),
+                    context,
+                    context.getString(R.string.toast_no_app_open),
                     Toast.LENGTH_SHORT,
                 ).show()
             } catch (error: SecurityException) {
                 Toast.makeText(
-                    activity,
-                    activity.getString(R.string.toast_permission_denied),
+                    context,
+                    context.getString(R.string.toast_permission_denied),
                     Toast.LENGTH_SHORT,
                 ).show()
             }
@@ -263,7 +262,7 @@ class FileSearchProvider(
     private fun describeMatch(match: FileSearchMatch): MatchSubtitle {
         val path = if (match.relativePath.isBlank()) match.displayName else match.relativePath
         val template =
-            activity.getString(
+            context.getString(
                 R.string.file_search_result_path,
                 match.rootDisplayName,
                 MATCH_PATH_PLACEHOLDER,
@@ -293,7 +292,7 @@ class FileSearchProvider(
         val file = File(path)
         if (!file.exists()) return null
         return runCatching {
-            FileProvider.getUriForFile(activity, fileProviderAuthority, file)
+            FileProvider.getUriForFile(context, fileProviderAuthority, file)
         }.getOrNull()
     }
 

@@ -7,7 +7,6 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import android.util.Patterns
-import androidx.activity.ComponentActivity
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.TextFields
@@ -29,11 +28,11 @@ import kotlinx.coroutines.withContext
 import kotlin.math.min
 
 class TextUtilitiesProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val settingsRepository: ProviderSettingsRepository<TextUtilitiesSettings>,
 ) : Provider {
     override val id: String = "text-utilities"
-    override val displayName: String = activity.getString(R.string.provider_text_utilities)
+    override val displayName: String = context.getString(R.string.provider_text_utilities)
 
     override val triggers: List<SearchTrigger>
         get() {
@@ -48,7 +47,7 @@ class TextUtilitiesProvider(
                     SearchTrigger.create(
                         id = utility.id,
                         ownerProviderId = id,
-                        label = utility.displayName(activity),
+                        label = utility.displayName(context),
                         aliases = activeKeywords,
                         vectorIcon = Icons.Outlined.TextFields,
                         resultPolicy = TriggerResultPolicy.EXCLUSIVE,
@@ -109,7 +108,7 @@ class TextUtilitiesProvider(
             return listOf(buildSuggestionResult(utility, mode, includePrefill = false))
         }
 
-        return when (val outcome = utility.transform(mode, cleanPayload, activity)) {
+        return when (val outcome = utility.transform(mode, cleanPayload, context)) {
             is TransformOutcome.Success ->
                 listOf(
                     buildSuccessResult(invocation, utility, mode, cleanPayload, outcome, settings),
@@ -172,7 +171,7 @@ class TextUtilitiesProvider(
                 openUri(autoLaunchUri)
             } else {
                 withContext(Dispatchers.Main) {
-                    copyToClipboard(utility.displayName(activity), outcome.output)
+                    copyToClipboard(utility.displayName(context), outcome.output)
                     finishOverlay()
                 }
             }
@@ -206,7 +205,7 @@ class TextUtilitiesProvider(
         return ProviderResult(
             id = "$id:${utility.id}:invalid",
             title = outcome.message,
-            subtitle = utility.invalidInputHint(activity),
+            subtitle = utility.invalidInputHint(context),
             providerId = id,
             extras =
                 mapOf(
@@ -232,7 +231,7 @@ class TextUtilitiesProvider(
             }
         return ProviderResult(
             id = "$id:${utility.id}:suggest:${mode.name}:${utility.primaryKeyword.hashCode()}",
-            title = utility.displayName(activity),
+            title = utility.displayName(context),
             subtitle = instruction,
             providerId = id,
             extras = extras,
@@ -247,28 +246,28 @@ class TextUtilitiesProvider(
         label: String,
         value: String,
     ) {
-        val clipboard = activity.getSystemService(ClipboardManager::class.java)
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
         val clip = ClipData.newPlainText(label, value)
         clipboard?.setPrimaryClip(clip)
     }
 
     private suspend fun openUri(uri: Uri) {
         withContext(Dispatchers.Main) {
-            val intent = Intent(Intent.ACTION_VIEW, uri)
-            activity.startActivity(intent)
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            context.startActivity(intent)
             finishOverlay()
         }
     }
 
     private fun finishOverlay() {
-        activity.finish()
+        // Overlay dismissal is now handled dynamically in SearchActivity's LaunchedEffect upon action completion.
     }
 
     private fun previewText(
         value: String,
         maxLength: Int = 60,
     ): String {
-        if (value.isEmpty()) return activity.getString(R.string.text_utilities_empty_string)
+        if (value.isEmpty()) return context.getString(R.string.text_utilities_empty_string)
         if (value.length <= maxLength) return value
         val softLimit = min(maxLength, value.length)
         return value.substring(0, softLimit).trimEnd() + ELLIPSIS
@@ -289,16 +288,16 @@ class TextUtilitiesProvider(
         mode: TransformMode,
         @StringRes suffixResId: Int? = null,
     ): String {
-        val action = activity.getString(mode.actionRes)
-        val utilityName = utility.displayName(activity)
+        val action = context.getString(mode.actionRes)
+        val utilityName = utility.displayName(context)
         return if (suffixResId == null) {
-            activity.getString(R.string.text_utilities_action_subtitle, action, utilityName)
+            context.getString(R.string.text_utilities_action_subtitle, action, utilityName)
         } else {
-            activity.getString(
+            context.getString(
                 R.string.text_utilities_action_subtitle_with_suffix,
                 action,
                 utilityName,
-                activity.getString(suffixResId),
+                context.getString(suffixResId),
             )
         }
     }

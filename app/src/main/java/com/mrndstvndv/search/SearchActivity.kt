@@ -60,6 +60,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.mrndstvndv.search.util.PerformanceLogger
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -318,9 +320,15 @@ class SearchActivity : ComponentActivity() {
         overridePendingTransition(0, 0)
     }
 
+    override fun onDestroy() {
+        PerformanceLogger.log(this, "ISSUE_1_CONTEXT_LEAK", "SearchActivity onDestroy! HashCode: ${System.identityHashCode(this)}")
+        super.onDestroy()
+    }
+
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PerformanceLogger.log(this, "ISSUE_1_CONTEXT_LEAK", "SearchActivity onCreate! HashCode: ${System.identityHashCode(this)}")
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -439,6 +447,7 @@ class SearchActivity : ComponentActivity() {
             )
 
             LaunchedEffect(animatedBlurStrength) {
+                PerformanceLogger.log(this@SearchActivity, "ISSUE_3_ANIMATION_CHURN", "LaunchedEffect(animatedBlurStrength) restarted for strength: $animatedBlurStrength")
                 applyWindowBlur(animatedBlurStrength)
             }
 
@@ -455,8 +464,9 @@ class SearchActivity : ComponentActivity() {
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
             val providers =
                 remember(this@SearchActivity) {
+                    PerformanceLogger.log(this@SearchActivity, "ISSUE_1_CONTEXT_LEAK", "Creating 9 new Provider instances in Composable passing Activity Context HashCode: ${System.identityHashCode(this@SearchActivity)}")
                     buildList {
-                        add(AppListProvider(this@SearchActivity, appSearchSettingsRepo, appListRepository))
+                        add(AppListProvider(this@SearchActivity, appSearchSettingsRepo, appListRepository, coroutineScope))
                         add(SettingsProvider(this@SearchActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
                         add(CalculatorProvider(this@SearchActivity))
                         add(TextUtilitiesProvider(this@SearchActivity, textUtilitiesSettingsRepo))
@@ -731,6 +741,9 @@ class SearchActivity : ComponentActivity() {
 
             @Composable
             fun SearchBar() {
+                SideEffect {
+                    PerformanceLogger.log(this@SearchActivity, "ISSUE_2_RECOMPOSITION", "SearchBar composable recomposed! Current search text: '${textState.text}'")
+                }
                 Box {
                     SearchField(
                         modifier =
@@ -922,6 +935,9 @@ class SearchActivity : ComponentActivity() {
                                             },
                                         ),
                             ) {
+                                SideEffect {
+                                    PerformanceLogger.log(this@SearchActivity, "ISSUE_7_IME_RECOMPOSITION", "BoxWithConstraints recomposed due to IME bottom padding change: $keyboardHeightPx px")
+                                }
                                 val containerHeight = maxHeight
                                 val searchBarHeight = 56.dp // Approximate height of search bar
                                 val appListHeight = if (appSearchSettings.appListEnabled && !hasVisibleResults) 64.dp else 0.dp

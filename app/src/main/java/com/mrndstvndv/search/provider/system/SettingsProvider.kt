@@ -1,9 +1,9 @@
 package com.mrndstvndv.search.provider.system
 
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Settings
@@ -21,13 +21,13 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.withContext
 
 class SettingsProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<SystemSettingsSettings>,
     private val developerSettingsManager: DeveloperSettingsManager,
 ) : Provider {
     override val id: String = "system-settings"
-    override val displayName: String = activity.getString(R.string.provider_system_settings)
+    override val displayName: String = context.getString(R.string.provider_system_settings)
 
     private val _refreshSignal = MutableSharedFlow<Unit>()
     override val refreshSignal: SharedFlow<Unit> = _refreshSignal
@@ -39,7 +39,7 @@ class SettingsProvider(
         val onLaunch: (suspend () -> Unit)? = null,
     )
 
-    private fun string(resId: Int): String = activity.getString(resId)
+    private fun string(resId: Int): String = context.getString(resId)
 
     private val settingsActions by lazy {
         listOf(
@@ -78,13 +78,13 @@ class SettingsProvider(
                 ),
                 "org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS",
                 onLaunch = {
-                    val intent = Intent("org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS")
-                    if (intent.resolveActivity(activity.packageManager) != null) {
-                        activity.startActivity(intent)
+                    val intent = Intent("org.lineageos.lineageparts.CHARGING_CONTROL_SETTINGS").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                    if (intent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(intent)
                     } else {
-                        val fallback = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)
-                        if (fallback.resolveActivity(activity.packageManager) != null) {
-                            activity.startActivity(fallback)
+                        val fallback = Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                        if (fallback.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(fallback)
                         }
                     }
                 },
@@ -365,7 +365,7 @@ class SettingsProvider(
                     ProviderResult(
                         id = "$id:${item.action}",
                         title = item.title,
-                        subtitle = activity.getString(R.string.provider_system_settings),
+                        subtitle = context.getString(R.string.provider_system_settings),
                         defaultVectorIcon = Icons.Outlined.Settings,
                         providerId = id,
                         onSelect = {
@@ -374,12 +374,11 @@ class SettingsProvider(
                                     if (item.onLaunch != null) {
                                         item.onLaunch.invoke()
                                     } else {
-                                        val intent = Intent(item.action)
-                                        if (intent.resolveActivity(activity.packageManager) != null) {
-                                            activity.startActivity(intent)
+                                        val intent = Intent(item.action).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                        if (intent.resolveActivity(context.packageManager) != null) {
+                                            context.startActivity(intent)
                                         }
                                     }
-                                    activity.finish()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 }
@@ -395,14 +394,14 @@ class SettingsProvider(
     }
 
     private fun openDevOptionsFallback() {
-        val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-        if (fallbackIntent.resolveActivity(activity.packageManager) != null) {
+        val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        if (fallbackIntent.resolveActivity(context.packageManager) != null) {
             Toast.makeText(
-                activity,
-                activity.getString(R.string.toast_developer_options),
+                context,
+                context.getString(R.string.toast_developer_options),
                 Toast.LENGTH_SHORT,
             ).show()
-            activity.startActivity(fallbackIntent)
+            context.startActivity(fallbackIntent)
         }
     }
 
@@ -413,22 +412,22 @@ class SettingsProvider(
     ): ProviderResult? {
         val title =
             if (isCurrentlyEnabled) {
-                activity.getString(R.string.system_developer_options_disable)
+                context.getString(R.string.system_developer_options_disable)
             } else {
-                activity.getString(R.string.system_developer_options_enable)
+                context.getString(R.string.system_developer_options_enable)
             }
         val permissionStatus = developerSettingsManager.permissionStatus.value
         val subtitle =
             when {
                 !isReady && permissionStatus.isShizukuAvailable && !permissionStatus.hasShizukuPermission ->
-                    activity.getString(R.string.system_developer_options_grant_shizuku)
+                    context.getString(R.string.system_developer_options_grant_shizuku)
                 !isReady ->
-                    activity.getString(
+                    context.getString(
                         R.string.system_developer_options_no_permission,
-                        activity.packageName,
+                        context.packageName,
                     )
-                isCurrentlyEnabled -> activity.getString(R.string.system_developer_options_turn_off)
-                else -> activity.getString(R.string.system_developer_options_turn_on)
+                isCurrentlyEnabled -> context.getString(R.string.system_developer_options_turn_off)
+                else -> context.getString(R.string.system_developer_options_turn_on)
             }
 
         // Get match indices for highlighting
@@ -455,20 +454,20 @@ class SettingsProvider(
                                 val message =
                                     if (success) {
                                         if (newState) {
-                                            activity.getString(
+                                            context.getString(
                                                 R.string.system_developer_options_enabled,
                                             )
                                         } else {
-                                            activity.getString(
+                                            context.getString(
                                                 R.string.system_developer_options_disabled,
                                             )
                                         }
                                     } else {
-                                        activity.getString(
+                                        context.getString(
                                             R.string.system_developer_options_toggle_failed,
                                         )
                                     }
-                                Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                             }
                             if (success) {
                                 _refreshSignal.emit(Unit)
@@ -481,8 +480,8 @@ class SettingsProvider(
                             val requested = developerSettingsManager.requestShizukuPermission()
                             if (!requested) {
                                 Toast.makeText(
-                                    activity,
-                                    activity.getString(R.string.toast_shizuku_failed),
+                                    context,
+                                    context.getString(R.string.toast_shizuku_failed),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             }
@@ -491,10 +490,10 @@ class SettingsProvider(
                     else -> {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
-                                activity,
-                                activity.getString(
+                                context,
+                                context.getString(
                                     R.string.system_developer_options_grant_adb,
-                                    activity.packageName,
+                                    context.packageName,
                                 ),
                                 Toast.LENGTH_LONG,
                             ).show()
