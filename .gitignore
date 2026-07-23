@@ -20,3 +20,12 @@ local.properties
 *.keystore
 *.properties
 .opencode/
+*.log
+performance_evidence.log
+
+# Perfetto traces & analysis artifacts
+*.trace
+*.perfetto-trace
+trace_processor
+trace*.md
+trace/**
