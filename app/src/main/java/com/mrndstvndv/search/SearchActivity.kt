@@ -624,152 +624,7 @@ class SearchActivity : ComponentActivity() {
                 }
             }
 
-            @OptIn(ExperimentalMaterial3Api::class)
-            @Composable
-            fun UpdateBanner(
-                result: GitHubUpdateChecker.UpdateResult,
-                onDismiss: () -> Unit,
-                onDownload: () -> Unit,
-                modifier: Modifier = Modifier,
-            ) {
-                val dismissState =
-                    rememberSwipeToDismissBoxState(
-                        positionalThreshold = { totalDistance -> totalDistance * 0.6f },
-                    )
 
-                LaunchedEffect(dismissState.currentValue) {
-                    if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
-                        dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
-                    ) {
-                        onDismiss()
-                    }
-                }
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    backgroundContent = {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(androidx.compose.ui.graphics.Color.Transparent),
-                        )
-                    },
-                    modifier = modifier,
-                ) {
-                    val borderStroke =
-                        if (firstResultHighlightEnabled) {
-                            val borderColor =
-                                MaterialTheme.colorScheme.primary.copy(
-                                    alpha = if (translucentResultsEnabled) 0.5f else 0.22f,
-                                )
-                            BorderStroke(firstResultBorderThickness.dp, borderColor)
-                        } else {
-                            null
-                        }
-
-                    Card(
-                        onClick = onDownload,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                            ),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = borderStroke,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.SystemUpdate,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(24.dp),
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Update available: ${result.version}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                contentDescription = "Download Update",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-            }
-
-            @Composable
-            fun SearchBar() {
-                SideEffect {
-                    PerformanceLogger.log(this@SearchActivity, "ISSUE_2_RECOMPOSITION", "SearchBar composable recomposed! Current search text: '${textState.text}'")
-                }
-                Box {
-                    SearchField(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester),
-                        value = textState,
-                        onValueChange = viewModel::onSearchChange,
-                        triggerChip =
-                            uiState.triggerState?.let { activeTrigger ->
-                                {
-                                    TriggerChip(
-                                        item = activeTrigger.trigger,
-                                        onDismiss = viewModel::dismissTrigger,
-                                    )
-                                }
-                            },
-                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                        trailingIcon = {
-                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Settings,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
-                        onClear = { viewModel.onSearchChange(TextFieldValue("")) },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { submitSearch() }),
-                        onBackspaceAtStart = uiState.triggerState?.let { { viewModel.dismissTrigger() } },
-                    )
-
-                    if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.text.isEmpty()) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(end = 6.dp)
-                                    .size(48.dp)
-                                    .combinedClickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = ::openSettingsScreen,
-                                        onLongClick = ::openSystemSettingsScreen,
-                                    ),
-                        )
-                    }
-                }
-            }
 
             SearchTheme(motionPreferences = motionPreferences) {
                 val hasVisibleResults = uiState.shouldShowResults && displayedResults.isNotEmpty()
@@ -970,10 +825,24 @@ class SearchActivity : ComponentActivity() {
                                                     browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                     startActivity(browserIntent)
                                                 },
+                                                firstResultHighlightEnabled = firstResultHighlightEnabled,
+                                                firstResultBorderThickness = firstResultBorderThickness,
+                                                translucentResultsEnabled = translucentResultsEnabled,
                                             )
                                         }
                                     }
-                                    SearchBar()
+                                    SearchBar(
+                                        context = this@SearchActivity,
+                                        textState = textState,
+                                        onSearchChange = viewModel::onSearchChange,
+                                        triggerState = uiState.triggerState,
+                                        onDismissTrigger = viewModel::dismissTrigger,
+                                        focusRequester = focusRequester,
+                                        settingsIconPosition = settingsIconPosition,
+                                        onSubmitSearch = ::submitSearch,
+                                        onOpenSettings = ::openSettingsScreen,
+                                        onOpenSystemSettings = ::openSystemSettingsScreen,
+                                    )
 
                                     Spacer(modifier = Modifier.height(4.dp))
                                     val shouldCenterAppList =
@@ -1042,10 +911,24 @@ class SearchActivity : ComponentActivity() {
                                                 browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                 startActivity(browserIntent)
                                             },
+                                            firstResultHighlightEnabled = firstResultHighlightEnabled,
+                                            firstResultBorderThickness = firstResultBorderThickness,
+                                            translucentResultsEnabled = translucentResultsEnabled,
                                         )
                                     }
                                 }
-                                SearchBar()
+                                SearchBar(
+                                    context = this@SearchActivity,
+                                    textState = textState,
+                                    onSearchChange = viewModel::onSearchChange,
+                                    triggerState = uiState.triggerState,
+                                    onDismissTrigger = viewModel::dismissTrigger,
+                                    focusRequester = focusRequester,
+                                    settingsIconPosition = settingsIconPosition,
+                                    onSubmitSearch = ::submitSearch,
+                                    onOpenSettings = ::openSettingsScreen,
+                                    onOpenSystemSettings = ::openSystemSettingsScreen,
+                                )
 
                                 Spacer(modifier = Modifier.height(4.dp))
                                 val shouldCenterAppList =
@@ -1380,3 +1263,165 @@ private data class PendingAction(
     val block: suspend () -> Unit,
     val keepOverlayUntilExit: Boolean,
 )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UpdateBanner(
+    result: GitHubUpdateChecker.UpdateResult,
+    onDismiss: () -> Unit,
+    onDownload: () -> Unit,
+    firstResultHighlightEnabled: Boolean,
+    firstResultBorderThickness: Float,
+    translucentResultsEnabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            positionalThreshold = { totalDistance -> totalDistance * 0.6f },
+        )
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
+            dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+        ) {
+            onDismiss()
+        }
+    }
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(androidx.compose.ui.graphics.Color.Transparent),
+            )
+        },
+        modifier = modifier,
+    ) {
+        val borderStroke =
+            if (firstResultHighlightEnabled) {
+                val borderColor =
+                    MaterialTheme.colorScheme.primary.copy(
+                        alpha = if (translucentResultsEnabled) 0.5f else 0.22f,
+                    )
+                BorderStroke(firstResultBorderThickness.dp, borderColor)
+            } else {
+                null
+            }
+
+        Card(
+            onClick = onDownload,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                ),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = borderStroke,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SystemUpdate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Update available: ${result.version}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = "Download Update",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    context: Context,
+    textState: TextFieldValue,
+    onSearchChange: (TextFieldValue) -> Unit,
+    triggerState: TriggerState?,
+    onDismissTrigger: () -> Unit,
+    focusRequester: FocusRequester,
+    settingsIconPosition: SettingsIconPosition,
+    onSubmitSearch: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenSystemSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SideEffect {
+        PerformanceLogger.log(context, "ISSUE_2_RECOMPOSITION", "SearchBar composable recomposed! Current search text: '${textState.text}'")
+    }
+    Box(modifier = modifier) {
+        SearchField(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+            value = textState,
+            onValueChange = onSearchChange,
+            triggerChip =
+                triggerState?.let { activeTrigger ->
+                    {
+                        TriggerChip(
+                            item = activeTrigger.trigger,
+                            onDismiss = onDismissTrigger,
+                        )
+                    }
+                },
+            placeholder = { Text(stringResource(R.string.search_placeholder)) },
+            trailingIcon = {
+                if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            },
+            onClear = { onSearchChange(TextFieldValue("")) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmitSearch() }),
+            onBackspaceAtStart = triggerState?.let { { onDismissTrigger() } },
+        )
+
+        if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.text.isEmpty()) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 6.dp)
+                        .size(48.dp)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOpenSettings,
+                            onLongClick = onOpenSystemSettings,
+                        ),
+            )
+        }
+    }
+}
