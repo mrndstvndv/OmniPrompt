@@ -462,14 +462,14 @@ class SearchViewModel(
         val allResults =
             supervisorScope {
                 providersToQuery.map { provider ->
-                    async {
+                    async(Dispatchers.IO) {
                         try {
                             PerformanceLogger.log(
                                 container.context,
                                 "ISSUE_6_CONTEXT_SWITCH",
-                                "queryProviders: Querying '${provider.id}' inside async { withContext(Dispatchers.IO) } on thread: ${Thread.currentThread().name}"
+                                "queryProviders: Querying '${provider.id}' on thread: ${Thread.currentThread().name}"
                             )
-                            withContext(Dispatchers.IO) { provider.query(query) }
+                            provider.query(query)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -488,9 +488,11 @@ class SearchViewModel(
         useFrequencyRanking: Boolean,
     ): List<ProviderResult> {
         val startNano = System.nanoTime()
+        val providerOrder = rankingRepository.providerOrder.value
+        val rankMap = providerOrder.withIndex().associate { it.value to it.index }
         val sortMetadata =
             results.map { result ->
-                val providerRank = rankingRepository.getProviderRank(result.providerId)
+                val providerRank = rankMap[result.providerId] ?: providerOrder.size
                 val frequencyQuery = result.frequencyQuery ?: normalizedText
                 val frequencyScore =
                     if (useFrequencyRanking) {
@@ -508,7 +510,7 @@ class SearchViewModel(
         PerformanceLogger.log(
             container.context,
             "ISSUE_5_LINEAR_RANK_LOOKUP",
-            "sortResults: Sorted ${results.size} items performing ${results.size} linear indexOf scans on provider order. Time: ${String.format("%.3f", durationMs)} ms"
+            "sortResults: Sorted ${results.size} items performing O(1) rank map lookups. Time: ${String.format("%.3f", durationMs)} ms"
         )
 
         if (!useFrequencyRanking) {
