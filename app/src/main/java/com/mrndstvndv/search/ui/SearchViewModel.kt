@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -85,19 +86,18 @@ class SearchViewModel(
             get() = frequencyScore > 0f
     }
 
-    fun initProviders(providerList: List<Provider>) {
-        if (providers.isNotEmpty()) {
-            PerformanceLogger.log(
-                container.context,
-                "ISSUE_1_CONTEXT_LEAK",
-                "initProviders called with new Activity providers, but SKIPPED because SearchViewModel already retains providers! (Retained providers count: ${providers.size})"
-            )
-            return
-        }
+    init {
+        val providerList = container.providers
         providers = providerList
         providersById = providerList.associateBy { it.id }
         updateAvailableTriggers()
         observeRefreshSignals()
+
+        // Pre-initialize heavy providers off the main thread
+        viewModelScope.launch(Dispatchers.Default) {
+            providers.forEach { it.initialize() }
+            container.appListRepository.initialize()
+        }
     }
 
     fun updateAvailableTriggers() {
@@ -115,20 +115,20 @@ class SearchViewModel(
                 }
         }
         viewModelScope.launch {
-            aliasRepository.aliases.collect {
+            aliasRepository.aliases.drop(1).collect {
                 PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: aliasRepository emitted, triggering executeSearch()")
                 executeSearch()
             }
         }
         viewModelScope.launch {
-            settingsRepository.enabledProviders.collect {
+            settingsRepository.enabledProviders.drop(1).collect {
                 updateAvailableTriggers()
                 PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: enabledProviders emitted, triggering executeSearch()")
                 executeSearch()
             }
         }
         viewModelScope.launch {
-            rankingRepository.useFrequencyRanking.collect {
+            rankingRepository.useFrequencyRanking.drop(1).collect {
                 PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: useFrequencyRanking emitted, triggering executeSearch()")
                 executeSearch()
             }

@@ -462,29 +462,7 @@ class SearchActivity : ComponentActivity() {
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
-            val providers =
-                remember(this@SearchActivity) {
-                    PerformanceLogger.log(this@SearchActivity, "ISSUE_1_CONTEXT_LEAK", "Creating 9 new Provider instances in Composable passing Activity Context HashCode: ${System.identityHashCode(this@SearchActivity)}")
-                    buildList {
-                        add(AppListProvider(this@SearchActivity, appSearchSettingsRepo, appListRepository, coroutineScope))
-                        add(SettingsProvider(this@SearchActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
-                        add(CalculatorProvider(this@SearchActivity))
-                        add(TextUtilitiesProvider(this@SearchActivity, textUtilitiesSettingsRepo))
-                        add(FileSearchProvider(this@SearchActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(this@SearchActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
-                        add(WebSearchProvider(this@SearchActivity, webSearchSettingsRepo))
-                        add(TermuxProvider(this@SearchActivity, settingsRepository, termuxSettingsRepo))
-                        add(IntentProvider(this@SearchActivity, settingsRepository, intentSettingsRepo, appListRepository))
-                    }
-                }
 
-            // Pre-initialize heavy providers on first composition
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.Default) {
-                    providers.forEach { it.initialize() }
-                    appListRepository.initialize()
-                }
-            }
 
             // Initialize developer settings manager if feature is enabled
             LaunchedEffect(systemSettingsSettings.developerToggleEnabled) {
@@ -557,9 +535,7 @@ class SearchActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(providers) {
-                viewModel.initProviders(providers)
-            }
+
 
             var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
 
