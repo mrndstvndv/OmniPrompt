@@ -58,8 +58,6 @@
     <string name="settings_behavior_subtitle">Adjust responsiveness and motion.</string>
     <string name="settings_aliases">Aliases</string>
     <string name="settings_aliases_subtitle">Shortcuts you\'ve added from results.</string>
-    <string name="settings_extract_logs">Extract Evidence Logs</string>
-    <string name="settings_extract_logs_subtitle">Share or save performance evidence log file to any folder.</string>
     <string name="settings_aliases_empty">No aliases yet. Long press a result in search to save one.</string>
     <string name="settings_result_ranking">Result ranking</string>
     <string name="settings_result_ranking_subtitle">Control the order of results and providers.</string>

@@ -70,7 +70,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.mrndstvndv.search.util.PerformanceLogger
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -322,15 +321,9 @@ class SearchActivity : ComponentActivity() {
         overridePendingTransition(0, 0)
     }
 
-    override fun onDestroy() {
-        PerformanceLogger.log(this, "ISSUE_1_CONTEXT_LEAK", "SearchActivity onDestroy! HashCode: ${System.identityHashCode(this)}")
-        super.onDestroy()
-    }
-
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PerformanceLogger.log(this, "ISSUE_1_CONTEXT_LEAK", "SearchActivity onCreate! HashCode: ${System.identityHashCode(this)}")
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -451,7 +444,6 @@ class SearchActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 snapshotFlow { animatedBlurStrength }
                     .collect { strength ->
-                        PerformanceLogger.log(this@SearchActivity, "ISSUE_3_ANIMATION_CHURN", "snapshotFlow blur strength updated: $strength")
                         applyWindowBlur(strength)
                     }
             }
@@ -830,7 +822,6 @@ class SearchActivity : ComponentActivity() {
                                         }
                                     }
                                     SearchBar(
-                                        context = this@SearchActivity,
                                         textState = textState,
                                         onSearchChange = viewModel::onSearchChange,
                                         triggerState = uiState.triggerState,
@@ -916,7 +907,6 @@ class SearchActivity : ComponentActivity() {
                                     }
                                 }
                                 SearchBar(
-                                    context = this@SearchActivity,
                                     textState = textState,
                                     onSearchChange = viewModel::onSearchChange,
                                     triggerState = uiState.triggerState,
@@ -1362,7 +1352,6 @@ private fun UpdateBanner(
 
 @Composable
 private fun SearchBar(
-    context: Context,
     textState: TextFieldValue,
     onSearchChange: (TextFieldValue) -> Unit,
     triggerState: TriggerState?,
@@ -1374,9 +1363,6 @@ private fun SearchBar(
     onOpenSystemSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SideEffect {
-        PerformanceLogger.log(context, "ISSUE_2_RECOMPOSITION", "SearchBar composable recomposed! Current search text: '${textState.text}'")
-    }
     Box(modifier = modifier) {
         SearchField(
             modifier =

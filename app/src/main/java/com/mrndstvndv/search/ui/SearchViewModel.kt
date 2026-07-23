@@ -19,7 +19,6 @@ import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.ui.components.ContactActionData
 import com.mrndstvndv.search.ui.components.TriggerState
 import com.mrndstvndv.search.ui.components.findTriggerMatch
-import com.mrndstvndv.search.util.PerformanceLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -110,26 +109,22 @@ class SearchViewModel(
         viewModelScope.launch {
             merge(*providers.map { it.refreshSignal }.toTypedArray())
                 .collect {
-                    PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: provider refreshSignal triggered executeSearch()")
                     executeSearch()
                 }
         }
         viewModelScope.launch {
             aliasRepository.aliases.drop(1).collect {
-                PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: aliasRepository emitted, triggering executeSearch()")
                 executeSearch()
             }
         }
         viewModelScope.launch {
             settingsRepository.enabledProviders.drop(1).collect {
                 updateAvailableTriggers()
-                PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: enabledProviders emitted, triggering executeSearch()")
                 executeSearch()
             }
         }
         viewModelScope.launch {
             rankingRepository.useFrequencyRanking.drop(1).collect {
-                PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "observeRefreshSignals: useFrequencyRanking emitted, triggering executeSearch()")
                 executeSearch()
             }
         }
@@ -143,8 +138,6 @@ class SearchViewModel(
         val enabledProviders = settingsRepository.enabledProviders.value
         val activeProviders = providers.filter { enabledProviders[it.id] ?: true }
         val useFrequencyRanking = rankingRepository.useFrequencyRanking.value
-
-        PerformanceLogger.log(container.context, "ISSUE_4_EXECUTE_SEARCH_STORM", "executeSearch launched! Query: '$currentQueryText', ActiveProviders: ${activeProviders.size}")
 
         pendingQueryJob =
             viewModelScope.launch {
@@ -464,11 +457,6 @@ class SearchViewModel(
                 providersToQuery.map { provider ->
                     async(Dispatchers.IO) {
                         try {
-                            PerformanceLogger.log(
-                                container.context,
-                                "ISSUE_6_CONTEXT_SWITCH",
-                                "queryProviders: Querying '${provider.id}' on thread: ${Thread.currentThread().name}"
-                            )
                             provider.query(query)
                         } catch (e: CancellationException) {
                             throw e
@@ -487,7 +475,6 @@ class SearchViewModel(
         normalizedText: String,
         useFrequencyRanking: Boolean,
     ): List<ProviderResult> {
-        val startNano = System.nanoTime()
         val providerOrder = rankingRepository.providerOrder.value
         val rankMap = providerOrder.withIndex().associate { it.value to it.index }
         val sortMetadata =
@@ -506,12 +493,6 @@ class SearchViewModel(
                     frequencyScore = frequencyScore,
                 )
             }
-        val durationMs = (System.nanoTime() - startNano) / 1_000_000.0
-        PerformanceLogger.log(
-            container.context,
-            "ISSUE_5_LINEAR_RANK_LOOKUP",
-            "sortResults: Sorted ${results.size} items performing O(1) rank map lookups. Time: ${String.format("%.3f", durationMs)} ms"
-        )
 
         if (!useFrequencyRanking) {
             return sortMetadata
