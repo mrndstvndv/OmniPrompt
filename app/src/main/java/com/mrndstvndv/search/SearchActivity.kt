@@ -21,6 +21,7 @@ import com.mrndstvndv.search.ui.SearchViewModel
 import com.mrndstvndv.search.ui.SearchViewModelFactory
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.layout.layout
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -751,10 +752,8 @@ class SearchActivity : ComponentActivity() {
                         if (searchBarPosition == SearchBarPosition.BOTTOM) {
                             val density = LocalDensity.current
                             val imeInsets = WindowInsets.ime
-                            val keyboardHeightPx = imeInsets.getBottom(density)
-                            val keyboardHeightDp = with(density) { keyboardHeightPx.toDp() }
 
-                            BoxWithConstraints(
+                            Box(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
@@ -764,52 +763,55 @@ class SearchActivity : ComponentActivity() {
                                             } else {
                                                 Modifier
                                             },
-                                        ),
+                                        )
+                                        .layout { measurable, constraints ->
+                                            val keyboardHeightPx = imeInsets.getBottom(density)
+                                            val keyboardHeightDp = keyboardHeightPx.toDp()
+
+                                            val containerHeight = constraints.maxHeight.toDp()
+                                            val searchBarHeight = 56.dp
+                                            val appListHeight = if (appSearchSettings.appListEnabled && !hasVisibleResults) 64.dp else 0.dp
+                                            val totalContentHeight = searchBarHeight + appListHeight + 10.dp
+
+                                            val centeringPadding =
+                                                if (!hasVisibleResults) {
+                                                    (containerHeight - totalContentHeight) / 2
+                                                } else {
+                                                    0.dp
+                                                }
+
+                                            val centeredBottomPosition = containerHeight / 2 + totalContentHeight / 2
+                                            val keyboardTopPosition = containerHeight - keyboardHeightDp
+                                            val shouldPushUp = centeredBottomPosition > keyboardTopPosition && keyboardHeightPx > 0
+                                            val needsKeyboardPadding = hasVisibleResults && keyboardHeightPx > 0
+
+                                            val targetPadding =
+                                                when {
+                                                    needsKeyboardPadding -> keyboardHeightDp
+                                                    shouldPushUp -> keyboardHeightDp
+                                                    !hasVisibleResults -> centeringPadding
+                                                    else -> 0.dp
+                                                }
+
+                                            val targetPaddingPx = targetPadding.roundToPx()
+
+                                            val placeable =
+                                                measurable.measure(
+                                                    constraints.copy(
+                                                        maxHeight = (constraints.maxHeight - targetPaddingPx).coerceAtLeast(0),
+                                                    ),
+                                                )
+
+                                            layout(placeable.width, placeable.height + targetPaddingPx) {
+                                                placeable.placeRelative(0, 0)
+                                            }
+                                        },
                             ) {
-                                SideEffect {
-                                    PerformanceLogger.log(this@SearchActivity, "ISSUE_7_IME_RECOMPOSITION", "BoxWithConstraints recomposed due to IME bottom padding change: $keyboardHeightPx px")
-                                }
-                                val containerHeight = maxHeight
-                                val searchBarHeight = 56.dp // Approximate height of search bar
-                                val appListHeight = if (appSearchSettings.appListEnabled && !hasVisibleResults) 64.dp else 0.dp
-                                val totalContentHeight = searchBarHeight + appListHeight + 10.dp // padding
-
-                                // Calculate centering padding for "no results" state
-                                val centeringPadding =
-                                    if (!hasVisibleResults) {
-                                        (containerHeight - totalContentHeight) / 2
-                                    } else {
-                                        0.dp
-                                    }
-
-                                // Calculate if centered content would overlap with keyboard
-                                val centeredBottomPosition = containerHeight / 2 + totalContentHeight / 2
-                                val keyboardTopPosition = containerHeight - keyboardHeightDp
-                                val shouldPushUp = centeredBottomPosition > keyboardTopPosition && keyboardHeightPx > 0
-
-                                // When there are results, always push up by keyboard height if keyboard is visible
-                                val needsKeyboardPadding = hasVisibleResults && keyboardHeightPx > 0
-
-                                // Animate the bottom padding for smooth keyboard transitions
-                                val targetPadding =
-                                    when {
-                                        needsKeyboardPadding -> keyboardHeightDp
-                                        shouldPushUp -> keyboardHeightDp
-                                        !hasVisibleResults -> centeringPadding
-                                        else -> 0.dp
-                                    }
-                                val animatedBottomPadding by animateDpAsState(
-                                    targetValue = targetPadding,
-                                    animationSpec = tween(durationMillis = 250),
-                                    label = "keyboardPadding",
-                                )
-
                                 Column(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .align(Alignment.BottomCenter)
-                                            .padding(bottom = animatedBottomPadding),
+                                            .align(Alignment.BottomCenter),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
                                     if (showUpdateBanner && !hasVisibleResults) {
