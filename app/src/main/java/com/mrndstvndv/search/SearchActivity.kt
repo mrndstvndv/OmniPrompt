@@ -794,11 +794,14 @@ class SearchActivity : ComponentActivity() {
                                                 }
 
                                             val targetPaddingPx = targetPadding.roundToPx()
+                                            val newMaxHeight = (constraints.maxHeight - targetPaddingPx).coerceAtLeast(0)
+                                            val newMinHeight = constraints.minHeight.coerceAtMost(newMaxHeight)
 
                                             val placeable =
                                                 measurable.measure(
                                                     constraints.copy(
-                                                        maxHeight = (constraints.maxHeight - targetPaddingPx).coerceAtLeast(0),
+                                                        minHeight = newMinHeight,
+                                                        maxHeight = newMaxHeight,
                                                     ),
                                                 )
 
