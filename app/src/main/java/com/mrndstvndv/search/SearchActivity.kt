@@ -1116,13 +1116,17 @@ class SearchActivity : ComponentActivity() {
                     completed = true
                 } finally {
                     pendingAction = null
-                    val shouldDismissOverlay =
-                        !action.keepOverlayUntilExit || !completed || (!this@SearchActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
-                    if (shouldDismissOverlay) {
-                        viewModel.setIsPerformingAction(false)
-                    }
-                    if (finishRequestedDuringAction) {
+                    if (completed && action.keepOverlayUntilExit) {
                         finish()
+                    } else {
+                        val shouldDismissOverlay =
+                            !action.keepOverlayUntilExit || !completed || (!this@SearchActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
+                        if (shouldDismissOverlay) {
+                            viewModel.setIsPerformingAction(false)
+                        }
+                        if (finishRequestedDuringAction) {
+                            finish()
+                        }
                     }
                 }
             }
