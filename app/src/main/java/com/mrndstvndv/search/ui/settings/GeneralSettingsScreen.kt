@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Speed
@@ -98,6 +99,7 @@ fun GeneralSettingsScreen(
     onOpenAbout: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val context = LocalContext.current
     // Collect once so future tweaks can surface live states on tiles if desired.
     aliasRepository.aliases.collectAsState()
     settingsRepository.enabledProviders.collectAsState()
@@ -219,6 +221,16 @@ fun GeneralSettingsScreen(
                         subtitle = stringResource(R.string.settings_updates_subtitle),
                         onClick = onOpenUpdates,
                         showBadge = showBadge,
+                    )
+                    SettingsDivider()
+                    SettingsNavigationRow(
+                        icon = Icons.Rounded.Favorite,
+                        title = stringResource(R.string.settings_sponsor),
+                        subtitle = stringResource(R.string.settings_sponsor_subtitle),
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sponsors/mrndstvndv"))
+                            context.startActivity(intent)
+                        },
                     )
                     SettingsDivider()
                     SettingsNavigationRow(

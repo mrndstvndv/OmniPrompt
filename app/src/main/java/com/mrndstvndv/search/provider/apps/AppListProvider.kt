@@ -4,10 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
 import android.os.UserManager
-import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
-import androidx.lifecycle.lifecycleScope
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.provider.Provider
@@ -17,6 +15,7 @@ import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.SharedFlow
@@ -28,24 +27,25 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class AppListProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val settingsRepository: ProviderSettingsRepository<AppSearchSettings>,
     private val appListRepository: AppListRepository,
+    private val scope: CoroutineScope,
 ) : Provider {
     override val id: String = "app-list"
-    override val displayName: String = activity.getString(R.string.provider_applications)
+    override val displayName: String = context.getString(R.string.provider_applications)
     override val refreshSignal: SharedFlow<Unit> =
         appListRepository
             .getAllApps()
             .drop(1)
             .map { Unit }
             .shareIn(
-                scope = activity.lifecycleScope,
+                scope = scope,
                 started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
                 replay = 0,
             )
 
-    private val packageManager = activity.packageManager
+    private val packageManager = context.packageManager
 
     override fun canHandle(query: Query): Boolean = true
 
@@ -162,13 +162,12 @@ class AppListProvider(
 
             if (isAiQueryResult && askMatch!!.query.isNotEmpty()) {
                 // "ask gemini <query>" - send query to AI
-                title = activity.getString(R.string.app_search_ai_result_title, askMatch.query)
+                title = context.getString(R.string.app_search_ai_result_title, askMatch.query)
                 subtitle = askMatch.assistant.displayName
                 action = {
                     withContext(Dispatchers.Main) {
                         val intent = buildAiQueryIntent(askMatch.assistant, askMatch.query)
-                        activity.startActivity(intent)
-                        activity.finish()
+                        context.startActivity(intent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
                     }
                 }
             } else {
@@ -177,25 +176,23 @@ class AppListProvider(
                 subtitle = entry.packageName
                 action = {
                     withContext(Dispatchers.Main) {
-                        val userManager = activity.getSystemService(Context.USER_SERVICE) as UserManager
+                        val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
                         val userHandle = userManager.getUserForSerialNumber(entry.userSerialNumber)
                             ?: android.os.Process.myUserHandle()
-                        val launcherApps = activity.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                        val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
                         val activities = launcherApps.getActivityList(entry.packageName, userHandle)
                         val activityInfo = activities.firstOrNull()
                         if (activityInfo != null) {
                             launcherApps.startMainActivity(
                                 activityInfo.componentName,
                                 userHandle,
-                                activity.intent.sourceBounds,
+                                null,
                                 null
                             )
-                            activity.finish()
                         } else {
                             val launchIntent = packageManager.getLaunchIntentForPackage(entry.packageName)
                             if (launchIntent != null) {
-                                activity.startActivity(launchIntent)
-                                activity.finish()
+                                context.startActivity(launchIntent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
                             }
                         }
                     }

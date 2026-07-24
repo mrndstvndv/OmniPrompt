@@ -65,6 +65,8 @@
     <string name="settings_backup_restore_subtitle">Export or import your settings</string>
     <string name="settings_about">About</string>
     <string name="settings_about_subtitle">App version, project links, and licenses</string>
+    <string name="settings_sponsor">Sponsor</string>
+    <string name="settings_sponsor_subtitle">Support the project or buy me a coffee</string>
     <string name="about_version">Version</string>
     <string name="about_github">GitHub repository</string>
     <string name="about_open_source_licenses">Open source licenses</string>
@@ -313,6 +315,8 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_label_action_auto">Action (auto-selected)</string>
     <string name="intent_label_action">Action</string>
     <string name="intent_label_mime_type">MIME Type</string>
+    <string name="intent_custom_mime_type">Custom…</string>
+    <string name="intent_label_custom_mime_type">Custom MIME Type</string>
     <string name="intent_label_payload_template">Payload Template (optional)</string>
     <string name="intent_placeholder_payload">yabai $query</string>
     <string name="intent_supporting_payload">💡 $query = user input after title</string>

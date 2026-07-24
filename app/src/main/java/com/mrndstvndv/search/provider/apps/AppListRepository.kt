@@ -43,8 +43,18 @@ class AppListRepository private constructor(
     }
     private var currentSettings: AppSearchSettings? = null
 
+    @Volatile
+    private var cachedColors: Triple<Int, Int, Int>? = null
+
+    private fun getCachedThemeColors(): Triple<Int, Int, Int> {
+        val existing = cachedColors
+        if (existing != null) return existing
+        return getThemeColors(context).also { cachedColors = it }
+    }
+
     private val componentCallbacks = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) {
+            cachedColors = null
             iconCache.clear()
         }
 
@@ -94,6 +104,7 @@ class AppListRepository private constructor(
                         prev.themeAllIcons != settings.themeAllIcons ||
                         prev.iconPackPackageName != settings.iconPackPackageName
                     ) {
+                        cachedColors = null
                         iconCache.clear()
                     }
                     if (prev.includeWorkApps != settings.includeWorkApps) {
@@ -125,7 +136,7 @@ class AppListRepository private constructor(
     /** Loads icon for the given package using current theme settings. */
     suspend fun getIcon(packageName: String, userSerialNumber: Long = 0L): Bitmap? {
         val s = currentSettings ?: settingsRepository.value
-        val colors = getThemeColors(context)
+        val colors = getCachedThemeColors()
         val cacheKey = buildString {
             append(packageName)
             append(":")
@@ -157,7 +168,7 @@ class AppListRepository private constructor(
         userSerialNumber: Long = 0L,
     ): Bitmap? {
         // ponytail: composite cache key so toggling themes doesn't serve stale icons.
-        val colors = getThemeColors(context)
+        val colors = getCachedThemeColors()
         val cacheKey = buildString {
             append(packageName)
             append(":")

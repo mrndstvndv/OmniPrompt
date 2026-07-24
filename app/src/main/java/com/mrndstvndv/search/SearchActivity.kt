@@ -21,6 +21,8 @@ import com.mrndstvndv.search.ui.SearchViewModel
 import com.mrndstvndv.search.ui.SearchViewModelFactory
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.layout.layout
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -60,6 +62,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -438,8 +441,11 @@ class SearchActivity : ComponentActivity() {
                 }
             )
 
-            LaunchedEffect(animatedBlurStrength) {
-                applyWindowBlur(animatedBlurStrength)
+            LaunchedEffect(Unit) {
+                snapshotFlow { animatedBlurStrength }
+                    .collect { strength ->
+                        applyWindowBlur(strength)
+                    }
             }
 
             val fileSearchRepository = container.fileSearchRepository
@@ -453,28 +459,7 @@ class SearchActivity : ComponentActivity() {
             val providerOrder by rankingRepository.providerOrder.collectAsState()
             val useFrequencyRanking by rankingRepository.useFrequencyRanking.collectAsState()
             val queryBasedRankingEnabled by rankingRepository.queryBasedRankingEnabled.collectAsState()
-            val providers =
-                remember(this@SearchActivity) {
-                    buildList {
-                        add(AppListProvider(this@SearchActivity, appSearchSettingsRepo, appListRepository))
-                        add(SettingsProvider(this@SearchActivity, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
-                        add(CalculatorProvider(this@SearchActivity))
-                        add(TextUtilitiesProvider(this@SearchActivity, textUtilitiesSettingsRepo))
-                        add(FileSearchProvider(this@SearchActivity, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-                        add(ContactsProvider(this@SearchActivity, settingsRepository, contactsSettingsRepo, contactsRepository))
-                        add(WebSearchProvider(this@SearchActivity, webSearchSettingsRepo))
-                        add(TermuxProvider(this@SearchActivity, settingsRepository, termuxSettingsRepo))
-                        add(IntentProvider(this@SearchActivity, settingsRepository, intentSettingsRepo, appListRepository))
-                    }
-                }
 
-            // Pre-initialize heavy providers on first composition
-            LaunchedEffect(Unit) {
-                withContext(Dispatchers.Default) {
-                    providers.forEach { it.initialize() }
-                    appListRepository.initialize()
-                }
-            }
 
             // Initialize developer settings manager if feature is enabled
             LaunchedEffect(systemSettingsSettings.developerToggleEnabled) {
@@ -547,9 +532,7 @@ class SearchActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(providers) {
-                viewModel.initProviders(providers)
-            }
+
 
             var pendingAction by remember { mutableStateOf<PendingAction?>(null) }
 
@@ -638,149 +621,7 @@ class SearchActivity : ComponentActivity() {
                 }
             }
 
-            @OptIn(ExperimentalMaterial3Api::class)
-            @Composable
-            fun UpdateBanner(
-                result: GitHubUpdateChecker.UpdateResult,
-                onDismiss: () -> Unit,
-                onDownload: () -> Unit,
-                modifier: Modifier = Modifier,
-            ) {
-                val dismissState =
-                    rememberSwipeToDismissBoxState(
-                        positionalThreshold = { totalDistance -> totalDistance * 0.6f },
-                    )
 
-                LaunchedEffect(dismissState.currentValue) {
-                    if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
-                        dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
-                    ) {
-                        onDismiss()
-                    }
-                }
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    backgroundContent = {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(androidx.compose.ui.graphics.Color.Transparent),
-                        )
-                    },
-                    modifier = modifier,
-                ) {
-                    val borderStroke =
-                        if (firstResultHighlightEnabled) {
-                            val borderColor =
-                                MaterialTheme.colorScheme.primary.copy(
-                                    alpha = if (translucentResultsEnabled) 0.5f else 0.22f,
-                                )
-                            BorderStroke(firstResultBorderThickness.dp, borderColor)
-                        } else {
-                            null
-                        }
-
-                    Card(
-                        onClick = onDownload,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                            ),
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        border = borderStroke,
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.SystemUpdate,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(24.dp),
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Update available: ${result.version}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                contentDescription = "Download Update",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                                modifier = Modifier.size(24.dp),
-                            )
-                        }
-                    }
-                }
-            }
-
-            @Composable
-            fun SearchBar() {
-                Box {
-                    SearchField(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester),
-                        value = textState,
-                        onValueChange = viewModel::onSearchChange,
-                        triggerChip =
-                            uiState.triggerState?.let { activeTrigger ->
-                                {
-                                    TriggerChip(
-                                        item = activeTrigger.trigger,
-                                        onDismiss = viewModel::dismissTrigger,
-                                    )
-                                }
-                            },
-                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                        trailingIcon = {
-                            if (settingsIconPosition == SettingsIconPosition.INSIDE) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Settings,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        },
-                        onClear = { viewModel.onSearchChange(TextFieldValue("")) },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { submitSearch() }),
-                        onBackspaceAtStart = uiState.triggerState?.let { { viewModel.dismissTrigger() } },
-                    )
-
-                    if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.text.isEmpty()) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(end = 6.dp)
-                                    .size(48.dp)
-                                    .combinedClickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = ::openSettingsScreen,
-                                        onLongClick = ::openSystemSettingsScreen,
-                                    ),
-                        )
-                    }
-                }
-            }
 
             SearchTheme(motionPreferences = motionPreferences) {
                 val hasVisibleResults = uiState.shouldShowResults && displayedResults.isNotEmpty()
@@ -907,8 +748,6 @@ class SearchActivity : ComponentActivity() {
                         if (searchBarPosition == SearchBarPosition.BOTTOM) {
                             val density = LocalDensity.current
                             val imeInsets = WindowInsets.ime
-                            val keyboardHeightPx = imeInsets.getBottom(density)
-                            val keyboardHeightDp = with(density) { keyboardHeightPx.toDp() }
 
                             BoxWithConstraints(
                                 modifier =
@@ -922,12 +761,13 @@ class SearchActivity : ComponentActivity() {
                                             },
                                         ),
                             ) {
+                                val keyboardHeightPx = imeInsets.getBottom(density)
+                                val keyboardHeightDp = with(density) { keyboardHeightPx.toDp() }
                                 val containerHeight = maxHeight
-                                val searchBarHeight = 56.dp // Approximate height of search bar
+                                val searchBarHeight = 56.dp
                                 val appListHeight = if (appSearchSettings.appListEnabled && !hasVisibleResults) 64.dp else 0.dp
-                                val totalContentHeight = searchBarHeight + appListHeight + 10.dp // padding
+                                val totalContentHeight = searchBarHeight + appListHeight + 10.dp
 
-                                // Calculate centering padding for "no results" state
                                 val centeringPadding =
                                     if (!hasVisibleResults) {
                                         (containerHeight - totalContentHeight) / 2
@@ -935,15 +775,11 @@ class SearchActivity : ComponentActivity() {
                                         0.dp
                                     }
 
-                                // Calculate if centered content would overlap with keyboard
                                 val centeredBottomPosition = containerHeight / 2 + totalContentHeight / 2
                                 val keyboardTopPosition = containerHeight - keyboardHeightDp
                                 val shouldPushUp = centeredBottomPosition > keyboardTopPosition && keyboardHeightPx > 0
-
-                                // When there are results, always push up by keyboard height if keyboard is visible
                                 val needsKeyboardPadding = hasVisibleResults && keyboardHeightPx > 0
 
-                                // Animate the bottom padding for smooth keyboard transitions
                                 val targetPadding =
                                     when {
                                         needsKeyboardPadding -> keyboardHeightDp
@@ -951,6 +787,7 @@ class SearchActivity : ComponentActivity() {
                                         !hasVisibleResults -> centeringPadding
                                         else -> 0.dp
                                     }
+
                                 val animatedBottomPadding by animateDpAsState(
                                     targetValue = targetPadding,
                                     animationSpec = tween(durationMillis = 250),
@@ -978,10 +815,23 @@ class SearchActivity : ComponentActivity() {
                                                     browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                     startActivity(browserIntent)
                                                 },
+                                                firstResultHighlightEnabled = firstResultHighlightEnabled,
+                                                firstResultBorderThickness = firstResultBorderThickness,
+                                                translucentResultsEnabled = translucentResultsEnabled,
                                             )
                                         }
                                     }
-                                    SearchBar()
+                                    SearchBar(
+                                        textState = textState,
+                                        onSearchChange = viewModel::onSearchChange,
+                                        triggerState = uiState.triggerState,
+                                        onDismissTrigger = viewModel::dismissTrigger,
+                                        focusRequester = focusRequester,
+                                        settingsIconPosition = settingsIconPosition,
+                                        onSubmitSearch = ::submitSearch,
+                                        onOpenSettings = ::openSettingsScreen,
+                                        onOpenSystemSettings = ::openSystemSettingsScreen,
+                                    )
 
                                     Spacer(modifier = Modifier.height(4.dp))
                                     val shouldCenterAppList =
@@ -1050,10 +900,23 @@ class SearchActivity : ComponentActivity() {
                                                 browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                                 startActivity(browserIntent)
                                             },
+                                            firstResultHighlightEnabled = firstResultHighlightEnabled,
+                                            firstResultBorderThickness = firstResultBorderThickness,
+                                            translucentResultsEnabled = translucentResultsEnabled,
                                         )
                                     }
                                 }
-                                SearchBar()
+                                SearchBar(
+                                    textState = textState,
+                                    onSearchChange = viewModel::onSearchChange,
+                                    triggerState = uiState.triggerState,
+                                    onDismissTrigger = viewModel::dismissTrigger,
+                                    focusRequester = focusRequester,
+                                    settingsIconPosition = settingsIconPosition,
+                                    onSubmitSearch = ::submitSearch,
+                                    onOpenSettings = ::openSettingsScreen,
+                                    onOpenSystemSettings = ::openSystemSettingsScreen,
+                                )
 
                                 Spacer(modifier = Modifier.height(4.dp))
                                 val shouldCenterAppList =
@@ -1239,13 +1102,17 @@ class SearchActivity : ComponentActivity() {
                     completed = true
                 } finally {
                     pendingAction = null
-                    val shouldDismissOverlay =
-                        !action.keepOverlayUntilExit || !completed || (!this@SearchActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
-                    if (shouldDismissOverlay) {
-                        viewModel.setIsPerformingAction(false)
-                    }
-                    if (finishRequestedDuringAction) {
+                    if (completed && action.keepOverlayUntilExit) {
                         finish()
+                    } else {
+                        val shouldDismissOverlay =
+                            !action.keepOverlayUntilExit || !completed || (!this@SearchActivity.isFinishing && !isExiting && !finishRequestedDuringAction)
+                        if (shouldDismissOverlay) {
+                            viewModel.setIsPerformingAction(false)
+                        }
+                        if (finishRequestedDuringAction) {
+                            finish()
+                        }
                     }
                 }
             }
@@ -1388,3 +1255,161 @@ private data class PendingAction(
     val block: suspend () -> Unit,
     val keepOverlayUntilExit: Boolean,
 )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UpdateBanner(
+    result: GitHubUpdateChecker.UpdateResult,
+    onDismiss: () -> Unit,
+    onDownload: () -> Unit,
+    firstResultHighlightEnabled: Boolean,
+    firstResultBorderThickness: Float,
+    translucentResultsEnabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            positionalThreshold = { totalDistance -> totalDistance * 0.6f },
+        )
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd ||
+            dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+        ) {
+            onDismiss()
+        }
+    }
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(androidx.compose.ui.graphics.Color.Transparent),
+            )
+        },
+        modifier = modifier,
+    ) {
+        val borderStroke =
+            if (firstResultHighlightEnabled) {
+                val borderColor =
+                    MaterialTheme.colorScheme.primary.copy(
+                        alpha = if (translucentResultsEnabled) 0.5f else 0.22f,
+                    )
+                BorderStroke(firstResultBorderThickness.dp, borderColor)
+            } else {
+                null
+            }
+
+        Card(
+            onClick = onDownload,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                ),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = borderStroke,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SystemUpdate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Update available: ${result.version}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = "Download Update",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    textState: TextFieldValue,
+    onSearchChange: (TextFieldValue) -> Unit,
+    triggerState: TriggerState?,
+    onDismissTrigger: () -> Unit,
+    focusRequester: FocusRequester,
+    settingsIconPosition: SettingsIconPosition,
+    onSubmitSearch: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenSystemSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        SearchField(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+            value = textState,
+            onValueChange = onSearchChange,
+            triggerChip =
+                triggerState?.let { activeTrigger ->
+                    {
+                        TriggerChip(
+                            item = activeTrigger.trigger,
+                            onDismiss = onDismissTrigger,
+                        )
+                    }
+                },
+            placeholder = { Text(stringResource(R.string.search_placeholder)) },
+            trailingIcon = {
+                if (settingsIconPosition == SettingsIconPosition.INSIDE) {
+                    Icon(
+                        imageVector = Icons.Outlined.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            },
+            onClear = { onSearchChange(TextFieldValue("")) },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSubmitSearch() }),
+            onBackspaceAtStart = triggerState?.let { { onDismissTrigger() } },
+        )
+
+        if (settingsIconPosition == SettingsIconPosition.INSIDE && textState.text.isEmpty()) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 6.dp)
+                        .size(48.dp)
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOpenSettings,
+                            onLongClick = onOpenSystemSettings,
+                        ),
+            )
+        }
+    }
+}

@@ -1,8 +1,8 @@
 package com.mrndstvndv.search.provider.intent
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import androidx.activity.ComponentActivity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
 import com.mrndstvndv.search.R
@@ -29,13 +29,13 @@ import kotlinx.coroutines.withContext
  * Users type keywords that fuzzy match against intent titles to launch intents.
  */
 class IntentProvider(
-    private val activity: ComponentActivity,
+    private val context: Context,
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<IntentSettings>,
     private val appListRepository: AppListRepository,
 ) : Provider {
     override val id: String = "intent"
-    override val displayName: String = activity.getString(R.string.provider_intent_launcher)
+    override val displayName: String = context.getString(R.string.provider_intent_launcher)
 
     override val triggers: List<SearchTrigger>
         get() =
@@ -61,17 +61,17 @@ class IntentProvider(
         val config = settings.configs.firstOrNull { it.id == configId } ?: return emptyList()
 
         val payload = invocation.payload
-        val systemLabel = activity.getString(R.string.intent_system)
+        val systemLabel = context.getString(R.string.intent_system)
         val targetLabel = config.packageName.ifEmpty { systemLabel }
         val subtitle =
             if (payload.isNotEmpty()) {
-                activity.getString(
+                context.getString(
                     R.string.intent_result_subtitle_with_payload,
                     payload,
                     targetLabel,
                 )
             } else if (config.hasQuerySlot) {
-                activity.getString(R.string.intent_payload_required_hint)
+                context.getString(R.string.intent_payload_required_hint)
             } else {
                 targetLabel
             }
@@ -129,8 +129,8 @@ class IntentProvider(
 
         val rawPayload = parsedTrigger.payload.trim()
 
-        val systemLabel = activity.getString(R.string.intent_system)
-        val payloadHint = activity.getString(R.string.intent_payload_required_hint)
+        val systemLabel = context.getString(R.string.intent_system)
+        val payloadHint = context.getString(R.string.intent_payload_required_hint)
 
         return scored.map { (config, _, matchedIndices) ->
             // For the best match use actual payload, for others show hint if payload is needed
@@ -154,7 +154,7 @@ class IntentProvider(
                 title = config.title,
                 subtitle =
                     if (displayPayload.isNotEmpty()) {
-                        activity.getString(
+                        context.getString(
                             R.string.intent_result_subtitle_with_payload,
                             displayPayload,
                             targetLabel,
@@ -195,7 +195,6 @@ class IntentProvider(
         val intent =
             Intent().apply {
                 action = config.action
-                type = config.type
 
                 // Set package or class name if specified
                 if (config.packageName.isNotEmpty()) {
@@ -209,17 +208,35 @@ class IntentProvider(
                 // Standard intent handling based on action
                 when (config.action) {
                     Intent.ACTION_SEND -> {
+                        type = config.type
                         putExtra(Intent.EXTRA_TEXT, resolvedPayload)
                     }
                     Intent.ACTION_VIEW -> {
                         if (resolvedPayload.isNotEmpty()) {
-                            data = android.net.Uri.parse(resolvedPayload)
+                            val uri = android.net.Uri.parse(resolvedPayload)
+                            if (!config.type.isNullOrEmpty()) {
+                                setDataAndType(uri, config.type)
+                            } else {
+                                data = uri
+                            }
+                        } else {
+                            type = config.type
                         }
                     }
                     Intent.ACTION_SENDTO -> {
                         if (resolvedPayload.isNotEmpty()) {
-                            data = android.net.Uri.parse(resolvedPayload)
+                            val uri = android.net.Uri.parse(resolvedPayload)
+                            if (!config.type.isNullOrEmpty()) {
+                                setDataAndType(uri, config.type)
+                            } else {
+                                data = uri
+                            }
+                        } else {
+                            type = config.type
                         }
+                    }
+                    else -> {
+                        type = config.type
                     }
                 }
 
@@ -235,8 +252,13 @@ class IntentProvider(
 
         withContext(Dispatchers.Main) {
             try {
-                activity.startActivity(intent)
-                activity.finish()
+                val oldPolicy = android.os.StrictMode.getVmPolicy()
+                try {
+                    android.os.StrictMode.setVmPolicy(android.os.StrictMode.VmPolicy.Builder().build())
+                    context.startActivity(intent)
+                } finally {
+                    android.os.StrictMode.setVmPolicy(oldPolicy)
+                }
             } catch (e: Exception) {
                 // Fallback for ACTION_SEND with URL
                 if (config.action == Intent.ACTION_SEND && resolvedPayload.isNotEmpty() &&
@@ -248,12 +270,17 @@ class IntentProvider(
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                     try {
-                        activity.startActivity(fallbackIntent)
-                        activity.finish()
+                        context.startActivity(fallbackIntent)
+                        return@withContext
                     } catch (e2: Exception) {
                         // Both failed
                     }
                 }
+                android.widget.Toast.makeText(
+                    context,
+                    e.localizedMessage ?: context.getString(R.string.toast_cant_open),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -277,7 +304,7 @@ class IntentProvider(
                     }
                 if (baseBitmap != null) {
                     com.mrndstvndv.search.util.createBadgedIcon(
-                        activity,
+                        context,
                         baseBitmap,
                         R.drawable.ic_share,
                     )

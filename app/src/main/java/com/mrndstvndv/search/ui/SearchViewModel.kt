@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,12 +85,18 @@ class SearchViewModel(
             get() = frequencyScore > 0f
     }
 
-    fun initProviders(providerList: List<Provider>) {
-        if (providers.isNotEmpty()) return // Already initialized
+    init {
+        val providerList = container.providers
         providers = providerList
         providersById = providerList.associateBy { it.id }
         updateAvailableTriggers()
         observeRefreshSignals()
+
+        // Pre-initialize heavy providers off the main thread
+        viewModelScope.launch(Dispatchers.Default) {
+            providers.forEach { it.initialize() }
+            container.appListRepository.initialize()
+        }
     }
 
     fun updateAvailableTriggers() {
@@ -106,18 +113,18 @@ class SearchViewModel(
                 }
         }
         viewModelScope.launch {
-            aliasRepository.aliases.collect {
+            aliasRepository.aliases.drop(1).collect {
                 executeSearch()
             }
         }
         viewModelScope.launch {
-            settingsRepository.enabledProviders.collect {
+            settingsRepository.enabledProviders.drop(1).collect {
                 updateAvailableTriggers()
                 executeSearch()
             }
         }
         viewModelScope.launch {
-            rankingRepository.useFrequencyRanking.collect {
+            rankingRepository.useFrequencyRanking.drop(1).collect {
                 executeSearch()
             }
         }
@@ -448,9 +455,9 @@ class SearchViewModel(
         val allResults =
             supervisorScope {
                 providersToQuery.map { provider ->
-                    async {
+                    async(Dispatchers.IO) {
                         try {
-                            withContext(Dispatchers.IO) { provider.query(query) }
+                            provider.query(query)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -468,9 +475,11 @@ class SearchViewModel(
         normalizedText: String,
         useFrequencyRanking: Boolean,
     ): List<ProviderResult> {
+        val providerOrder = rankingRepository.providerOrder.value
+        val rankMap = providerOrder.withIndex().associate { it.value to it.index }
         val sortMetadata =
             results.map { result ->
-                val providerRank = rankingRepository.getProviderRank(result.providerId)
+                val providerRank = rankMap[result.providerId] ?: providerOrder.size
                 val frequencyQuery = result.frequencyQuery ?: normalizedText
                 val frequencyScore =
                     if (useFrequencyRanking) {
