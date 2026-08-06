@@ -438,9 +438,9 @@ private fun IntentConfigAddDialog(
             }
     }
 
-    // On the first step, let the system back gesture fall through to dismiss the dialog (default
-    // Dialog behavior); on later steps, step back through the wizard instead of exiting it.
-    BackHandler(enabled = currentStep != AddDialogStep.AppSelection) { goBack() }
+    // Note: BackHandler must live inside each step's own Dialog content (not here) to actually
+    // intercept the gesture — each step is its own androidx.compose.ui.window.Dialog, which owns
+    // its own OnBackPressedDispatcher while focused. See goBack() usage inside each step below.
 
     when (currentStep) {
         AddDialogStep.AppSelection -> {
@@ -765,6 +765,8 @@ private fun IntentSelectionStep(
             }
         },
         content = {
+            BackHandler(onBack = onBack)
+
             Text(
                 text = stringResource(R.string.intent_select_supported_intent),
                 style = MaterialTheme.typography.bodyMedium,
@@ -909,6 +911,8 @@ private fun ActivitySelectionStep(
         },
         content = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                BackHandler(onBack = onBack)
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -975,6 +979,7 @@ private fun ActivitySelectionStep(
 private fun AppActionsPickerDialog(
     discovery: AppDiscovery,
     packageName: String,
+    preferredComponentName: String?,
     onSelect: (AppAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -984,6 +989,22 @@ private fun AppActionsPickerDialog(
                 discovery.getAppSpecificActions(packageName)
             }
     }
+
+    // Resolve the shorthand ".Class" form the user may have typed so it still matches the
+    // manifest's fully-qualified component names when deciding what counts as "the selected class".
+    val resolvedPreferred =
+        preferredComponentName
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { if (it.startsWith(".")) packageName + it else it }
+
+    val sortedActions =
+        remember(actionsState, resolvedPreferred) {
+            actionsState?.sortedWith(
+                compareByDescending<AppAction> { it.componentName == resolvedPreferred }
+                    .thenBy { it.action },
+            )
+        }
 
     ContentDialog(
         onDismiss = onDismiss,
@@ -1010,7 +1031,7 @@ private fun AppActionsPickerDialog(
         },
         content = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                val actions = actionsState
+                val actions = sortedActions
                 when {
                     actions == null -> {
                         Box(
@@ -1038,6 +1059,22 @@ private fun AppActionsPickerDialog(
                         Column(modifier = Modifier.heightIn(max = 400.dp)) {
                             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                                 items(actions, key = { "${it.action}|${it.componentName}" }) { appAction ->
+                                    val isPreferred = resolvedPreferred != null && appAction.componentName == resolvedPreferred
+                                    val index = actions.indexOf(appAction)
+                                    val isFirstNonPreferred =
+                                        isPreferred.not() &&
+                                            resolvedPreferred != null &&
+                                            (index == 0 || actions[index - 1].componentName == resolvedPreferred)
+
+                                    if (isFirstNonPreferred) {
+                                        Text(
+                                            stringResource(R.string.intent_app_actions_other),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                                        )
+                                    }
+
                                     Column(
                                         modifier =
                                             Modifier
@@ -1045,14 +1082,16 @@ private fun AppActionsPickerDialog(
                                                 .clickable { onSelect(appAction) }
                                                 .padding(vertical = 12.dp),
                                     ) {
-                                        Text(appAction.action, style = MaterialTheme.typography.bodyLarge)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(appAction.action, style = MaterialTheme.typography.bodyLarge)
+                                        }
                                         Text(
                                             appAction.componentLabel,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    if (actions.indexOf(appAction) < actions.lastIndex) {
+                                    if (index < actions.lastIndex) {
                                         HorizontalDivider(
                                             thickness = 0.5.dp,
                                             color = MaterialTheme.colorScheme.outlineVariant,
@@ -1278,6 +1317,10 @@ private fun IntentConfigDialogContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                if (onBack != null) {
+                    BackHandler(onBack = onBack)
+                }
+
                 val context = LocalContext.current
                 var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
@@ -1504,6 +1547,7 @@ private fun IntentConfigDialogContent(
                     AppActionsPickerDialog(
                         discovery = discovery,
                         packageName = packageName,
+                        preferredComponentName = className,
                         onSelect = { appAction ->
                             showCustomActionField = true
                             onActionChange(appAction.action)

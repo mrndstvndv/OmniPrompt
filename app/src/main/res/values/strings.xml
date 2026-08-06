@@ -321,6 +321,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_app_actions_title">App-specific Actions</string>
     <string name="intent_app_actions_subtitle">Custom actions detected in this app\'s manifest</string>
     <string name="intent_app_actions_empty">No app-specific actions detected. This app may not declare any custom actions, or Android didn\'t expose its manifest for inspection.</string>
+    <string name="intent_app_actions_other">Other actions</string>
     <string name="intent_app_actions_loading">Scanning app…</string>
     <string name="intent_label_mime_type">MIME Type</string>
     <string name="intent_custom_mime_type">Custom…</string>
