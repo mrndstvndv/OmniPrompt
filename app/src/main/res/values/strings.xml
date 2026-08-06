@@ -314,12 +314,27 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_supporting_package">Leave empty for system share/view</string>
     <string name="intent_label_action_auto">Action (auto-selected)</string>
     <string name="intent_label_action">Action</string>
+    <string name="intent_custom_action">Custom…</string>
+    <string name="intent_label_custom_action">Custom Action</string>
+    <string name="intent_placeholder_custom_action">com.example.app.action.DO_THING</string>
+    <string name="intent_app_actions">App Actions…</string>
+    <string name="intent_app_actions_title">App-specific Actions</string>
+    <string name="intent_app_actions_subtitle">Custom actions detected in this app\'s manifest</string>
+    <string name="intent_app_actions_empty">No app-specific actions detected. This app may not declare any custom actions, or Android didn\'t expose its manifest for inspection.</string>
+    <string name="intent_app_actions_loading">Scanning app…</string>
     <string name="intent_label_mime_type">MIME Type</string>
     <string name="intent_custom_mime_type">Custom…</string>
     <string name="intent_label_custom_mime_type">Custom MIME Type</string>
     <string name="intent_label_payload_template">Payload Template (optional)</string>
     <string name="intent_placeholder_payload">yabai $query</string>
-    <string name="intent_supporting_payload">💡 $query = user input after title</string>
+    <string name="intent_supporting_payload_send">💡 $query = user input after title. Becomes the shared text (EXTRA_TEXT).</string>
+    <string name="intent_label_class_name_editable">Class Name (optional)</string>
+    <string name="intent_placeholder_class_name">.StartServiceActivity</string>
+    <string name="intent_supporting_class_name">Leading \".\" is expanded with the package name</string>
+    <string name="intent_label_data">Data URI (optional)</string>
+    <string name="intent_placeholder_data">content://authority/path</string>
+    <string name="intent_supporting_data">💡 $query = user input after title. Sets the Intent\'s data field (a standard Android Intent concept, not specific to any single app).</string>
+    <string name="intent_hint_custom_action_no_payload">This action doesn\'t use Payload Template. Use Data  URI and/or Extras below instead — both support $query.</string>
     <string name="intent_custom_extras_label">Custom Extras</string>
     <string name="intent_label_extra_key">Extra Key</string>
     <string name="intent_label_extra_value">Extra Value</string>
@@ -675,4 +690,3 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="updates_check_prerelease">Check pre-release builds</string>
     <string name="updates_check_prerelease_desc">Include beta and dev versions when checking for updates</string>
 </resources>
-

@@ -192,6 +192,12 @@ class IntentProvider(
                 else -> config.payloadTemplate // Fixed template
             }
 
+        // Resolve the intent data URI using the same $query substitution rules as extras.
+        val resolvedData =
+            config.data?.let { template ->
+                if (template.contains("\$query")) template.replace("\$query", rawPayload) else template
+            }?.trim()?.takeIf { it.isNotEmpty() }
+
         val intent =
             Intent().apply {
                 action = config.action
@@ -199,33 +205,33 @@ class IntentProvider(
                 // Set package or class name if specified
                 if (config.packageName.isNotEmpty()) {
                     if (!config.className.isNullOrEmpty()) {
-                        setClassName(config.packageName, config.className)
+                        // Allow shorthand relative class names (e.g. ".StartServiceActivity"),
+                        // matching the convention used by Android's Intent URI format
+                        // (content://.../#Intent;...;component=pkg/.Class;end).
+                        val resolvedClassName =
+                            if (config.className.startsWith(".")) {
+                                config.packageName + config.className
+                            } else {
+                                config.className
+                            }
+                        setClassName(config.packageName, resolvedClassName)
                     } else {
                         setPackage(config.packageName)
                     }
                 }
 
-                // Standard intent handling based on action
+                // Standard intent handling based on action.
+                // The explicit `data` field (if configured) always takes precedence as the URI
+                // source; otherwise VIEW/SENDTO fall back to treating the payload itself as a URI.
                 when (config.action) {
                     Intent.ACTION_SEND -> {
                         type = config.type
                         putExtra(Intent.EXTRA_TEXT, resolvedPayload)
                     }
-                    Intent.ACTION_VIEW -> {
-                        if (resolvedPayload.isNotEmpty()) {
-                            val uri = android.net.Uri.parse(resolvedPayload)
-                            if (!config.type.isNullOrEmpty()) {
-                                setDataAndType(uri, config.type)
-                            } else {
-                                data = uri
-                            }
-                        } else {
-                            type = config.type
-                        }
-                    }
-                    Intent.ACTION_SENDTO -> {
-                        if (resolvedPayload.isNotEmpty()) {
-                            val uri = android.net.Uri.parse(resolvedPayload)
+                    Intent.ACTION_VIEW, Intent.ACTION_SENDTO -> {
+                        val uriString = resolvedData ?: resolvedPayload.takeIf { it.isNotEmpty() }
+                        if (uriString != null) {
+                            val uri = android.net.Uri.parse(uriString)
                             if (!config.type.isNullOrEmpty()) {
                                 setDataAndType(uri, config.type)
                             } else {
@@ -236,7 +242,18 @@ class IntentProvider(
                         }
                     }
                     else -> {
-                        type = config.type
+                        // Custom actions (e.g. third-party automation intents) rely on the
+                        // explicit `data` field rather than repurposing the payload as a URI.
+                        if (resolvedData != null) {
+                            val uri = android.net.Uri.parse(resolvedData)
+                            if (!config.type.isNullOrEmpty()) {
+                                setDataAndType(uri, config.type)
+                            } else {
+                                data = uri
+                            }
+                        } else {
+                            type = config.type
+                        }
                     }
                 }
 
@@ -246,8 +263,12 @@ class IntentProvider(
                     putExtra(extra.key, resolvedExtraValue)
                 }
 
-                // Clear launch flags for external apps
+                // FLAG_ACTIVITY_NEW_TASK is required since we start this from a non-Activity
+                // context; extraFlags allows configs to add more (e.g. FLAG_ACTIVITY_MULTIPLE_TASK).
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (config.extraFlags != 0) {
+                    addFlags(config.extraFlags)
+                }
             }
 
         withContext(Dispatchers.Main) {
