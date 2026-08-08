@@ -1110,6 +1110,8 @@ class SearchActivity : ComponentActivity() {
                 } finally {
                     pendingAction = null
                     if (completed && action.keepOverlayUntilExit) {
+                        // Clear the action guard before finishing; finish() defers while an action is active.
+                        viewModel.setIsPerformingAction(false)
                         finish()
                     } else {
                         val shouldDismissOverlay =
