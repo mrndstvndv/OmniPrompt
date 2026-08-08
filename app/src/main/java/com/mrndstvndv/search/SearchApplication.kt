@@ -9,6 +9,7 @@ class SearchApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        configureRecompositionDebugging()
         container = AppContainer(this)
     }
 }

@@ -76,6 +76,7 @@ import com.mrndstvndv.search.ui.settings.Updates
 import com.mrndstvndv.search.ui.settings.UpdatesSettingsScreen
 import com.mrndstvndv.search.ui.settings.WebSearch
 import com.mrndstvndv.search.ui.settings.WebSearchSettingsScreen
+import com.mrndstvndv.search.ui.debug.DebugRecompositionOverlay
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -394,6 +395,7 @@ class SettingsActivity : ComponentActivity() {
                     }
                 )
             }
+            DebugRecompositionOverlay(modifier = Modifier.fillMaxSize())
         }
         }
     }
