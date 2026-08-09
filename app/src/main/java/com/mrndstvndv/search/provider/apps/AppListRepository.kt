@@ -43,8 +43,6 @@ class AppListRepository private constructor(
     private val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
     private val cacheMutex = Mutex()
     private val iconCache = ConcurrentHashMap<String, Bitmap>()
-    private val _apps = MutableStateFlow<List<AppInfo>>(emptyList())
-    val apps: StateFlow<List<AppInfo>> = _apps
     private val _catalog = MutableStateFlow(AppCatalog.EMPTY)
     val catalog: StateFlow<AppCatalog> = _catalog
 
@@ -74,50 +72,79 @@ class AppListRepository private constructor(
     }
 
     @Suppress("OVERRIDE_DEPRECATION")
-    private val componentCallbacks = object : ComponentCallbacks {
-        override fun onConfigurationChanged(newConfig: Configuration) {
-            cachedColors = null
-            iconCache.clear()
-        }
+    private val componentCallbacks =
+        object : ComponentCallbacks {
+            override fun onConfigurationChanged(newConfig: Configuration) {
+                cachedColors = null
+                iconCache.clear()
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onLowMemory() {
-            iconCache.clear()
+            @Deprecated("Deprecated in Java")
+            override fun onLowMemory() {
+                iconCache.clear()
+            }
         }
-    }
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    private val launcherAppsCallback = object : LauncherApps.Callback() {
-        @Deprecated("Deprecated in Java")
-        override fun onPackageAdded(packageName: String, user: UserHandle) {
-            scope.launch { upsertPackage(packageName, user) }
-        }
+    private val launcherAppsCallback =
+        object : LauncherApps.Callback() {
+            @Deprecated("Deprecated in Java")
+            override fun onPackageAdded(
+                packageName: String,
+                user: UserHandle,
+            ) {
+                scope.launch { upsertPackage(packageName, user) }
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onPackageRemoved(packageName: String, user: UserHandle) {
-            scope.launch { removePackage(packageName, user) }
-        }
+            @Deprecated("Deprecated in Java")
+            override fun onPackageRemoved(
+                packageName: String,
+                user: UserHandle,
+            ) {
+                scope.launch { removePackage(packageName, user) }
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onPackageChanged(packageName: String, user: UserHandle) {
-            scope.launch { upsertPackage(packageName, user) }
-        }
+            @Deprecated("Deprecated in Java")
+            override fun onPackageChanged(
+                packageName: String,
+                user: UserHandle,
+            ) {
+                scope.launch { upsertPackage(packageName, user, forceRefresh = true) }
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            scope.launch { upsertPackages(packageNames, user) }
-        }
+            @Deprecated("Deprecated in Java")
+            override fun onPackagesAvailable(
+                packageNames: Array<out String>,
+                user: UserHandle,
+                replacing: Boolean,
+            ) {
+                scope.launch { upsertPackages(packageNames, user, forceRefresh = true) }
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            scope.launch { removePackages(packageNames, user) }
-        }
+            @Deprecated("Deprecated in Java")
+            override fun onPackagesUnavailable(
+                packageNames: Array<out String>,
+                user: UserHandle,
+                replacing: Boolean,
+            ) {
+                scope.launch {
+                    if (replacing) {
+                        invalidatePackages(packageNames, user)
+                    } else {
+                        removePackages(packageNames, user)
+                    }
+                }
+            }
 
-        @Deprecated("Deprecated in Java")
-        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<android.content.pm.ShortcutInfo>, user: UserHandle) {
+            @Deprecated("Deprecated in Java")
+            override fun onShortcutsChanged(
+                packageName: String,
+                shortcuts: MutableList<android.content.pm.ShortcutInfo>,
+                user: UserHandle,
+            ) {
+            }
         }
-    }
 
     init {
         launcherApps.registerCallback(launcherAppsCallback, android.os.Handler(android.os.Looper.getMainLooper()))
@@ -147,36 +174,37 @@ class AppListRepository private constructor(
     fun dispose() {
         try {
             launcherApps.unregisterCallback(launcherAppsCallback)
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
         try {
             context.unregisterComponentCallbacks(componentCallbacks)
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        }
     }
 
     suspend fun initialize() {
-        val needsLoad = cacheMutex.withLock { !isInitialized }
-        if (needsLoad) {
-            reloadAllApps()
-        }
+        reloadAllApps(onlyIfUninitialized = true)
     }
 
-    fun getAllApps(): StateFlow<List<AppInfo>> = _apps
-
     /** Loads icon for the given package using current theme settings. */
-    suspend fun getIcon(packageName: String, userSerialNumber: Long = 0L): Bitmap? {
+    suspend fun getIcon(
+        packageName: String,
+        userSerialNumber: Long = 0L,
+    ): Bitmap? {
         val s = currentSettings ?: settingsRepository.value
         val colors = getCachedThemeColors()
-        val cacheKey = buildString {
-            append(packageName)
-            append(":")
-            append(userSerialNumber)
-            append(":c=${colors.first}_${colors.third}")
-            if (s.iconPackPackageName.isNotEmpty()) append(":pack=${s.iconPackPackageName}")
-            if (s.themedIconsEnabled) {
-                append(":themed")
-                if (s.themeAllIcons) append(":all")
+        val cacheKey =
+            buildString {
+                append(packageName)
+                append(":")
+                append(userSerialNumber)
+                append(":c=${colors.first}_${colors.third}")
+                if (s.iconPackPackageName.isNotEmpty()) append(":pack=${s.iconPackPackageName}")
+                if (s.themedIconsEnabled) {
+                    append(":themed")
+                    if (s.themeAllIcons) append(":all")
+                }
             }
-        }
 
         val cached = iconCache[cacheKey]
         if (cached != null) return cached
@@ -198,17 +226,18 @@ class AppListRepository private constructor(
     ): Bitmap? {
         // ponytail: composite cache key so toggling themes doesn't serve stale icons.
         val colors = getCachedThemeColors()
-        val cacheKey = buildString {
-            append(packageName)
-            append(":")
-            append(userSerialNumber)
-            append(":c=${colors.first}_${colors.third}")
-            if (iconPackPackageName.isNotEmpty()) append(":pack=$iconPackPackageName")
-            if (themedIconsEnabled) {
-                append(":themed")
-                if (themeAllIcons) append(":all")
+        val cacheKey =
+            buildString {
+                append(packageName)
+                append(":")
+                append(userSerialNumber)
+                append(":c=${colors.first}_${colors.third}")
+                if (iconPackPackageName.isNotEmpty()) append(":pack=$iconPackPackageName")
+                if (themedIconsEnabled) {
+                    append(":themed")
+                    if (themeAllIcons) append(":all")
+                }
             }
-        }
 
         val cached = iconCache[cacheKey]
         if (cached != null) return cached
@@ -233,33 +262,37 @@ class AppListRepository private constructor(
         reloadAllApps()
     }
 
-    private suspend fun reloadAllApps() {
-        val settings = settingsRepository.value
-        val includeWorkApps = settings.includeWorkApps
-        val apps =
-            withContext(Dispatchers.IO) {
-                userManager.userProfiles.filter { user ->
-                    includeWorkApps || !isWorkProfile(user)
-                }.flatMap { user ->
-                    val serialNumber = userManager.getSerialNumberForUser(user)
-                    launcherApps.getActivityList(null, user).mapNotNull { activityInfo ->
-                        val packageName = activityInfo.componentName.packageName
-                        val label = activityInfo.label?.toString()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                        AppInfo(packageName, label, serialNumber)
-                    }
-                }.distinctBy { "${it.packageName}:${it.userSerialNumber}" }
-                 .sortedBy { it.label.lowercase() }
-            }
-
-        val newMap =
-            apps.associateBy {
-                AppKey(
-                    packageName = it.packageName,
-                    userSerialNumber = it.userSerialNumber,
-                )
-            }
-
+    private suspend fun reloadAllApps(onlyIfUninitialized: Boolean = false) {
         cacheMutex.withLock {
+            if (onlyIfUninitialized && isInitialized) return
+
+            val includeWorkApps = settingsRepository.value.includeWorkApps
+            val apps =
+                withContext(Dispatchers.IO) {
+                    userManager.userProfiles
+                        .filter { user -> includeWorkApps || !isWorkProfile(user) }
+                        .flatMap { user ->
+                            val serialNumber = userManager.getSerialNumberForUser(user)
+                            launcherApps.getActivityList(null, user).mapNotNull { activityInfo ->
+                                val packageName = activityInfo.componentName.packageName
+                                val label =
+                                    activityInfo.label
+                                        ?.toString()
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?: return@mapNotNull null
+                                AppInfo(packageName, label, serialNumber)
+                            }
+                        }.distinctBy { "${it.packageName}:${it.userSerialNumber}" }
+                        .sortedBy { it.label.lowercase() }
+                }
+            val newMap =
+                apps.associateBy {
+                    AppKey(
+                        packageName = it.packageName,
+                        userSerialNumber = it.userSerialNumber,
+                    )
+                }
+
             isInitialized = true
             if (appsByKey == newMap) {
                 return
@@ -273,17 +306,19 @@ class AppListRepository private constructor(
     private suspend fun upsertPackage(
         packageName: String,
         user: UserHandle,
+        forceRefresh: Boolean = false,
     ) {
-        if (!isUserIncluded(user)) return
-        val userSerialNumber = userManager.getSerialNumberForUser(user)
-        if (userSerialNumber < 0) return
-
-        val appInfo =
-            withContext(Dispatchers.IO) {
-                resolveAppInfoForUserPackage(packageName, user, userSerialNumber)
-            }
-
         cacheMutex.withLock {
+            val update =
+                withContext(Dispatchers.IO) {
+                    if (!isUserIncluded(user)) return@withContext null
+                    val userSerialNumber = userManager.getSerialNumberForUser(user)
+                    if (userSerialNumber < 0) return@withContext null
+                    resolveAppInfoForUserPackage(packageName, user, userSerialNumber)
+                        .let { userSerialNumber to it }
+                }
+                    ?: return
+            val (userSerialNumber, appInfo) = update
             val key = AppKey(packageName, userSerialNumber)
             val previous = appsByKey[key]
 
@@ -299,7 +334,7 @@ class AppListRepository private constructor(
                     }
                 }
 
-            if (!changed) return
+            if (!changed && !forceRefresh) return
             evictIconCacheForPackage(packageName)
             publishCatalogLocked()
         }
@@ -308,19 +343,23 @@ class AppListRepository private constructor(
     private suspend fun upsertPackages(
         packageNames: Array<out String>,
         user: UserHandle,
+        forceRefresh: Boolean = false,
     ) {
-        if (!isUserIncluded(user) || packageNames.isEmpty()) return
-        val userSerialNumber = userManager.getSerialNumberForUser(user)
-        if (userSerialNumber < 0) return
-
-        val updates =
-            withContext(Dispatchers.IO) {
-                packageNames.associateWith { packageName ->
-                    resolveAppInfoForUserPackage(packageName, user, userSerialNumber)
-                }
-            }
-
         cacheMutex.withLock {
+            if (packageNames.isEmpty()) return
+            val resolved =
+                withContext(Dispatchers.IO) {
+                    if (!isUserIncluded(user)) return@withContext null
+                    val userSerialNumber = userManager.getSerialNumberForUser(user)
+                    if (userSerialNumber < 0) return@withContext null
+                    val updates =
+                        packageNames.associateWith { packageName ->
+                            resolveAppInfoForUserPackage(packageName, user, userSerialNumber)
+                        }
+                    userSerialNumber to updates
+                }
+                    ?: return
+            val (userSerialNumber, updates) = resolved
             var changed = false
             updates.forEach { (packageName, appInfo) ->
                 val key = AppKey(packageName, userSerialNumber)
@@ -335,7 +374,7 @@ class AppListRepository private constructor(
                 }
             }
 
-            if (!changed) return
+            if (!changed && !forceRefresh) return
             packageNames.forEach { evictIconCacheForPackage(it) }
             publishCatalogLocked()
         }
@@ -345,10 +384,10 @@ class AppListRepository private constructor(
         packageName: String,
         user: UserHandle,
     ) {
-        val userSerialNumber = userManager.getSerialNumberForUser(user)
-        if (userSerialNumber < 0) return
-
         cacheMutex.withLock {
+            val userSerialNumber =
+                withContext(Dispatchers.IO) { userManager.getSerialNumberForUser(user) }
+            if (userSerialNumber < 0) return
             val removed = appsByKey.remove(AppKey(packageName, userSerialNumber)) != null
             if (!removed) return
             evictIconCacheForPackage(packageName)
@@ -360,11 +399,11 @@ class AppListRepository private constructor(
         packageNames: Array<out String>,
         user: UserHandle,
     ) {
-        if (packageNames.isEmpty()) return
-        val userSerialNumber = userManager.getSerialNumberForUser(user)
-        if (userSerialNumber < 0) return
-
         cacheMutex.withLock {
+            if (packageNames.isEmpty()) return
+            val userSerialNumber =
+                withContext(Dispatchers.IO) { userManager.getSerialNumberForUser(user) }
+            if (userSerialNumber < 0) return
             var changed = false
             packageNames.forEach { packageName ->
                 val removed = appsByKey.remove(AppKey(packageName, userSerialNumber)) != null
@@ -375,6 +414,23 @@ class AppListRepository private constructor(
             }
 
             if (!changed) return
+            publishCatalogLocked()
+        }
+    }
+
+    private suspend fun invalidatePackages(
+        packageNames: Array<out String>,
+        user: UserHandle,
+    ) {
+        cacheMutex.withLock {
+            if (packageNames.isEmpty()) return
+            val isValidUser =
+                withContext(Dispatchers.IO) {
+                    isUserIncluded(user) && userManager.getSerialNumberForUser(user) >= 0
+                }
+            if (!isValidUser) return
+
+            packageNames.forEach { evictIconCacheForPackage(it) }
             publishCatalogLocked()
         }
     }
@@ -394,9 +450,13 @@ class AppListRepository private constructor(
     }
 
     private fun publishCatalogLocked() {
-        val sortedApps = appsByKey.values.sortedBy { it.labelLower }
+        val sortedApps =
+            appsByKey.values.sortedWith(
+                compareBy<AppInfo> { it.labelLower }
+                    .thenBy { it.packageNameLower }
+                    .thenBy { it.userSerialNumber },
+            )
         catalogGeneration += 1
-        _apps.value = sortedApps
         _catalog.value =
             AppCatalog(
                 generation = catalogGeneration,

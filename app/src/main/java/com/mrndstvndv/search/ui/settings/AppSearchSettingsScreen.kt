@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -555,7 +555,8 @@ private fun PinnedAppsSection(
     onAddClick: () -> Unit,
 ) {
     val disabledAlpha = 0.38f
-    val allApps by appListRepository.getAllApps().collectAsState()
+    val catalog by appListRepository.catalog.collectAsState()
+    val allApps = catalog.apps
     val pinnedAppInfos =
         remember(pinnedApps, allApps) {
             pinnedApps.mapNotNull { packageName ->
@@ -719,7 +720,8 @@ private fun AddPinnedAppDialog(
     iconPackPackageName: String,
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val allApps by appListRepository.getAllApps().collectAsState()
+    val catalog by appListRepository.catalog.collectAsState()
+    val allApps = catalog.apps
 
     LaunchedEffect(appListRepository) {
         appListRepository.initialize()
@@ -863,7 +865,7 @@ private fun IconThemeSection(
 
             val disabledAlpha = 0.38f
             Box(
-                modifier = Modifier.alpha(if (appSearchSettings.themedIconsEnabled) 1f else disabledAlpha)
+                modifier = Modifier.alpha(if (appSearchSettings.themedIconsEnabled) 1f else disabledAlpha),
             ) {
                 SettingsSwitch(
                     title = stringResource(R.string.settings_theme_all_icons_title),
@@ -879,15 +881,17 @@ private fun IconThemeSection(
             SettingsDivider()
 
             val context = LocalContext.current
-            val iconPackLabel = remember(appSearchSettings.iconPackPackageName) {
-                IconPackManager.getIconPackLabel(context, appSearchSettings.iconPackPackageName)
-            }
+            val iconPackLabel =
+                remember(appSearchSettings.iconPackPackageName) {
+                    IconPackManager.getIconPackLabel(context, appSearchSettings.iconPackPackageName)
+                }
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { isIconPackDialogOpen = true }
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { isIconPackDialogOpen = true }
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -929,10 +933,11 @@ private fun IconPackSelectionDialog(
     onSelect: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val iconPacks = remember {
-        listOf(IconPackInfo("", context.getString(R.string.settings_icon_pack_default))) +
+    val iconPacks =
+        remember {
+            listOf(IconPackInfo("", context.getString(R.string.settings_icon_pack_default))) +
                 IconPackManager.getInstalledIconPacks(context)
-    }
+        }
 
     ContentDialog(
         onDismiss = onDismiss,
@@ -952,10 +957,11 @@ private fun IconPackSelectionDialog(
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     items(iconPacks, key = { pack -> pack.packageName }) { pack ->
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelect(pack.packageName) }
-                                .padding(vertical = 12.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelect(pack.packageName) }
+                                    .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
