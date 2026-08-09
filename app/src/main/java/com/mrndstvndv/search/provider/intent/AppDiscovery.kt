@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.AppListRepository
+import org.xmlpull.v1.XmlPullParser
 
 data class AppInfo(
     val packageName: String,
@@ -22,6 +23,12 @@ data class IntentOption(
 data class ActivityOption(
     val name: String,
     val label: String,
+)
+
+data class AppAction(
+    val action: String,
+    val componentName: String,
+    val componentLabel: String,
 )
 
 class AppDiscovery(
@@ -196,5 +203,88 @@ class AppDiscovery(
                     label = label,
                 )
             }.sortedBy { it.label }
+    }
+
+    /**
+     * Best-effort discovery of app-specific (non-standard) intent actions declared in
+     * [packageName]'s manifest, by parsing its compiled AndroidManifest.xml directly.
+     *
+     * This relies on public, non-root APIs (AssetManager.openXmlResourceParser against the
+     * target app's own Resources), but manifest introspection of other apps isn't guaranteed on
+     * every Android version/OEM, so this can legitimately return an empty list.
+     */
+    fun getAppSpecificActions(packageName: String): List<AppAction> {
+        val commonActions =
+            setOf(
+                Intent.ACTION_MAIN,
+                Intent.ACTION_VIEW,
+                Intent.ACTION_SEND,
+                Intent.ACTION_SENDTO,
+                Intent.ACTION_SEND_MULTIPLE,
+            )
+        val componentTags = setOf("activity", "activity-alias", "service", "receiver")
+        val androidNs = "http://schemas.android.com/apk/res/android"
+
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            val resources = packageManager.getResourcesForApplication(appInfo)
+            val parser = resources.assets.openXmlResourceParser("AndroidManifest.xml")
+
+            val results = LinkedHashMap<String, AppAction>()
+            var currentComponentName: String? = null
+            var componentDepth = -1
+            var inIntentFilter = false
+            var depth = 0
+
+            var eventType = parser.eventType
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                when (eventType) {
+                    XmlPullParser.START_TAG -> {
+                        depth++
+                        when (val tag = parser.name) {
+                            in componentTags -> {
+                                componentDepth = depth
+                                currentComponentName =
+                                    parser.getAttributeValue(androidNs, "name")?.let { name ->
+                                        if (name.startsWith(".")) packageName + name else name
+                                    }
+                            }
+                            "intent-filter" -> inIntentFilter = true
+                            "action" -> {
+                                val owner = currentComponentName
+                                if (inIntentFilter && owner != null) {
+                                    val actionName = parser.getAttributeValue(androidNs, "name")
+                                    if (!actionName.isNullOrBlank() && actionName !in commonActions) {
+                                        val key = "$actionName|$owner"
+                                        results.getOrPut(key) {
+                                            AppAction(
+                                                action = actionName,
+                                                componentName = owner,
+                                                componentLabel = owner.substringAfterLast("."),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    XmlPullParser.END_TAG -> {
+                        val tag = parser.name
+                        if (tag == "intent-filter") inIntentFilter = false
+                        if (depth == componentDepth && tag in componentTags) {
+                            currentComponentName = null
+                            componentDepth = -1
+                        }
+                        depth--
+                    }
+                }
+                eventType = parser.next()
+            }
+            parser.close()
+
+            results.values.sortedBy { it.action }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 }
