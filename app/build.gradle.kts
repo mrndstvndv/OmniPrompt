@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.stability.analyzer)
     id("com.google.android.gms.oss-licenses-plugin")
     alias(libs.plugins.kotlin.serialization)
 }
@@ -118,6 +119,12 @@ androidComponents {
             syncReleaseOssLicensesForAssets,
             SyncOssLicenseAssetsTask::outputDir,
         )
+    }
+}
+
+configurations.configureEach {
+    if (name == "releaseRuntimeClasspath") {
+        exclude(group = "com.github.skydoves", module = "compose-stability-runtime")
     }
 }
 
