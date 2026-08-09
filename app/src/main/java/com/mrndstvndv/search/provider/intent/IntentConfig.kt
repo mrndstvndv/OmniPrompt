@@ -49,16 +49,14 @@ data class IntentConfig(
     val extras: List<IntentExtra> = emptyList(),
     // Intent data URI (e.g. "content://.../flows/52/statements/1"). Supports $query replacement.
     val data: String? = null,
-    // Additional raw Intent flags to OR in on top of FLAG_ACTIVITY_NEW_TASK (e.g. 0x08000000 for
-    // FLAG_ACTIVITY_MULTIPLE_TASK). 0 = none.
-    val extraFlags: Int = 0,
 ) {
     /**
-     * Whether this intent expects a query value (contains $query in payloadTemplate or any extra).
+     * Whether this intent expects a query value in its payload, data URI, or extras.
      */
     val hasQuerySlot: Boolean
         get() {
             if (payloadTemplate?.contains("\$query") == true) return true
+            if (data?.contains("\$query") == true) return true
             return extras.any { it.value.contains("\$query") }
         }
 
@@ -86,7 +84,6 @@ data class IntentConfig(
                     payloadTemplate = json.optString("payloadTemplate").takeIf { it.isNotEmpty() },
                     extras = extras,
                     data = json.optString("data").takeIf { it.isNotEmpty() },
-                    extraFlags = json.optInt("extraFlags", 0),
                 )
             } catch (e: Exception) {
                 null
@@ -105,10 +102,19 @@ data class IntentConfig(
             customIconPath?.let { put("customIconPath", it) }
             payloadTemplate?.let { put("payloadTemplate", it) }
             data?.let { put("data", it) }
-            if (extraFlags != 0) put("extraFlags", extraFlags)
 
             val extrasArray = JSONArray()
             extras.forEach { extrasArray.put(it.toJson()) }
             put("extras", extrasArray)
         }
 }
+
+internal fun isIntentConfigValid(
+    title: String,
+    packageName: String,
+    action: String,
+    className: String?,
+): Boolean =
+    title.isNotBlank() &&
+        action.isNotBlank() &&
+        (className.isNullOrBlank() || packageName.isNotBlank())

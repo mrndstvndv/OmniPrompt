@@ -312,11 +312,13 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="intent_label_package">Package Name (optional)</string>
     <string name="intent_placeholder_package">com.example.app</string>
     <string name="intent_supporting_package">Leave empty for system share/view</string>
+    <string name="intent_error_package_required_for_class">Package name is required when a class is set</string>
     <string name="intent_label_action_auto">Action (auto-selected)</string>
     <string name="intent_label_action">Action</string>
     <string name="intent_custom_action">Custom…</string>
     <string name="intent_label_custom_action">Custom Action</string>
     <string name="intent_placeholder_custom_action">com.example.app.action.DO_THING</string>
+    <string name="intent_error_action_required">Action is required</string>
     <string name="intent_app_actions">App Actions…</string>
     <string name="intent_app_actions_title">App-specific Actions</string>
     <string name="intent_app_actions_subtitle">Custom actions detected in this app\'s manifest</string>

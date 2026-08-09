@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
@@ -15,11 +16,9 @@ import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.createTriggerResult
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
-import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
-import com.mrndstvndv.search.provider.apps.AppListRepository
+import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -205,15 +204,8 @@ class IntentProvider(
                 // Set package or class name if specified
                 if (config.packageName.isNotEmpty()) {
                     if (!config.className.isNullOrEmpty()) {
-                        // Allow shorthand relative class names (e.g. ".StartServiceActivity"),
-                        // matching the convention used by Android's Intent URI format
-                        // (content://.../#Intent;...;component=pkg/.Class;end).
                         val resolvedClassName =
-                            if (config.className.startsWith(".")) {
-                                config.packageName + config.className
-                            } else {
-                                config.className
-                            }
+                            expandComponentClassName(config.packageName, config.className)
                         setClassName(config.packageName, resolvedClassName)
                     } else {
                         setPackage(config.packageName)
@@ -264,11 +256,8 @@ class IntentProvider(
                 }
 
                 // FLAG_ACTIVITY_NEW_TASK is required since we start this from a non-Activity
-                // context; extraFlags allows configs to add more (e.g. FLAG_ACTIVITY_MULTIPLE_TASK).
+                // context.
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                if (config.extraFlags != 0) {
-                    addFlags(config.extraFlags)
-                }
             }
 
         withContext(Dispatchers.Main) {
@@ -300,7 +289,7 @@ class IntentProvider(
                 android.widget.Toast.makeText(
                     context,
                     e.localizedMessage ?: context.getString(R.string.toast_cant_open),
-                    android.widget.Toast.LENGTH_SHORT
+                    android.widget.Toast.LENGTH_SHORT,
                 ).show()
             }
         }

@@ -2,6 +2,7 @@ package com.mrndstvndv.search.provider.intent
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import com.mrndstvndv.search.R
@@ -31,6 +32,16 @@ data class AppAction(
     val componentLabel: String,
 )
 
+internal fun expandComponentClassName(
+    packageName: String,
+    className: String,
+): String =
+    when {
+        className.startsWith(".") -> packageName + className
+        "." !in className -> "$packageName.$className"
+        else -> className
+    }
+
 class AppDiscovery(
     private val context: Context,
     private val appListRepository: AppListRepository,
@@ -42,7 +53,7 @@ class AppDiscovery(
         appListRepository.initialize()
 
         // Get all apps from repository
-        val allApps = appListRepository.apps.value
+        val allApps = appListRepository.catalog.value.apps
 
         val targetActions =
             listOf(
@@ -190,7 +201,7 @@ class AppDiscovery(
             }
         val activities = packageInfo.activities ?: return emptyList()
         return activities
-            .filter { it.exported }
+            .filter { it.isLaunchable(context) }
             .map { activityInfo ->
                 val label =
                     try {
@@ -222,11 +233,26 @@ class AppDiscovery(
                 Intent.ACTION_SENDTO,
                 Intent.ACTION_SEND_MULTIPLE,
             )
-        val componentTags = setOf("activity", "activity-alias", "service", "receiver")
+        val componentTags = setOf("activity", "activity-alias")
         val androidNs = "http://schemas.android.com/apk/res/android"
 
         return try {
             val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            if (!appInfo.enabled) return emptyList()
+            val packageInfo =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getPackageInfo(
+                        packageName,
+                        PackageManager.PackageInfoFlags.of(PackageManager.GET_ACTIVITIES.toLong()),
+                    )
+                } else {
+                    packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+                }
+            val activitiesByName =
+                packageInfo.activities
+                    .orEmpty()
+                    .filter { it.isLaunchable(context) }
+                    .associateBy { it.name }
             val resources = packageManager.getResourcesForApplication(appInfo)
             val parser = resources.assets.openXmlResourceParser("AndroidManifest.xml")
 
@@ -246,13 +272,14 @@ class AppDiscovery(
                                 componentDepth = depth
                                 currentComponentName =
                                     parser.getAttributeValue(androidNs, "name")?.let { name ->
-                                        if (name.startsWith(".")) packageName + name else name
+                                        expandComponentClassName(packageName, name)
                                     }
                             }
                             "intent-filter" -> inIntentFilter = true
                             "action" -> {
                                 val owner = currentComponentName
-                                if (inIntentFilter && owner != null) {
+                                val activityInfo = owner?.let(activitiesByName::get)
+                                if (inIntentFilter && owner != null && activityInfo != null) {
                                     val actionName = parser.getAttributeValue(androidNs, "name")
                                     if (!actionName.isNullOrBlank() && actionName !in commonActions) {
                                         val key = "$actionName|$owner"
@@ -260,7 +287,7 @@ class AppDiscovery(
                                             AppAction(
                                                 action = actionName,
                                                 componentName = owner,
-                                                componentLabel = owner.substringAfterLast("."),
+                                                componentLabel = activityInfo.displayLabel(packageManager),
                                             )
                                         }
                                     }
@@ -288,3 +315,27 @@ class AppDiscovery(
         }
     }
 }
+
+private fun ActivityInfo.isLaunchable(context: Context): Boolean =
+    isActivityAccessible(
+        exported = exported,
+        enabled = enabled,
+        applicationEnabled = applicationInfo.enabled,
+        requiresPermission = !permission.isNullOrEmpty(),
+        hasPermission = permission.isNullOrEmpty() || context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED,
+    )
+
+internal fun isActivityAccessible(
+    exported: Boolean,
+    enabled: Boolean,
+    applicationEnabled: Boolean,
+    requiresPermission: Boolean,
+    hasPermission: Boolean,
+): Boolean = exported && enabled && applicationEnabled && (!requiresPermission || hasPermission)
+
+private fun ActivityInfo.displayLabel(packageManager: PackageManager): String =
+    try {
+        loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        null
+    } ?: name.substringAfterLast(".")
