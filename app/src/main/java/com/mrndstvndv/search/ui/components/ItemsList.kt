@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.zIndex
+import com.mrndstvndv.search.ui.debug.TraceRecomposition
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
@@ -264,6 +265,7 @@ private fun Modifier.verticalEdgeFade(
     }
 
 @OptIn(ExperimentalFoundationApi::class)
+@TraceRecomposition(tag = "items-list", threshold = 2)
 @Composable
 fun ItemsList(
     modifier: Modifier = Modifier,

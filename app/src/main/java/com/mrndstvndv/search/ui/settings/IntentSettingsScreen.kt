@@ -2,6 +2,7 @@ package com.mrndstvndv.search.ui.settings
 
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -14,14 +15,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -65,12 +66,14 @@ import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.intent.ActivityOption
+import com.mrndstvndv.search.provider.intent.AppAction
 import com.mrndstvndv.search.provider.intent.AppDiscovery
 import com.mrndstvndv.search.provider.intent.AppInfo
 import com.mrndstvndv.search.provider.intent.IntentConfig
 import com.mrndstvndv.search.provider.intent.IntentExtra
 import com.mrndstvndv.search.provider.intent.IntentOption
 import com.mrndstvndv.search.provider.intent.IntentSettings
+import com.mrndstvndv.search.provider.intent.isIntentConfigValid
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.ui.components.ContentDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
@@ -403,10 +406,14 @@ private fun IntentConfigAddDialog(
 
     // Configuration fields
     var title by remember { mutableStateOf("") }
+    var packageName by remember { mutableStateOf("") }
+    var action by remember { mutableStateOf("android.intent.action.SEND") }
+    var className by remember { mutableStateOf("") }
     var mimeType by remember { mutableStateOf<String?>(null) }
     var payloadTemplate by remember { mutableStateOf<String?>(null) }
     var extras by remember { mutableStateOf(listOf<IntentExtra>()) }
     var customIconPath by remember { mutableStateOf<String?>(null) }
+    var dataUri by remember { mutableStateOf<String?>(null) }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
 
     val handleDismiss = {
@@ -419,18 +426,52 @@ private fun IntentConfigAddDialog(
         onDismiss()
     }
 
+    fun goBack() {
+        currentStep =
+            when (currentStep) {
+                AddDialogStep.IntentSelection -> AddDialogStep.AppSelection
+                AddDialogStep.ActivitySelection -> AddDialogStep.IntentSelection
+                AddDialogStep.Configuration ->
+                    when {
+                        selectedApp?.packageName.isNullOrEmpty() -> AddDialogStep.AppSelection
+                        selectedActivity != null -> AddDialogStep.ActivitySelection
+                        else -> AddDialogStep.IntentSelection
+                    }
+                AddDialogStep.AppSelection -> AddDialogStep.AppSelection
+            }
+    }
+
+    // Note: BackHandler must live inside each step's own Dialog content (not here) to actually
+    // intercept the gesture — each step is its own androidx.compose.ui.window.Dialog, which owns
+    // its own OnBackPressedDispatcher while focused. See goBack() usage inside each step below.
+
     when (currentStep) {
         AddDialogStep.AppSelection -> {
             AppSelectionStep(
                 discovery = discovery,
                 onAppSelected = { app ->
+                    customIconPath?.let { path ->
+                        try {
+                            java.io.File(path).delete()
+                        } catch (e: Exception) {
+                        }
+                    }
                     selectedApp = app
+                    selectedIntent = null
+                    selectedActivity = null
+                    title = ""
+                    packageName = app.packageName
+                    action = "android.intent.action.SEND"
+                    className = ""
+                    mimeType = null
+                    payloadTemplate = null
+                    extras = emptyList()
+                    customIconPath = null
+                    dataUri = null
                     if (app.packageName.isEmpty()) {
                         // Manual entry - skip to config
                         currentStep = AddDialogStep.Configuration
                         selectedIntent = IntentOption("android.intent.action.SEND", context.getString(R.string.intent_share_content))
-                        selectedActivity = null
-                        title = ""
                     } else {
                         currentStep = AddDialogStep.IntentSelection
                     }
@@ -446,13 +487,18 @@ private fun IntentConfigAddDialog(
                     selectedIntent = intent
                     selectedActivity = null
                     title = selectedApp!!.name
+                    action = intent.action
+                    className = ""
                     mimeType = intent.mimeTypes.firstOrNull()
+                    payloadTemplate = null
+                    extras = emptyList()
+                    dataUri = null
                     currentStep = AddDialogStep.Configuration
                 },
                 onActivityLauncherSelected = {
                     currentStep = AddDialogStep.ActivitySelection
                 },
-                onBack = { currentStep = AddDialogStep.AppSelection },
+                onBack = ::goBack,
                 onDismiss = handleDismiss,
             )
         }
@@ -464,26 +510,19 @@ private fun IntentConfigAddDialog(
                     selectedActivity = activity
                     selectedIntent = null
                     title = "${selectedApp!!.name} - ${activity.label}"
+                    action = "android.intent.action.MAIN"
+                    className = activity.name
                     mimeType = null
+                    payloadTemplate = null
+                    extras = emptyList()
+                    dataUri = null
                     currentStep = AddDialogStep.Configuration
                 },
-                onBack = { currentStep = AddDialogStep.IntentSelection },
+                onBack = ::goBack,
                 onDismiss = handleDismiss,
             )
         }
         AddDialogStep.Configuration -> {
-            var manualPackageName by remember { mutableStateOf("") }
-            var actionState by remember {
-                mutableStateOf(
-                    selectedIntent?.action
-                        ?: if (selectedActivity != null) {
-                            "android.intent.action.MAIN"
-                        } else {
-                            "android.intent.action.SEND"
-                        },
-                )
-            }
-
             IntentConfigDialogContent(
                 title =
                     if (selectedApp!!.packageName.isEmpty()) {
@@ -495,11 +534,13 @@ private fun IntentConfigAddDialog(
                     },
                 title_ = title,
                 onTitleChange = { title = it },
-                packageName = selectedApp!!.packageName.ifEmpty { manualPackageName },
-                onPackageNameChange = { manualPackageName = it },
-                action = actionState,
-                onActionChange = { actionState = it },
-                className = selectedActivity?.name,
+                packageName = packageName,
+                onPackageNameChange = { packageName = it },
+                action = action,
+                onActionChange = { action = it },
+                className = className,
+                onClassNameChange = { className = it },
+                classNameEditable = selectedActivity == null,
                 appListRepository = appListRepository,
                 customIconPath = customIconPath,
                 onCustomIconPathChange = { customIconPath = it },
@@ -511,29 +552,25 @@ private fun IntentConfigAddDialog(
                 onPayloadTemplateChange = { payloadTemplate = it.takeIf { it.isNotBlank() } },
                 extras = extras,
                 onExtrasChange = { extras = it },
-                canSave = title.isNotBlank(),
+                data = dataUri ?: "",
+                onDataChange = { dataUri = it.takeIf { it.isNotBlank() } },
+                canSave = isIntentConfigValid(title, packageName, action, className),
                 showRemove = false,
                 onRemove = {},
-                onBack = {
-                    currentStep =
-                        when {
-                            selectedApp!!.packageName.isEmpty() -> AddDialogStep.AppSelection
-                            selectedActivity != null -> AddDialogStep.ActivitySelection
-                            else -> AddDialogStep.IntentSelection
-                        }
-                },
+                onBack = ::goBack,
                 onDismiss = handleDismiss,
                 onSave = {
                     onAdd(
                         IntentConfig(
                             title = title.trim(),
-                            packageName = selectedApp!!.packageName.ifEmpty { manualPackageName.trim() },
-                            action = actionState,
-                            className = selectedActivity?.name,
+                            packageName = packageName.trim(),
+                            action = action.trim(),
+                            className = className.trim().takeIf { it.isNotEmpty() },
                             customIconPath = customIconPath,
                             type = mimeType?.takeIf { it != anyMimeTypeLabel },
                             payloadTemplate = payloadTemplate?.trim(),
                             extras = extras,
+                            data = dataUri?.trim()?.takeIf { it.isNotEmpty() },
                         ),
                     )
                 },
@@ -744,6 +781,8 @@ private fun IntentSelectionStep(
             }
         },
         content = {
+            BackHandler(onBack = onBack)
+
             Text(
                 text = stringResource(R.string.intent_select_supported_intent),
                 style = MaterialTheme.typography.bodyMedium,
@@ -888,6 +927,8 @@ private fun ActivitySelectionStep(
         },
         content = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                BackHandler(onBack = onBack)
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -951,6 +992,138 @@ private fun ActivitySelectionStep(
 }
 
 @Composable
+private fun AppActionsPickerDialog(
+    discovery: AppDiscovery,
+    packageName: String,
+    preferredComponentName: String?,
+    onSelect: (AppAction) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val actionsState by produceState<List<AppAction>?>(initialValue = null, packageName) {
+        value =
+            withContext(Dispatchers.IO) {
+                discovery.getAppSpecificActions(packageName)
+            }
+    }
+
+    // Resolve the shorthand ".Class" form the user may have typed so it still matches the
+    // manifest's fully-qualified component names when deciding what counts as "the selected class".
+    val resolvedPreferred =
+        preferredComponentName
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { if (it.startsWith(".")) packageName + it else it }
+
+    val sortedActions =
+        remember(actionsState, resolvedPreferred) {
+            actionsState?.sortedWith(
+                compareByDescending<AppAction> { it.componentName == resolvedPreferred }
+                    .thenBy { it.action },
+            )
+        }
+
+    ContentDialog(
+        onDismiss = onDismiss,
+        modifier = Modifier.fillMaxWidth(0.92f),
+        title = {
+            Column {
+                Text(
+                    text = stringResource(R.string.intent_app_actions_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = stringResource(R.string.intent_app_actions_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        buttons = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        },
+        content = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val actions = sortedActions
+                when {
+                    actions == null -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                stringResource(R.string.intent_app_actions_loading),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    actions.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                stringResource(R.string.intent_app_actions_empty),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    else -> {
+                        Column(modifier = Modifier.heightIn(max = 400.dp)) {
+                            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                                items(actions, key = { "${it.action}|${it.componentName}" }) { appAction ->
+                                    val isPreferred = resolvedPreferred != null && appAction.componentName == resolvedPreferred
+                                    val index = actions.indexOf(appAction)
+                                    val isFirstNonPreferred =
+                                        isPreferred.not() &&
+                                            resolvedPreferred != null &&
+                                            (index == 0 || actions[index - 1].componentName == resolvedPreferred)
+
+                                    if (isFirstNonPreferred) {
+                                        Text(
+                                            stringResource(R.string.intent_app_actions_other),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                                        )
+                                    }
+
+                                    Column(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .clickable { onSelect(appAction) }
+                                                .padding(vertical = 12.dp),
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(appAction.action, style = MaterialTheme.typography.bodyLarge)
+                                        }
+                                        Text(
+                                            appAction.componentLabel,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    if (index < actions.lastIndex) {
+                                        HorizontalDivider(
+                                            thickness = 0.5.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    )
+}
+
+@Composable
 private fun IntentConfigEditDialog(
     appListRepository: AppListRepository,
     config: IntentConfig,
@@ -960,40 +1133,43 @@ private fun IntentConfigEditDialog(
 ) {
     val context = LocalContext.current
     val discovery = remember { AppDiscovery(context, appListRepository) }
-    val intentOptions =
-        remember(config.packageName) {
-            if (config.packageName.isNotEmpty()) {
-                discovery.getIntentsForApp(config.packageName)
-            } else {
-                emptyList()
-            }
-        }
-    val currentIntentOption = intentOptions.find { it.action == config.action }
-
     var title by remember { mutableStateOf(config.title) }
+    var packageName by remember { mutableStateOf(config.packageName) }
     var action by remember { mutableStateOf(config.action) }
     var mimeType by remember { mutableStateOf(config.type ?: "") }
     var className by remember { mutableStateOf(config.className ?: "") }
     var customIconPath by remember { mutableStateOf(config.customIconPath) }
     var payloadTemplate by remember { mutableStateOf(config.payloadTemplate ?: "") }
     var extras by remember { mutableStateOf(config.extras) }
+    var dataUri by remember { mutableStateOf(config.data ?: "") }
     val anyMimeTypeLabel = stringResource(R.string.intent_any_mime_type)
+    val intentOptions =
+        remember(packageName) {
+            if (packageName.isNotEmpty()) {
+                discovery.getIntentsForApp(packageName)
+            } else {
+                emptyList()
+            }
+        }
+    val currentIntentOption = intentOptions.find { it.action == action }
 
     val initialCustomIconPath = remember { config.customIconPath }
 
-    val canSave = title.isNotBlank()
+    val canSave = isIntentConfigValid(title, packageName, action, className)
 
     fun save() {
         if (!canSave) return
         val updated =
             config.copy(
                 title = title.trim(),
-                action = action,
+                packageName = packageName.trim(),
+                action = action.trim(),
                 type = mimeType.takeIf { it.isNotBlank() && it != anyMimeTypeLabel },
                 className = className.takeIf { it.isNotBlank() },
                 customIconPath = customIconPath,
                 payloadTemplate = payloadTemplate.trim().takeIf { it.isNotBlank() },
                 extras = extras,
+                data = dataUri.trim().takeIf { it.isNotBlank() },
             )
         if (initialCustomIconPath != null && initialCustomIconPath != customIconPath) {
             try {
@@ -1020,10 +1196,13 @@ private fun IntentConfigEditDialog(
         title = stringResource(R.string.intent_edit),
         title_ = title,
         onTitleChange = { title = it },
-        packageName = config.packageName,
+        packageName = packageName,
+        onPackageNameChange = { packageName = it },
         action = action,
         onActionChange = { action = it },
         className = className,
+        onClassNameChange = { className = it },
+        classNameEditable = true,
         appListRepository = appListRepository,
         customIconPath = customIconPath,
         onCustomIconPathChange = { customIconPath = it },
@@ -1035,6 +1214,8 @@ private fun IntentConfigEditDialog(
         onPayloadTemplateChange = { payloadTemplate = it },
         extras = extras,
         onExtrasChange = { extras = it },
+        data = dataUri,
+        onDataChange = { dataUri = it },
         canSave = canSave,
         showRemove = true,
         onRemove = onRemove,
@@ -1055,6 +1236,8 @@ private fun IntentConfigDialogContent(
     action: String,
     onActionChange: (String) -> Unit = {},
     className: String? = null,
+    onClassNameChange: (String) -> Unit = {},
+    classNameEditable: Boolean = true,
     appListRepository: AppListRepository,
     customIconPath: String?,
     onCustomIconPathChange: (String?) -> Unit,
@@ -1066,6 +1249,8 @@ private fun IntentConfigDialogContent(
     onPayloadTemplateChange: (String) -> Unit,
     extras: List<IntentExtra>,
     onExtrasChange: (List<IntentExtra>) -> Unit,
+    data: String = "",
+    onDataChange: (String) -> Unit = {},
     canSave: Boolean,
     showRemove: Boolean,
     onRemove: () -> Unit,
@@ -1073,6 +1258,9 @@ private fun IntentConfigDialogContent(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val discovery = remember(appListRepository) { AppDiscovery(context, appListRepository) }
+
     var typeExpanded by remember { mutableStateOf(false) }
     var actionExpanded by remember { mutableStateOf(false) }
     var showCustomField by remember(packageName) {
@@ -1087,6 +1275,10 @@ private fun IntentConfigDialogContent(
             "android.intent.action.VIEW",
             "android.intent.action.SENDTO",
         )
+    var showCustomActionField by remember(packageName) {
+        mutableStateOf(action.isNotEmpty() && action !in standardActions)
+    }
+    var showAppActionsPicker by remember { mutableStateOf(false) }
 
     ContentDialog(
         onDismiss = onDismiss,
@@ -1143,6 +1335,10 @@ private fun IntentConfigDialogContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                if (onBack != null) {
+                    BackHandler(onBack = onBack)
+                }
+
                 val context = LocalContext.current
                 var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
@@ -1251,21 +1447,53 @@ private fun IntentConfigDialogContent(
                     label = { Text(stringResource(R.string.intent_label_package)) },
                     placeholder = { Text(stringResource(R.string.intent_placeholder_package)) },
                     readOnly = packageName.isNotEmpty() && onPackageNameChange == {},
-                    supportingText = { Text(stringResource(R.string.intent_supporting_package)) },
+                    isError = className?.isNotBlank() == true && packageName.isBlank(),
+                    supportingText = {
+                        Text(
+                            stringResource(
+                                if (className?.isNotBlank() == true && packageName.isBlank()) {
+                                    R.string.intent_error_package_required_for_class
+                                } else {
+                                    R.string.intent_supporting_package
+                                },
+                            ),
+                        )
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                if (!className.isNullOrEmpty()) {
-                    OutlinedTextField(
-                        value = className,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.intent_label_class_name)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                OutlinedTextField(
+                    value = className ?: "",
+                    onValueChange = onClassNameChange,
+                    readOnly = !classNameEditable,
+                    isError = className?.isNotBlank() == true && packageName.isBlank(),
+                    label = {
+                        Text(
+                            stringResource(
+                                if (classNameEditable) {
+                                    R.string.intent_label_class_name_editable
+                                } else {
+                                    R.string.intent_label_class_name
+                                },
+                            ),
+                        )
+                    },
+                    placeholder =
+                        if (classNameEditable) {
+                            { Text(stringResource(R.string.intent_placeholder_class_name)) }
+                        } else {
+                            null
+                        },
+                    supportingText =
+                        if (classNameEditable) {
+                            { Text(stringResource(R.string.intent_supporting_class_name)) }
+                        } else {
+                            null
+                        },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
                 if (onActionChange == {}) {
                     OutlinedTextField(
@@ -1281,7 +1509,12 @@ private fun IntentConfigDialogContent(
                         onExpandedChange = { actionExpanded = it },
                     ) {
                         OutlinedTextField(
-                            value = action.substringAfterLast("."),
+                            value =
+                                if (showCustomActionField) {
+                                    stringResource(R.string.intent_custom_action)
+                                } else {
+                                    action.substringAfterLast(".")
+                                },
                             onValueChange = {},
                             readOnly = true,
                             label = { Text(stringResource(R.string.intent_label_action)) },
@@ -1303,13 +1536,65 @@ private fun IntentConfigDialogContent(
                                 DropdownMenuItem(
                                     text = { Text(option.substringAfterLast(".")) },
                                     onClick = {
+                                        showCustomActionField = false
                                         onActionChange(option)
                                         actionExpanded = false
                                     },
                                 )
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.intent_custom_action)) },
+                                onClick = {
+                                    showCustomActionField = true
+                                    actionExpanded = false
+                                    if (action in standardActions) {
+                                        onActionChange("")
+                                    }
+                                },
+                            )
+                            if (packageName.isNotBlank()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.intent_app_actions)) },
+                                    onClick = {
+                                        actionExpanded = false
+                                        showAppActionsPicker = true
+                                    },
+                                )
+                            }
                         }
                     }
+                    if (showCustomActionField) {
+                        OutlinedTextField(
+                            value = action,
+                            onValueChange = onActionChange,
+                            isError = action.isBlank(),
+                            label = { Text(stringResource(R.string.intent_label_custom_action)) },
+                            placeholder = { Text(stringResource(R.string.intent_placeholder_custom_action)) },
+                            supportingText =
+                                if (action.isBlank()) {
+                                    { Text(stringResource(R.string.intent_error_action_required)) }
+                                } else {
+                                    null
+                                },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                if (showAppActionsPicker) {
+                    AppActionsPickerDialog(
+                        discovery = discovery,
+                        packageName = packageName,
+                        preferredComponentName = className,
+                        onSelect = { appAction ->
+                            showCustomActionField = true
+                            onActionChange(appAction.action)
+                            onClassNameChange(appAction.componentName)
+                            showAppActionsPicker = false
+                        },
+                        onDismiss = { showAppActionsPicker = false },
+                    )
                 }
 
                 ExposedDropdownMenuBox(
@@ -1375,15 +1660,48 @@ private fun IntentConfigDialogContent(
                     )
                 }
 
-                OutlinedTextField(
-                    value = payloadTemplate,
-                    onValueChange = onPayloadTemplateChange,
-                    label = { Text(stringResource(R.string.intent_label_payload_template)) },
-                    placeholder = { Text(stringResource(R.string.intent_placeholder_payload)) },
-                    supportingText = { Text(stringResource(R.string.intent_supporting_payload)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                val isMainAction = action == "android.intent.action.MAIN"
+                val isSendAction = action == "android.intent.action.SEND"
+                val isUriAction = action == "android.intent.action.VIEW" || action == "android.intent.action.SENDTO"
+                val isCustomAction = !isMainAction && !isSendAction && !isUriAction
+
+                // Payload Template only feeds SEND's shared text. For View/SendTo it would be
+                // functionally identical to just using Data below (same $query rules, same
+                // target), so it's not shown there to avoid two fields doing the same thing.
+                if (isSendAction) {
+                    OutlinedTextField(
+                        value = payloadTemplate,
+                        onValueChange = onPayloadTemplateChange,
+                        label = { Text(stringResource(R.string.intent_label_payload_template)) },
+                        placeholder = { Text(stringResource(R.string.intent_placeholder_payload)) },
+                        supportingText = { Text(stringResource(R.string.intent_supporting_payload_send)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                // Data sets the Intent's `data` field directly. Used for View/SendTo (as the
+                // target URI) and for custom actions (which have no other wired-in URI slot).
+                // Not shown for Send/Main, where it has no effect.
+                if (isUriAction || isCustomAction) {
+                    OutlinedTextField(
+                        value = data,
+                        onValueChange = onDataChange,
+                        label = { Text(stringResource(R.string.intent_label_data)) },
+                        placeholder = { Text(stringResource(R.string.intent_placeholder_data)) },
+                        supportingText = { Text(stringResource(R.string.intent_supporting_data)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                if (isCustomAction) {
+                    Text(
+                        stringResource(R.string.intent_hint_custom_action_no_payload),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
 
                 Text(
                     stringResource(R.string.intent_custom_extras_label),

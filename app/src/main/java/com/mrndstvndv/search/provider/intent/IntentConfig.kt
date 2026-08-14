@@ -47,13 +47,16 @@ data class IntentConfig(
     val payloadTemplate: String? = null, // "yabai $query" or null for raw
     // Custom extras (multiple supported)
     val extras: List<IntentExtra> = emptyList(),
+    // Intent data URI (e.g. "content://.../flows/52/statements/1"). Supports $query replacement.
+    val data: String? = null,
 ) {
     /**
-     * Whether this intent expects a query value (contains $query in payloadTemplate or any extra).
+     * Whether this intent expects a query value in its payload, data URI, or extras.
      */
     val hasQuerySlot: Boolean
         get() {
             if (payloadTemplate?.contains("\$query") == true) return true
+            if (data?.contains("\$query") == true) return true
             return extras.any { it.value.contains("\$query") }
         }
 
@@ -80,6 +83,7 @@ data class IntentConfig(
                     customIconPath = json.optString("customIconPath").takeIf { it.isNotEmpty() },
                     payloadTemplate = json.optString("payloadTemplate").takeIf { it.isNotEmpty() },
                     extras = extras,
+                    data = json.optString("data").takeIf { it.isNotEmpty() },
                 )
             } catch (e: Exception) {
                 null
@@ -97,9 +101,20 @@ data class IntentConfig(
             className?.let { put("className", it) }
             customIconPath?.let { put("customIconPath", it) }
             payloadTemplate?.let { put("payloadTemplate", it) }
+            data?.let { put("data", it) }
 
             val extrasArray = JSONArray()
             extras.forEach { extrasArray.put(it.toJson()) }
             put("extras", extrasArray)
         }
 }
+
+internal fun isIntentConfigValid(
+    title: String,
+    packageName: String,
+    action: String,
+    className: String?,
+): Boolean =
+    title.isNotBlank() &&
+        action.isNotBlank() &&
+        (className.isNullOrBlank() || packageName.isNotBlank())

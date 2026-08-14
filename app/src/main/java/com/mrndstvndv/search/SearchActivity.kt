@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Patterns
 import android.view.MotionEvent
+import com.mrndstvndv.search.ui.debug.TraceRecomposition
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
@@ -84,6 +85,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import com.mrndstvndv.search.alias.AliasCreationCandidate
 import com.mrndstvndv.search.alias.AliasEntry
@@ -137,6 +139,7 @@ import com.mrndstvndv.search.ui.components.SearchField
 import com.mrndstvndv.search.ui.components.TriggerChip
 import com.mrndstvndv.search.ui.components.TriggerState
 import com.mrndstvndv.search.ui.components.findTriggerMatch
+import com.mrndstvndv.search.ui.debug.DebugRecompositionOverlay
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
@@ -1075,6 +1078,10 @@ class SearchActivity : ComponentActivity() {
                         },
                     )
                 }
+
+                DebugRecompositionOverlay(
+                    modifier = Modifier.fillMaxSize().zIndex(10f),
+                )
             }
 
             LaunchedEffect(uiState.isPerformingAction, activityIndicatorDelayMs) {
@@ -1103,6 +1110,8 @@ class SearchActivity : ComponentActivity() {
                 } finally {
                     pendingAction = null
                     if (completed && action.keepOverlayUntilExit) {
+                        // Clear the action guard before finishing; finish() defers while an action is active.
+                        viewModel.setIsPerformingAction(false)
                         finish()
                     } else {
                         val shouldDismissOverlay =
@@ -1350,6 +1359,7 @@ private fun UpdateBanner(
     }
 }
 
+@TraceRecomposition(tag = "search-bar", threshold = 2)
 @Composable
 private fun SearchBar(
     textState: TextFieldValue,

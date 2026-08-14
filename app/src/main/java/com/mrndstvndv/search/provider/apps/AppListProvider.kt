@@ -17,13 +17,13 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class AppListProvider(
@@ -36,7 +36,7 @@ class AppListProvider(
     override val displayName: String = context.getString(R.string.provider_applications)
     override val refreshSignal: SharedFlow<Unit> =
         appListRepository
-            .getAllApps()
+            .catalog
             .drop(1)
             .map { Unit }
             .shareIn(
@@ -46,22 +46,20 @@ class AppListProvider(
             )
 
     private val packageManager = context.packageManager
+    private val queryCacheLock = Any()
+    private var queryCache: AppQueryCacheState? = null
 
     override fun canHandle(query: Query): Boolean = true
 
     override suspend fun query(query: Query): List<ProviderResult> {
         val normalized = query.trimmedText
+        val catalog = appListRepository.catalog.value
+        val allApps = catalog.apps
         val settings = settingsRepository.value
         val includePackageName = settings.includePackageName
         val aiEnabled = settings.aiAssistantQueriesEnabled
 
-        // Build set of installed package names for quick lookup
-        val installedPackages =
-            appListRepository
-                .getAllApps()
-                .value
-                .map { it.packageName }
-                .toSet()
+        val installedPackages = catalog.packageNames
 
         // Check for "ask <assistant> <query>" OR "<assistant> <query>" pattern
         val askMatch =
@@ -74,8 +72,9 @@ class AppListProvider(
 
         val matches: List<ScoredApp> =
             if (normalized.isBlank()) {
+                clearQueryCache()
                 // No query - return all apps with zero score
-                appListRepository.getAllApps().value.map {
+                allApps.map {
                     ScoredApp(
                         it,
                         0,
@@ -84,64 +83,18 @@ class AppListProvider(
                     )
                 }
             } else if (askMatch != null) {
+                clearQueryCache()
                 // When "ask <assistant>" is detected, only show that assistant's app
-                appListRepository
-                    .getAllApps()
-                    .value
-                    .filter { it.packageName == askMatch.assistant.packageName }
-                    .map { ScoredApp(it, 100, emptyList(), emptyList()) }
+                allApps.filter { it.packageName == askMatch.assistant.packageName }.map {
+                    ScoredApp(it, 100, emptyList(), emptyList())
+                }
             } else {
                 val queryLower = normalized.lowercase()
-                // Apply fuzzy matching and scoring
-                appListRepository
-                    .getAllApps()
-                    .value
-                    .mapNotNull { app ->
-                        currentCoroutineContext().ensureActive()
-                        val labelMatch = FuzzyMatcher.match(queryLower, app.label, app.labelLower)
-                        val packageMatch =
-                            if (includePackageName) {
-                                FuzzyMatcher.match(queryLower, app.packageName, app.packageNameLower)
-                            } else {
-                                null
-                            }
-
-                        // Calculate effective score for package match (with penalty)
-                        val packageScoreWithPenalty = packageMatch?.let { it.score - PACKAGE_NAME_PENALTY }
-
-                        // Determine which match to use for ranking
-                        val labelIsBest =
-                            when {
-                                labelMatch == null -> false
-                                packageScoreWithPenalty == null -> true
-                                else -> labelMatch.score >= packageScoreWithPenalty
-                            }
-
-                        // Calculate effective score and matched indices
-                        when {
-                            labelIsBest -> {
-                                ScoredApp(
-                                    app = app,
-                                    score = labelMatch!!.score,
-                                    matchedTitleIndices = labelMatch.matchedIndices,
-                                    matchedSubtitleIndices = packageMatch?.matchedIndices ?: emptyList(),
-                                )
-                            }
-
-                            packageMatch != null -> {
-                                ScoredApp(
-                                    app = app,
-                                    score = packageScoreWithPenalty!!,
-                                    matchedTitleIndices = emptyList(),
-                                    matchedSubtitleIndices = packageMatch.matchedIndices,
-                                )
-                            }
-
-                            else -> {
-                                null
-                            }
-                        }
-                    }.sortedByDescending { it.score }
+                scoreWithIncrementalNarrowing(
+                    queryLower = queryLower,
+                    includePackageName = includePackageName,
+                    catalog = catalog,
+                )
             }
 
         val limited = matches.take(MAX_RESULTS)
@@ -152,8 +105,7 @@ class AppListProvider(
 
             // Check if this app should be transformed into an AI query result
             val isAiQueryResult =
-                askMatch != null &&
-                    entry.packageName == askMatch.assistant.packageName
+                askMatch != null && entry.packageName == askMatch.assistant.packageName
 
             // Determine title, subtitle, and action based on whether this is an AI query
             val title: String
@@ -167,7 +119,9 @@ class AppListProvider(
                 action = {
                     withContext(Dispatchers.Main) {
                         val intent = buildAiQueryIntent(askMatch.assistant, askMatch.query)
-                        context.startActivity(intent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                        context.startActivity(
+                            intent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+                        )
                     }
                 }
             } else {
@@ -176,10 +130,14 @@ class AppListProvider(
                 subtitle = entry.packageName
                 action = {
                     withContext(Dispatchers.Main) {
-                        val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
-                        val userHandle = userManager.getUserForSerialNumber(entry.userSerialNumber)
-                            ?: android.os.Process.myUserHandle()
-                        val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
+                        val userManager =
+                            context.getSystemService(Context.USER_SERVICE) as UserManager
+                        val userHandle =
+                            userManager.getUserForSerialNumber(entry.userSerialNumber)
+                                ?: android.os.Process.myUserHandle()
+                        val launcherApps =
+                            context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as
+                                LauncherApps
                         val activities = launcherApps.getActivityList(entry.packageName, userHandle)
                         val activityInfo = activities.firstOrNull()
                         if (activityInfo != null) {
@@ -187,12 +145,17 @@ class AppListProvider(
                                 activityInfo.componentName,
                                 userHandle,
                                 null,
-                                null
+                                null,
                             )
                         } else {
-                            val launchIntent = packageManager.getLaunchIntentForPackage(entry.packageName)
+                            val launchIntent =
+                                packageManager.getLaunchIntentForPackage(entry.packageName)
                             if (launchIntent != null) {
-                                context.startActivity(launchIntent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+                                context.startActivity(
+                                    launchIntent.apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    },
+                                )
                             }
                         }
                     }
@@ -206,22 +169,87 @@ class AppListProvider(
                     subtitle = subtitle,
                     icon = null,
                     defaultVectorIcon = Icons.Outlined.Android,
-                    iconLoader = { appListRepository.getIcon(entry.packageName, entry.userSerialNumber) },
+                    iconLoader = {
+                        appListRepository.getIcon(entry.packageName, entry.userSerialNumber)
+                    },
                     providerId = id,
                     extras = mapOf(EXTRA_PACKAGE_NAME to entry.packageName),
                     onSelect = action,
-                    aliasTarget = AppLaunchAliasTarget(entry.packageName, entry.label, entry.userSerialNumber),
+                    aliasTarget =
+                        AppLaunchAliasTarget(
+                            entry.packageName,
+                            entry.label,
+                            entry.userSerialNumber,
+                        ),
                     keepOverlayUntilExit = true,
-                    matchedTitleIndices = if (isAiQueryResult) emptyList() else scoredApp.matchedTitleIndices,
-                    matchedSubtitleIndices = if (isAiQueryResult) emptyList() else scoredApp.matchedSubtitleIndices,
+                    matchedTitleIndices =
+                        if (isAiQueryResult) {
+                            emptyList()
+                        } else {
+                            scoredApp.matchedTitleIndices
+                        },
+                    matchedSubtitleIndices =
+                        if (isAiQueryResult) {
+                            emptyList()
+                        } else {
+                            scoredApp.matchedSubtitleIndices
+                        },
                 )
         }
         return results
     }
 
+    private suspend fun scoreWithIncrementalNarrowing(
+        queryLower: String,
+        includePackageName: Boolean,
+        catalog: AppCatalog,
+    ): List<ScoredApp> {
+        val previousCache = synchronized(queryCacheLock) { queryCache }
+        val candidateApps =
+            selectAppSearchCandidates(
+                queryLower = queryLower,
+                includePackageName = includePackageName,
+                catalog = catalog,
+                previousCache = previousCache,
+            )
+
+        // Subsequence matching is prefix-monotonic: extending a query cannot revive a prior miss.
+        val matches = scoreApps(candidateApps, queryLower, includePackageName)
+
+        synchronized(queryCacheLock) {
+            queryCache =
+                AppQueryCacheState(
+                    generation = catalog.generation,
+                    includePackageName = includePackageName,
+                    queryLower = queryLower,
+                    matches = matches,
+                )
+        }
+
+        return matches
+    }
+
+    private suspend fun scoreApps(
+        apps: List<AppInfo>,
+        queryLower: String,
+        includePackageName: Boolean,
+    ): List<ScoredApp> {
+        val coroutineContext = currentCoroutineContext()
+        return apps
+            .mapNotNull { app ->
+                coroutineContext.ensureActive()
+                scoreApp(app, queryLower, includePackageName)
+            }
+            .sortedForAppSearch()
+    }
+
+    private fun clearQueryCache() {
+        synchronized(queryCacheLock) { queryCache = null }
+    }
+
     /**
-     * Parses "ask <assistant> <query>" pattern.
-     * Returns null if pattern doesn't match or assistant app isn't installed.
+     * Parses "ask <assistant> <query>" pattern. Returns null if pattern doesn't match or assistant
+     * app isn't installed.
      */
     private fun parseAskQuery(
         query: String,
@@ -247,8 +275,8 @@ class AppListProvider(
     }
 
     /**
-     * Parses "<assistant> <query>" pattern (without "ask" prefix).
-     * Returns null if pattern doesn't match, no query content after trigger, or assistant app isn't installed.
+     * Parses "<assistant> <query>" pattern (without "ask" prefix). Returns null if pattern doesn't
+     * match, no query content after trigger, or assistant app isn't installed.
      */
     private fun parseDirectAiQuery(
         query: String,
@@ -274,9 +302,7 @@ class AppListProvider(
         return null
     }
 
-    /**
-     * Builds an ACTION_SEND intent to send a query to an AI assistant.
-     */
+    /** Builds an ACTION_SEND intent to send a query to an AI assistant. */
     private fun buildAiQueryIntent(
         assistant: AiAssistant,
         query: String,
@@ -286,13 +312,6 @@ class AppListProvider(
             setPackage(assistant.packageName)
             putExtra(Intent.EXTRA_TEXT, query)
         }
-
-    private data class ScoredApp(
-        val app: AppInfo,
-        val score: Int,
-        val matchedTitleIndices: List<Int>,
-        val matchedSubtitleIndices: List<Int>,
-    )
 
     /** Definition of a supported AI assistant app */
     private data class AiAssistant(
@@ -311,9 +330,6 @@ class AppListProvider(
     private companion object {
         const val MAX_RESULTS = 40
         private const val EXTRA_PACKAGE_NAME = "packageName"
-
-        /** Penalty applied to package name matches so label matches rank higher */
-        private const val PACKAGE_NAME_PENALTY = 10
 
         /** Minimum fuzzy match score for "ask <trigger>" pattern */
         private const val ASK_TRIGGER_MIN_SCORE = 40

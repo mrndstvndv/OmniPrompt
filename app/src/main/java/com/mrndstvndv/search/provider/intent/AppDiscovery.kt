@@ -2,10 +2,12 @@ package com.mrndstvndv.search.provider.intent
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.apps.AppListRepository
+import org.xmlpull.v1.XmlPullParser
 
 data class AppInfo(
     val packageName: String,
@@ -24,6 +26,22 @@ data class ActivityOption(
     val label: String,
 )
 
+data class AppAction(
+    val action: String,
+    val componentName: String,
+    val componentLabel: String,
+)
+
+internal fun expandComponentClassName(
+    packageName: String,
+    className: String,
+): String =
+    when {
+        className.startsWith(".") -> packageName + className
+        "." !in className -> "$packageName.$className"
+        else -> className
+    }
+
 class AppDiscovery(
     private val context: Context,
     private val appListRepository: AppListRepository,
@@ -35,7 +53,7 @@ class AppDiscovery(
         appListRepository.initialize()
 
         // Get all apps from repository
-        val allApps = appListRepository.apps.value
+        val allApps = appListRepository.catalog.value.apps
 
         val targetActions =
             listOf(
@@ -183,7 +201,7 @@ class AppDiscovery(
             }
         val activities = packageInfo.activities ?: return emptyList()
         return activities
-            .filter { it.exported }
+            .filter { it.isLaunchable(context) }
             .map { activityInfo ->
                 val label =
                     try {
@@ -197,4 +215,127 @@ class AppDiscovery(
                 )
             }.sortedBy { it.label }
     }
+
+    /**
+     * Best-effort discovery of app-specific (non-standard) intent actions declared in
+     * [packageName]'s manifest, by parsing its compiled AndroidManifest.xml directly.
+     *
+     * This relies on public, non-root APIs (AssetManager.openXmlResourceParser against the
+     * target app's own Resources), but manifest introspection of other apps isn't guaranteed on
+     * every Android version/OEM, so this can legitimately return an empty list.
+     */
+    fun getAppSpecificActions(packageName: String): List<AppAction> {
+        val commonActions =
+            setOf(
+                Intent.ACTION_MAIN,
+                Intent.ACTION_VIEW,
+                Intent.ACTION_SEND,
+                Intent.ACTION_SENDTO,
+                Intent.ACTION_SEND_MULTIPLE,
+            )
+        val componentTags = setOf("activity", "activity-alias")
+        val androidNs = "http://schemas.android.com/apk/res/android"
+
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            if (!appInfo.enabled) return emptyList()
+            val packageInfo =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getPackageInfo(
+                        packageName,
+                        PackageManager.PackageInfoFlags.of(PackageManager.GET_ACTIVITIES.toLong()),
+                    )
+                } else {
+                    packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+                }
+            val activitiesByName =
+                packageInfo.activities
+                    .orEmpty()
+                    .filter { it.isLaunchable(context) }
+                    .associateBy { it.name }
+            val resources = packageManager.getResourcesForApplication(appInfo)
+            val parser = resources.assets.openXmlResourceParser("AndroidManifest.xml")
+
+            val results = LinkedHashMap<String, AppAction>()
+            var currentComponentName: String? = null
+            var componentDepth = -1
+            var inIntentFilter = false
+            var depth = 0
+
+            var eventType = parser.eventType
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                when (eventType) {
+                    XmlPullParser.START_TAG -> {
+                        depth++
+                        when (val tag = parser.name) {
+                            in componentTags -> {
+                                componentDepth = depth
+                                currentComponentName =
+                                    parser.getAttributeValue(androidNs, "name")?.let { name ->
+                                        expandComponentClassName(packageName, name)
+                                    }
+                            }
+                            "intent-filter" -> inIntentFilter = true
+                            "action" -> {
+                                val owner = currentComponentName
+                                val activityInfo = owner?.let(activitiesByName::get)
+                                if (inIntentFilter && owner != null && activityInfo != null) {
+                                    val actionName = parser.getAttributeValue(androidNs, "name")
+                                    if (!actionName.isNullOrBlank() && actionName !in commonActions) {
+                                        val key = "$actionName|$owner"
+                                        results.getOrPut(key) {
+                                            AppAction(
+                                                action = actionName,
+                                                componentName = owner,
+                                                componentLabel = activityInfo.displayLabel(packageManager),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    XmlPullParser.END_TAG -> {
+                        val tag = parser.name
+                        if (tag == "intent-filter") inIntentFilter = false
+                        if (depth == componentDepth && tag in componentTags) {
+                            currentComponentName = null
+                            componentDepth = -1
+                        }
+                        depth--
+                    }
+                }
+                eventType = parser.next()
+            }
+            parser.close()
+
+            results.values.sortedBy { it.action }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
+
+private fun ActivityInfo.isLaunchable(context: Context): Boolean =
+    isActivityAccessible(
+        exported = exported,
+        enabled = enabled,
+        applicationEnabled = applicationInfo.enabled,
+        requiresPermission = !permission.isNullOrEmpty(),
+        hasPermission = permission.isNullOrEmpty() || context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED,
+    )
+
+internal fun isActivityAccessible(
+    exported: Boolean,
+    enabled: Boolean,
+    applicationEnabled: Boolean,
+    requiresPermission: Boolean,
+    hasPermission: Boolean,
+): Boolean = exported && enabled && applicationEnabled && (!requiresPermission || hasPermission)
+
+private fun ActivityInfo.displayLabel(packageManager: PackageManager): String =
+    try {
+        loadLabel(packageManager).toString().takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        null
+    } ?: name.substringAfterLast(".")
