@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.view.inputmethod.InputConnectionWrapper
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -101,6 +102,8 @@ fun SearchField(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     modifier: Modifier = Modifier,
+    containerAlpha: Float = 1f,
+    borderThickness: Float = 0f,
     triggerChip: (@Composable () -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
@@ -112,8 +115,15 @@ fun SearchField(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(50)
+    val containerColor =
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(
+            alpha = containerAlpha.coerceIn(0f, 1f),
+        )
     val colors =
         TextFieldDefaults.colors(
+            focusedContainerColor = containerColor,
+            unfocusedContainerColor = containerColor,
+            disabledContainerColor = containerColor,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
@@ -169,7 +179,25 @@ fun SearchField(
                         enabled = true,
                         isError = false,
                         interactionSource = interactionSource,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (borderThickness > 0f) {
+                                        Modifier.border(
+                                            width = borderThickness.dp,
+                                            color =
+                                                if (isFocused) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.outline
+                                                },
+                                            shape = shape,
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                         colors = colors,
                         shape = shape,
                     )

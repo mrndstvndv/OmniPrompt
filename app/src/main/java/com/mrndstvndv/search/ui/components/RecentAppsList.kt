@@ -77,6 +77,7 @@ fun RecentAppsList(
     shouldCenter: Boolean = false,
     visible: Boolean = true,
     excludePackages: Set<String> = emptySet(),
+    appIconBackgroundTransparency: Float = 0f,
 ) {
     val context = LocalContext.current
     var hasPermission by remember(repository) { mutableStateOf(repository.hasPermission()) }
@@ -156,6 +157,7 @@ fun RecentAppsList(
                                 app = app,
                                 iconSizeDp = iconSizeDp,
                                 index = index,
+                                appIconBackgroundTransparency = appIconBackgroundTransparency,
                                 onClick = {
                                     safeLaunchApp(context, app.launchIntent)
                                 },
@@ -174,6 +176,7 @@ fun AppIconItem(
     app: RecentApp,
     iconSizeDp: androidx.compose.ui.unit.Dp,
     index: Int,
+    appIconBackgroundTransparency: Float = 0f,
     onClick: () -> Unit,
     visible: Boolean = true,
 ) {
@@ -189,6 +192,7 @@ fun AppIconItem(
         settings.themedIconsEnabled,
         settings.themeAllIcons,
         settings.iconPackPackageName,
+        appIconBackgroundTransparency,
     ) {
         value = app.iconLoader()
     }
@@ -233,6 +237,7 @@ fun AppListRow(
     modifier: Modifier = Modifier,
     shouldCenter: Boolean = false,
     visible: Boolean = true,
+    appIconBackgroundTransparency: Float = 0f,
 ) {
     val context = LocalContext.current
     val displayApps = remember(apps, isReversed) {
@@ -275,6 +280,7 @@ fun AppListRow(
                     app = app,
                     iconSizeDp = iconSizeDp,
                     index = index,
+                    appIconBackgroundTransparency = appIconBackgroundTransparency,
                     onClick = {
                         safeLaunchApp(context, app.launchIntent)
                     },
@@ -411,6 +417,7 @@ fun AppListSection(
     shouldCenter: Boolean,
     modifier: Modifier = Modifier,
     visible: Boolean = true,
+    appIconBackgroundTransparency: Float = 0f,
 ) {
     when (appListType) {
         AppListType.RECENT -> {
@@ -420,6 +427,7 @@ fun AppListSection(
                 shouldCenter = shouldCenter,
                 modifier = modifier,
                 visible = visible,
+                appIconBackgroundTransparency = appIconBackgroundTransparency,
             )
         }
 
@@ -442,6 +450,7 @@ fun AppListSection(
                             shouldCenter = allowCenter,
                             modifier = Modifier.fillMaxWidth(),
                             visible = visible,
+                            appIconBackgroundTransparency = appIconBackgroundTransparency,
                         )
                     }
                 }
@@ -492,6 +501,7 @@ fun AppListSection(
                             ).padding(start = recentPaddingStart, end = recentPaddingEnd),
                         visible = visible,
                         excludePackages = excludePackages,
+                        appIconBackgroundTransparency = appIconBackgroundTransparency,
                     )
                 }
                 val pinnedContent: @Composable RowScope.() -> Unit = {
@@ -512,6 +522,7 @@ fun AppListSection(
                                 shouldCenter = false,
                                 modifier = Modifier.fillMaxWidth(),
                                 visible = visible,
+                                appIconBackgroundTransparency = appIconBackgroundTransparency,
                             )
                         }
                     } else {

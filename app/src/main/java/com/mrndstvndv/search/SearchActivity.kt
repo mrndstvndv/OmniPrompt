@@ -386,6 +386,9 @@ class SearchActivity : ComponentActivity() {
             // Collect UI/global settings from old repository
             val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
             val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
+            val searchBarTransparency by settingsRepository.searchBarTransparency.collectAsState()
+            val searchBarBorderThickness by settingsRepository.searchBarBorderThickness.collectAsState()
+            val appListIconBackgroundTransparency by settingsRepository.appListIconBackgroundTransparency.collectAsState()
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
             val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
@@ -831,6 +834,8 @@ class SearchActivity : ComponentActivity() {
                                         onDismissTrigger = viewModel::dismissTrigger,
                                         focusRequester = focusRequester,
                                         settingsIconPosition = settingsIconPosition,
+                                        searchBarTransparency = searchBarTransparency,
+                                        searchBarBorderThickness = searchBarBorderThickness,
                                         onSubmitSearch = ::submitSearch,
                                         onOpenSettings = ::openSettingsScreen,
                                         onOpenSystemSettings = ::openSystemSettingsScreen,
@@ -878,6 +883,7 @@ class SearchActivity : ComponentActivity() {
                                             pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
                                             filterPinnedFromRecentsInBoth = appSearchSettings.filterPinnedFromRecentsInBoth,
                                             shouldCenter = shouldCenterAppList,
+                                            appIconBackgroundTransparency = appListIconBackgroundTransparency,
                                             modifier =
                                                 Modifier
                                                     .weight(1f)
@@ -916,6 +922,8 @@ class SearchActivity : ComponentActivity() {
                                     onDismissTrigger = viewModel::dismissTrigger,
                                     focusRequester = focusRequester,
                                     settingsIconPosition = settingsIconPosition,
+                                    searchBarTransparency = searchBarTransparency,
+                                    searchBarBorderThickness = searchBarBorderThickness,
                                     onSubmitSearch = ::submitSearch,
                                     onOpenSettings = ::openSettingsScreen,
                                     onOpenSystemSettings = ::openSystemSettingsScreen,
@@ -958,6 +966,7 @@ class SearchActivity : ComponentActivity() {
                                         pinnedOnLeft = appSearchSettings.bothLayoutPinnedOnLeft,
                                         filterPinnedFromRecentsInBoth = appSearchSettings.filterPinnedFromRecentsInBoth,
                                         shouldCenter = shouldCenterAppList,
+                                        appIconBackgroundTransparency = appListIconBackgroundTransparency,
                                         modifier =
                                             Modifier
                                                 .weight(1f)
@@ -1302,7 +1311,7 @@ private fun UpdateBanner(
         modifier = modifier,
     ) {
         val borderStroke =
-            if (firstResultHighlightEnabled) {
+            if (firstResultHighlightEnabled && firstResultBorderThickness > 0f) {
                 val borderColor =
                     MaterialTheme.colorScheme.primary.copy(
                         alpha = if (translucentResultsEnabled) 0.5f else 0.22f,
@@ -1368,6 +1377,8 @@ private fun SearchBar(
     onDismissTrigger: () -> Unit,
     focusRequester: FocusRequester,
     settingsIconPosition: SettingsIconPosition,
+    searchBarTransparency: Float,
+    searchBarBorderThickness: Float,
     onSubmitSearch: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenSystemSettings: () -> Unit,
@@ -1381,6 +1392,8 @@ private fun SearchBar(
                     .focusRequester(focusRequester),
             value = textState,
             onValueChange = onSearchChange,
+            containerAlpha = searchBarTransparency,
+            borderThickness = searchBarBorderThickness,
             triggerChip =
                 triggerState?.let { activeTrigger ->
                     {

@@ -57,6 +57,7 @@ fun loadAppIconBitmap(
     themeAllIcons: Boolean,
     iconPackPackageName: String,
     userSerialNumber: Long = 0L,
+    backgroundAlpha: Float = 1f,
 ): Bitmap? {
     val pm = context.packageManager
     val userManager = context.getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
@@ -86,13 +87,32 @@ fun loadAppIconBitmap(
 
     if (drawable == null) return null
 
+    val effectiveBackgroundAlpha = backgroundAlpha.coerceIn(0f, 1f)
+    val adjustedAdaptiveBitmap =
+        if (
+            effectiveBackgroundAlpha < 1f &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            drawable is AdaptiveIconDrawable
+        ) {
+            drawable.toBitmapWithBackgroundAlpha(iconSize, effectiveBackgroundAlpha)
+        } else {
+            null
+        }
+
     var themedBitmap: Bitmap? = null
     if (themedIconsEnabled) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && drawable is AdaptiveIconDrawable) {
             val monochrome = drawable.monochrome
             if (monochrome != null) {
                 val (primaryColor, _, surfaceColor) = getThemeColors(context)
-                themedBitmap = createThemedAdaptiveIcon(monochrome, primaryColor, surfaceColor, iconSize)
+                themedBitmap =
+                    createThemedAdaptiveIcon(
+                        monochrome,
+                        primaryColor,
+                        surfaceColor,
+                        iconSize,
+                        effectiveBackgroundAlpha,
+                    )
             }
         }
 
@@ -100,16 +120,28 @@ fun loadAppIconBitmap(
             val (primaryColor, _, surfaceColor) = getThemeColors(context)
             val originalBitmap = drawable.toBitmapOrNull(iconSize)
             if (originalBitmap != null) {
-                themedBitmap = createForcedThemedIcon(originalBitmap, primaryColor, surfaceColor, iconSize)
+                themedBitmap =
+                    createForcedThemedIcon(
+                        originalBitmap,
+                        primaryColor,
+                        surfaceColor,
+                        iconSize,
+                        effectiveBackgroundAlpha,
+                    )
             }
         }
     }
 
-    val finalDrawable = if (themedBitmap != null) {
-        android.graphics.drawable.BitmapDrawable(context.resources, themedBitmap)
-    } else {
-        drawable
-    }
+    val finalDrawable =
+        when {
+            themedBitmap != null -> {
+                android.graphics.drawable.BitmapDrawable(context.resources, themedBitmap)
+            }
+            adjustedAdaptiveBitmap != null -> {
+                android.graphics.drawable.BitmapDrawable(context.resources, adjustedAdaptiveBitmap)
+            }
+            else -> drawable
+        }
 
     val badgedDrawable = pm.getUserBadgedIcon(finalDrawable, userHandle)
     return badgedDrawable.toBitmapOrNull(iconSize)
@@ -120,12 +152,13 @@ private fun createThemedAdaptiveIcon(
     primaryColor: Int,
     surfaceColor: Int,
     iconSize: Int,
+    backgroundAlpha: Float,
 ): Bitmap? {
     return runCatching {
         val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(output)
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = surfaceColor
+            color = colorWithAlpha(surfaceColor, backgroundAlpha)
             style = android.graphics.Paint.Style.FILL
         }
         canvas.drawCircle(iconSize / 2f, iconSize / 2f, iconSize / 2f, paint)
@@ -145,6 +178,7 @@ private fun createForcedThemedIcon(
     primaryColor: Int,
     surfaceColor: Int,
     iconSize: Int,
+    backgroundAlpha: Float,
 ): Bitmap? {
     return runCatching {
         val targetSize = (iconSize * 0.72f).toInt().coerceAtLeast(1)
@@ -215,7 +249,7 @@ private fun createForcedThemedIcon(
         val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(output)
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = surfaceColor
+            color = colorWithAlpha(surfaceColor, backgroundAlpha)
             style = android.graphics.Paint.Style.FILL
         }
         canvas.drawCircle(iconSize / 2f, iconSize / 2f, iconSize / 2f, paint)
@@ -227,6 +261,36 @@ private fun createForcedThemedIcon(
         mutableScaled.recycle()
         output
     }.getOrNull()
+}
+
+private fun AdaptiveIconDrawable.toBitmapWithBackgroundAlpha(
+    iconSize: Int,
+    backgroundAlpha: Float,
+): Bitmap? =
+    runCatching {
+        val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(output)
+        val backgroundDrawable = background.mutate()
+        val originalBackgroundAlpha = backgroundDrawable.alpha
+        backgroundDrawable.alpha =
+            (originalBackgroundAlpha * backgroundAlpha.coerceIn(0f, 1f)).toInt()
+        backgroundDrawable.setBounds(0, 0, iconSize, iconSize)
+        backgroundDrawable.draw(canvas)
+        backgroundDrawable.alpha = originalBackgroundAlpha
+
+        val foregroundDrawable = foreground.mutate()
+        foregroundDrawable.setBounds(0, 0, iconSize, iconSize)
+        foregroundDrawable.draw(canvas)
+        output
+    }.getOrNull()
+
+private fun colorWithAlpha(
+    color: Int,
+    alpha: Float,
+): Int {
+    val originalAlpha = (color ushr 24) and 0xFF
+    val adjustedAlpha = (originalAlpha * alpha.coerceIn(0f, 1f)).toInt()
+    return (color and 0x00FFFFFF) or (adjustedAlpha shl 24)
 }
 
 fun isPackageInstalled(
