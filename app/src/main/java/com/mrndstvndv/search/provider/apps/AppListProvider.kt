@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
 import android.os.UserManager
+import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import com.mrndstvndv.search.R
@@ -155,6 +156,23 @@ class AppListProvider(
                                     launchIntent.apply {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     },
+                                )
+                            } else {
+                                // Provisional/stale entry — the app isn't
+                                // actually resolvable. Surface it and remove
+                                // it now rather than waiting on the next
+                                // reconciliation pass.
+                                Toast.makeText(
+                                    context,
+                                    context.getString(
+                                        R.string.app_no_longer_installed,
+                                        entry.label,
+                                    ),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                appListRepository.removeStaleEntry(
+                                    entry.packageName,
+                                    entry.userSerialNumber,
                                 )
                             }
                         }
