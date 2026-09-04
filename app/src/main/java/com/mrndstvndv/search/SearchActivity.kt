@@ -261,7 +261,7 @@ class SearchActivity : ComponentActivity() {
         super.onNewIntent(intent)
         viewModel.clearState()
 
-        val isAssistAction = intent.action == Intent.ACTION_ASSIST || intent.action == "android.intent.action.SEARCH_LONG_PRESS"
+        val isAssistAction = intent.action == Intent.ACTION_ASSIST || intent.action == Intent.ACTION_VOICE_COMMAND || intent.action == "android.intent.action.SEARCH_LONG_PRESS"
         // Rewrite assist actions to escape session lifecycle
         val effectiveIntent =
             if (isAssistAction) {
@@ -344,7 +344,7 @@ class SearchActivity : ComponentActivity() {
         // assist session and may immediately pause/stop it once the gesture animation completes.
         // Work around this by replacing the intent action so the system no longer considers
         // this activity part of the assist session lifecycle.
-        if (intent?.action == Intent.ACTION_ASSIST || intent?.action == "android.intent.action.SEARCH_LONG_PRESS") {
+        if (intent?.action == Intent.ACTION_ASSIST || intent?.action == Intent.ACTION_VOICE_COMMAND || intent?.action == "android.intent.action.SEARCH_LONG_PRESS") {
             launchedFromAssist = true
             intent =
                 Intent(intent).apply {
