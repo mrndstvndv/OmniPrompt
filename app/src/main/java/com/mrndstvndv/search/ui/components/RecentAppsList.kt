@@ -110,9 +110,10 @@ fun RecentAppsList(
             val width = maxWidth
             val iconSizeDp = 40.dp
             val paddingDp = 8.dp
-            val itemWidth = iconSizeDp + paddingDp
+            val itemWidth = if (shouldCenter) iconSizeDp + paddingDp else iconSizeDp
+            val contentWidth = if (shouldCenter) width else width - (paddingDp * 2f)
 
-            val maxItems = (width / itemWidth).toInt().coerceAtLeast(0)
+            val maxItems = (contentWidth / itemWidth).toInt().coerceAtLeast(0)
 
             if (maxItems > 0) {
                 val fetchLimit =

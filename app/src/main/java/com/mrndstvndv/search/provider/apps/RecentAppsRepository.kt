@@ -162,8 +162,8 @@ class RecentAppsRepository(
             val trackedEntries = readTrackedEntries(includeWorkApps)
             val recentApps =
                 mergeRecentEntries(usageEntries, trackedEntries)
-                    .take(limit)
                     .mapNotNull { it.toRecentApp() }
+                    .take(limit)
             emit(recentApps)
         }.flowOn(Dispatchers.IO)
 
