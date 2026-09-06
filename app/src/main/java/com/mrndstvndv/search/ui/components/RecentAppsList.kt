@@ -151,12 +151,11 @@ fun RecentAppsList(
                         },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    displayApps.forEachIndexed { index, app ->
+                    displayApps.forEach { app ->
                         key(app.profileKey) {
                             AppIconItem(
                                 app = app,
                                 iconSizeDp = iconSizeDp,
-                                index = index,
                                 appIconBackgroundTransparency = appIconBackgroundTransparency,
                                 onClick = {
                                     repository.launchApp(context, app)
@@ -174,7 +173,6 @@ fun RecentAppsList(
 fun AppIconItem(
     app: RecentApp,
     iconSizeDp: androidx.compose.ui.unit.Dp,
-    index: Int,
     appIconBackgroundTransparency: Float = 0f,
     onClick: () -> Unit,
     visible: Boolean = true,
@@ -197,17 +195,14 @@ fun AppIconItem(
     }
 
     val iconLoaded = icon != null
-    val animationDelay = (index * 30).coerceAtMost(150)
     val alpha by rememberMotionAwareFloat(
         targetValue = if (visible && iconLoaded) 1f else 0f,
         durationMillis = 300,
-        delayMillis = animationDelay,
         label = "appIconAlpha_${app.packageName}",
     )
     val scale by rememberMotionAwareFloat(
         targetValue = if (visible && iconLoaded) 1f else 0f,
         durationMillis = 300,
-        delayMillis = animationDelay,
         label = "appIconScale_${app.packageName}",
     )
 
@@ -274,12 +269,11 @@ fun AppListRow(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        displayApps.forEachIndexed { index, app ->
+        displayApps.forEach { app ->
             key(app.profileKey) {
                 AppIconItem(
                     app = app,
                     iconSizeDp = iconSizeDp,
-                    index = index,
                     appIconBackgroundTransparency = appIconBackgroundTransparency,
                     onClick = {
                         repository.launchApp(context, app)
