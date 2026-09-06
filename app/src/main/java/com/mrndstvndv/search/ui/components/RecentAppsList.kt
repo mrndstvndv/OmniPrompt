@@ -2,7 +2,6 @@ package com.mrndstvndv.search.ui.components
 
 import android.content.Intent
 import android.provider.Settings
-import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -152,14 +151,14 @@ fun RecentAppsList(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     displayApps.forEachIndexed { index, app ->
-                        key(app.packageName) {
+                        key(app.profileKey) {
                             AppIconItem(
                                 app = app,
                                 iconSizeDp = iconSizeDp,
                                 index = index,
                                 appIconBackgroundTransparency = appIconBackgroundTransparency,
                                 onClick = {
-                                    safeLaunchApp(context, app.launchIntent)
+                                    repository.launchApp(context, app)
                                 },
                                 visible = visible,
                             )
@@ -170,7 +169,6 @@ fun RecentAppsList(
         }
     }
 }
-
 @Composable
 fun AppIconItem(
     app: RecentApp,
@@ -234,6 +232,7 @@ fun AppIconItem(
 fun AppListRow(
     apps: List<RecentApp>,
     isReversed: Boolean,
+    repository: RecentAppsRepository,
     modifier: Modifier = Modifier,
     shouldCenter: Boolean = false,
     visible: Boolean = true,
@@ -245,7 +244,7 @@ fun AppListRow(
     }
     val iconSizeDp = 40.dp
     val scrollState = rememberScrollState()
-    val listKey = remember(apps) { apps.joinToString("|") { it.packageName } }
+    val listKey = remember(apps) { apps.joinToString("|") { it.profileKey } }
 
     LaunchedEffect(listKey, isReversed) {
         if (isReversed) {
@@ -275,14 +274,14 @@ fun AppListRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         displayApps.forEachIndexed { index, app ->
-            key(app.packageName) {
+            key(app.profileKey) {
                 AppIconItem(
                     app = app,
                     iconSizeDp = iconSizeDp,
                     index = index,
                     appIconBackgroundTransparency = appIconBackgroundTransparency,
                     onClick = {
-                        safeLaunchApp(context, app.launchIntent)
+                        repository.launchApp(context, app)
                     },
                     visible = visible,
                 )
@@ -447,6 +446,7 @@ fun AppListSection(
                         AppListRow(
                             apps = pinnedApps,
                             isReversed = isReversedPinned,
+                            repository = recentAppsRepository,
                             shouldCenter = allowCenter,
                             modifier = Modifier.fillMaxWidth(),
                             visible = visible,
@@ -519,6 +519,7 @@ fun AppListSection(
                             AppListRow(
                                 apps = pinnedApps,
                                 isReversed = isReversedPinned,
+                                repository = recentAppsRepository,
                                 shouldCenter = false,
                                 modifier = Modifier.fillMaxWidth(),
                                 visible = visible,
@@ -567,25 +568,5 @@ fun AppListSection(
                 }
             }
         }
-    }
-}
-
-private fun safeLaunchApp(
-    context: android.content.Context,
-    launchIntent: android.content.Intent,
-) {
-    try {
-        context.startActivity(launchIntent)
-        (context as? ComponentActivity)?.finish()
-    } catch (_: android.content.ActivityNotFoundException) {
-        android.widget.Toast
-            .makeText(
-                context,
-                context.getString(R.string.app_list_app_unavailable),
-                android.widget.Toast.LENGTH_SHORT,
-            )
-            .show()
-    } catch (e: Exception) {
-        android.util.Log.w("AppList", "Failed to launch app", e)
     }
 }

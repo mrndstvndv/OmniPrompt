@@ -1200,6 +1200,8 @@ class SearchActivity : ComponentActivity() {
             is AppLaunchAliasTarget -> {
                 val action: suspend () -> Unit = {
                     withContext(Dispatchers.Main) {
+                        (application as SearchApplication).container.recentAppsRepository
+                            .recordLaunch(target.packageName, target.userSerialNumber)
                         val userManager = getSystemService(Context.USER_SERVICE) as UserManager
                         val userHandle = userManager.getUserForSerialNumber(target.userSerialNumber)
                             ?: android.os.Process.myUserHandle()

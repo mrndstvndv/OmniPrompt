@@ -62,7 +62,7 @@ class AppContainer(val context: Context) {
         context.resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
     }
     val appListRepository by lazy { AppListRepository.getInstance(context, defaultAppIconSize) }
-    val recentAppsRepository by lazy { RecentAppsRepository(context, appListRepository) }
+    val recentAppsRepository by lazy { RecentAppsRepository(context, appListRepository, appSearchSettingsRepo) }
     val pinnedAppsRepository by lazy {
         PinnedAppsRepository(context, appSearchSettingsRepo, appListRepository)
     }
@@ -70,7 +70,7 @@ class AppContainer(val context: Context) {
 
     val providers: List<Provider> by lazy {
         buildList {
-            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope))
+            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository))
             add(SettingsProvider(context.applicationContext, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
             add(CalculatorProvider(context.applicationContext))
             add(TextUtilitiesProvider(context.applicationContext, textUtilitiesSettingsRepo))

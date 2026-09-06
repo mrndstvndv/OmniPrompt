@@ -31,6 +31,7 @@ class AppListProvider(
     private val settingsRepository: ProviderSettingsRepository<AppSearchSettings>,
     private val appListRepository: AppListRepository,
     private val scope: CoroutineScope,
+    private val recentAppsRepository: RecentAppsRepository,
 ) : Provider {
     override val id: String = "app-list"
     override val displayName: String = context.getString(R.string.provider_applications)
@@ -129,6 +130,7 @@ class AppListProvider(
                 title = entry.label
                 subtitle = entry.packageName
                 action = {
+                    recentAppsRepository.recordLaunch(entry.packageName, entry.userSerialNumber)
                     withContext(Dispatchers.Main) {
                         val userManager =
                             context.getSystemService(Context.USER_SERVICE) as UserManager
