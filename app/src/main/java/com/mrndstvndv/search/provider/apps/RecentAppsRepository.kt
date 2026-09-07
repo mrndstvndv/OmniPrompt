@@ -162,8 +162,10 @@ class RecentAppsRepository(
             val trackedEntries = readTrackedEntries(includeWorkApps)
             val recentApps =
                 mergeRecentEntries(usageEntries, trackedEntries)
+                    .asSequence()
                     .mapNotNull { it.toRecentApp() }
                     .take(limit)
+                    .toList()
             emit(recentApps)
         }.flowOn(Dispatchers.IO)
 
@@ -201,6 +203,10 @@ class RecentAppsRepository(
     private fun readTrackedEntries(includeWorkApps: Boolean): List<RecentEntry> {
         val all = trackedPrefs.all
         if (all.isEmpty()) return emptyList()
+        val catalogApps =
+            appListRepository.catalog.value.apps.associateBy {
+                it.packageName to it.userSerialNumber
+            }
         val entries = mutableListOf<RecentEntry>()
         val staleKeys = mutableListOf<String>()
         for ((key, value) in all) {
@@ -208,9 +214,19 @@ class RecentAppsRepository(
             val (packageName, serial) = parsed
             val lastUsed = (value as? Long) ?: continue
             if (!includeWorkApps && serial != mySerialNumber) continue
-            val user = userManager.getUserForSerialNumber(serial)
+            val user =
+                if (serial == mySerialNumber) {
+                    Process.myUserHandle()
+                } else {
+                    userManager.getUserForSerialNumber(serial)
+                }
             if (user == null) {
                 staleKeys += key
+                continue
+            }
+            val catalogApp = catalogApps[packageName to serial]
+            if (catalogApp != null) {
+                entries += RecentEntry(packageName, serial, catalogApp.label, lastUsed)
                 continue
             }
             val label =
