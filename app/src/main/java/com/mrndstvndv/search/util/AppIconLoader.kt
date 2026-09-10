@@ -89,11 +89,7 @@ fun loadAppIconBitmap(
 
     val effectiveBackgroundAlpha = backgroundAlpha.coerceIn(0f, 1f)
     val adjustedAdaptiveBitmap =
-        if (
-            effectiveBackgroundAlpha < 1f &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            drawable is AdaptiveIconDrawable
-        ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && drawable is AdaptiveIconDrawable) {
             drawable.toBitmapWithBackgroundAlpha(iconSize, effectiveBackgroundAlpha)
         } else {
             null
@@ -270,17 +266,25 @@ private fun AdaptiveIconDrawable.toBitmapWithBackgroundAlpha(
     runCatching {
         val output = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
         val canvas = android.graphics.Canvas(output)
+        setBounds(0, 0, iconSize, iconSize)
+
+        val saveCount = canvas.save()
+        val mask =
+            android.graphics.Path().apply {
+                addCircle(iconSize / 2f, iconSize / 2f, iconSize / 2f, android.graphics.Path.Direction.CW)
+            }
+        canvas.clipPath(mask)
+
         val backgroundDrawable = background.mutate()
         val originalBackgroundAlpha = backgroundDrawable.alpha
         backgroundDrawable.alpha =
             (originalBackgroundAlpha * backgroundAlpha.coerceIn(0f, 1f)).toInt()
-        backgroundDrawable.setBounds(0, 0, iconSize, iconSize)
         backgroundDrawable.draw(canvas)
         backgroundDrawable.alpha = originalBackgroundAlpha
 
         val foregroundDrawable = foreground.mutate()
-        foregroundDrawable.setBounds(0, 0, iconSize, iconSize)
         foregroundDrawable.draw(canvas)
+        canvas.restoreToCount(saveCount)
         output
     }.getOrNull()
 
