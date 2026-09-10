@@ -1,6 +1,9 @@
 package com.mrndstvndv.search.ui.components
 
+import android.content.Context
 import android.content.Intent
+import android.os.Process
+import android.os.UserManager
 import android.provider.Settings
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -178,6 +181,10 @@ fun AppIconItem(
     visible: Boolean = true,
 ) {
     val context = LocalContext.current
+    val currentUserSerial = remember(context) {
+        val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
+        userManager.getSerialNumberForUser(Process.myUserHandle())
+    }
     val settingsRepo = remember(context) {
         (context.applicationContext as com.mrndstvndv.search.SearchApplication).container.appSearchSettingsRepo
     }
@@ -210,7 +217,14 @@ fun AppIconItem(
         modifier =
             Modifier
                 .size(iconSizeDp)
-                .clip(CircleShape)
+                // Work-profile badges occupy the lower-right edge of the icon.
+                .then(
+                    if (app.userSerialNumber == currentUserSerial) {
+                        Modifier.clip(CircleShape)
+                    } else {
+                        Modifier
+                    },
+                )
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
