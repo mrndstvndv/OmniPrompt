@@ -453,7 +453,12 @@ fun ItemsList(
                 val borderColor = lerp(baseBorderColor, cueBorderColor, colorPulseProgress)
                 // Keep the pop from scale, but don't pulse stroke width.
                 // The inner/top edge reads as a flashing seam when the first slot flips.
-                val borderWidth = if (showPrimaryActionHighlight) firstResultBorderThickness.dp else 0.dp
+                val border =
+                    if (showPrimaryActionHighlight && firstResultBorderThickness > 0f) {
+                        BorderStroke(firstResultBorderThickness.dp, borderColor)
+                    } else {
+                        null
+                    }
                 val tonalElevation =
                     when {
                         translucentItems -> 0.dp
@@ -516,7 +521,7 @@ fun ItemsList(
                     shape = shape,
                     tonalElevation = tonalElevation,
                     color = containerColor,
-                    border = BorderStroke(borderWidth, borderColor),
+                    border = border,
                 ) {
                     Row(
                         Modifier

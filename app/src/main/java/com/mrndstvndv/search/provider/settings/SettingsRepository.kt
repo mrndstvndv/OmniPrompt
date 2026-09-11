@@ -32,6 +32,9 @@ class SettingsRepository(
         private const val PREF_NAME = "provider_settings"
         private const val KEY_TRANSLUCENT_RESULTS = "translucent_results"
         private const val KEY_BACKGROUND_OPACITY = "background_opacity"
+        private const val KEY_SEARCH_BAR_TRANSPARENCY = "search_bar_transparency"
+        private const val KEY_SEARCH_BAR_BORDER_THICKNESS = "search_bar_border_thickness"
+        private const val KEY_APP_LIST_ICON_BACKGROUND_TRANSPARENCY = "app_list_icon_background_transparency"
         private const val KEY_BACKGROUND_BLUR_STRENGTH = "background_blur_strength"
         private const val KEY_ACTIVITY_INDICATOR_DELAY_MS = "activity_indicator_delay_ms"
         private const val KEY_BACKGROUND_ANIMATION_DELAY_MS = "background_animation_delay_ms"
@@ -56,8 +59,12 @@ class SettingsRepository(
         private const val KEY_LATEST_UPDATE_PRERELEASE = "latest_update_prerelease"
         private const val KEY_CHECK_PRERELEASE_BUILDS = "check_prerelease_builds"
 
-        private const val DEFAULT_BACKGROUND_OPACITY = 0.35f
-        private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.5f
+        private const val DEFAULT_BACKGROUND_OPACITY = 0.5f
+        private const val DEFAULT_SEARCH_BAR_TRANSPARENCY = 0.65f
+        private const val DEFAULT_SEARCH_BAR_BORDER_THICKNESS = 0f
+        private const val MAX_SEARCH_BAR_BORDER_THICKNESS = 3f
+        private const val DEFAULT_APP_LIST_ICON_BACKGROUND_TRANSPARENCY = 0.5f
+        private const val DEFAULT_BACKGROUND_BLUR_STRENGTH = 0.6f
         private const val DEFAULT_ACTIVITY_INDICATOR_DELAY_MS = 250
         private const val MAX_ACTIVITY_INDICATOR_DELAY_MS = 1000
         private const val DEFAULT_BACKGROUND_ANIMATION_DELAY_MS = 0
@@ -65,7 +72,7 @@ class SettingsRepository(
         private const val DEFAULT_ANIMATIONS_ENABLED = true
         private const val DEFAULT_FIRST_RESULT_BORDER_THICKNESS = 1f
         private const val DEFAULT_TRANSLUCENT_FIRST_RESULT_BORDER_THICKNESS = 1.5f
-        private const val MIN_FIRST_RESULT_BORDER_THICKNESS = 0.5f
+        private const val MIN_FIRST_RESULT_BORDER_THICKNESS = 0f
         private const val MAX_FIRST_RESULT_BORDER_THICKNESS = 3f
 
         private const val DEFAULT_UPDATE_CHECK_INTERVAL = "weekly"
@@ -88,6 +95,16 @@ class SettingsRepository(
 
     private val _backgroundOpacity = MutableStateFlow(DEFAULT_BACKGROUND_OPACITY)
     val backgroundOpacity: StateFlow<Float> = _backgroundOpacity
+
+    private val _searchBarTransparency = MutableStateFlow(DEFAULT_SEARCH_BAR_TRANSPARENCY)
+    val searchBarTransparency: StateFlow<Float> = _searchBarTransparency
+
+    private val _searchBarBorderThickness = MutableStateFlow(DEFAULT_SEARCH_BAR_BORDER_THICKNESS)
+    val searchBarBorderThickness: StateFlow<Float> = _searchBarBorderThickness
+
+    private val _appListIconBackgroundTransparency =
+        MutableStateFlow(DEFAULT_APP_LIST_ICON_BACKGROUND_TRANSPARENCY)
+    val appListIconBackgroundTransparency: StateFlow<Float> = _appListIconBackgroundTransparency
 
     private val _backgroundBlurStrength = MutableStateFlow(DEFAULT_BACKGROUND_BLUR_STRENGTH)
     val backgroundBlurStrength: StateFlow<Float> = _backgroundBlurStrength
@@ -160,6 +177,9 @@ class SettingsRepository(
             scope.launch(Dispatchers.IO) {
                 _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
                 _backgroundOpacity.value = loadBackgroundOpacity()
+                _searchBarTransparency.value = loadSearchBarTransparency()
+                _searchBarBorderThickness.value = loadSearchBarBorderThickness()
+                _appListIconBackgroundTransparency.value = loadAppListIconBackgroundTransparency()
                 _backgroundBlurStrength.value = loadBackgroundBlurStrength()
                 _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
                 _backgroundAnimationDelayMs.value = loadBackgroundAnimationDelayMs()
@@ -185,6 +205,9 @@ class SettingsRepository(
         } else {
             _translucentResultsEnabled.value = loadTranslucentResultsEnabled()
             _backgroundOpacity.value = loadBackgroundOpacity()
+            _searchBarTransparency.value = loadSearchBarTransparency()
+            _searchBarBorderThickness.value = loadSearchBarBorderThickness()
+            _appListIconBackgroundTransparency.value = loadAppListIconBackgroundTransparency()
             _backgroundBlurStrength.value = loadBackgroundBlurStrength()
             _activityIndicatorDelayMs.value = loadActivityIndicatorDelayMs()
             _backgroundAnimationDelayMs.value = loadBackgroundAnimationDelayMs()
@@ -218,6 +241,26 @@ class SettingsRepository(
         val coercedAlpha = alpha.coerceIn(0f, 1f)
         preferences.edit { putFloat(KEY_BACKGROUND_OPACITY, coercedAlpha) }
         _backgroundOpacity.value = coercedAlpha
+    }
+
+    fun setSearchBarTransparency(transparency: Float) {
+        val coercedTransparency = transparency.coerceIn(0f, 1f)
+        preferences.edit { putFloat(KEY_SEARCH_BAR_TRANSPARENCY, coercedTransparency) }
+        _searchBarTransparency.value = coercedTransparency
+    }
+
+    fun setSearchBarBorderThickness(thickness: Float) {
+        val coercedThickness = thickness.coerceIn(0f, MAX_SEARCH_BAR_BORDER_THICKNESS)
+        preferences.edit { putFloat(KEY_SEARCH_BAR_BORDER_THICKNESS, coercedThickness) }
+        _searchBarBorderThickness.value = coercedThickness
+    }
+
+    fun setAppListIconBackgroundTransparency(transparency: Float) {
+        val coercedTransparency = transparency.coerceIn(0f, 1f)
+        preferences.edit {
+            putFloat(KEY_APP_LIST_ICON_BACKGROUND_TRANSPARENCY, coercedTransparency)
+        }
+        _appListIconBackgroundTransparency.value = coercedTransparency
     }
 
     fun setBackgroundBlurStrength(strength: Float) {
@@ -268,6 +311,24 @@ class SettingsRepository(
             KEY_BACKGROUND_OPACITY,
             DEFAULT_BACKGROUND_OPACITY,
         )
+
+    private fun loadSearchBarTransparency(): Float =
+        preferences.getFloat(
+            KEY_SEARCH_BAR_TRANSPARENCY,
+            DEFAULT_SEARCH_BAR_TRANSPARENCY,
+        ).coerceIn(0f, 1f)
+
+    private fun loadSearchBarBorderThickness(): Float =
+        preferences.getFloat(
+            KEY_SEARCH_BAR_BORDER_THICKNESS,
+            DEFAULT_SEARCH_BAR_BORDER_THICKNESS,
+        ).coerceIn(0f, MAX_SEARCH_BAR_BORDER_THICKNESS)
+
+    private fun loadAppListIconBackgroundTransparency(): Float =
+        preferences.getFloat(
+            KEY_APP_LIST_ICON_BACKGROUND_TRANSPARENCY,
+            DEFAULT_APP_LIST_ICON_BACKGROUND_TRANSPARENCY,
+        ).coerceIn(0f, 1f)
 
     private fun loadBackgroundBlurStrength(): Float =
         preferences.getFloat(
@@ -1121,7 +1182,7 @@ data class AppSearchSettings(
     val centerAppList: Boolean = false,
     val pinnedApps: List<String> = emptyList(),
     val hideAppListWhenResultsVisible: Boolean = true,
-    val themedIconsEnabled: Boolean = false,
+    val themedIconsEnabled: Boolean = true,
     val themeAllIcons: Boolean = false,
     val iconPackPackageName: String = "",
     val includeWorkApps: Boolean = true,
@@ -1144,7 +1205,7 @@ data class AppSearchSettings(
                 centerAppList = false,
                 pinnedApps = emptyList(),
                 hideAppListWhenResultsVisible = true,
-                themedIconsEnabled = false,
+                themedIconsEnabled = true,
                 themeAllIcons = false,
                 iconPackPackageName = "",
                 includeWorkApps = true,
@@ -1183,7 +1244,7 @@ data class AppSearchSettings(
                         "hideAppListWhenResultsVisible",
                         true,
                     ),
-                themedIconsEnabled = json.optBoolean("themedIconsEnabled", false),
+                themedIconsEnabled = json.optBoolean("themedIconsEnabled", true),
                 themeAllIcons = json.optBoolean("themeAllIcons", false),
                 iconPackPackageName = json.optString("iconPackPackageName", ""),
                 includeWorkApps = json.optBoolean("includeWorkApps", true),

@@ -60,6 +60,9 @@ class AppListRepository private constructor(
     private val settingsRepository by lazy {
         (context.applicationContext as SearchApplication).container.appSearchSettingsRepo
     }
+    private val appearanceSettingsRepository by lazy {
+        (context.applicationContext as SearchApplication).container.settingsRepository
+    }
     private var currentSettings: AppSearchSettings? = null
 
     @Volatile
@@ -70,6 +73,9 @@ class AppListRepository private constructor(
         if (existing != null) return existing
         return getThemeColors(context).also { cachedColors = it }
     }
+
+    private fun getIconBackgroundAlpha(): Float =
+        appearanceSettingsRepository.appListIconBackgroundTransparency.value.coerceIn(0f, 1f)
 
     @Suppress("OVERRIDE_DEPRECATION")
     private val componentCallbacks =
@@ -193,12 +199,14 @@ class AppListRepository private constructor(
     ): Bitmap? {
         val s = currentSettings ?: settingsRepository.value
         val colors = getCachedThemeColors()
+        val backgroundAlpha = getIconBackgroundAlpha()
         val cacheKey =
             buildString {
                 append(packageName)
                 append(":")
                 append(userSerialNumber)
                 append(":c=${colors.first}_${colors.third}")
+                append(":ba=$backgroundAlpha")
                 if (s.iconPackPackageName.isNotEmpty()) append(":pack=${s.iconPackPackageName}")
                 if (s.themedIconsEnabled) {
                     append(":themed")
@@ -226,12 +234,14 @@ class AppListRepository private constructor(
     ): Bitmap? {
         // ponytail: composite cache key so toggling themes doesn't serve stale icons.
         val colors = getCachedThemeColors()
+        val backgroundAlpha = getIconBackgroundAlpha()
         val cacheKey =
             buildString {
                 append(packageName)
                 append(":")
                 append(userSerialNumber)
                 append(":c=${colors.first}_${colors.third}")
+                append(":ba=$backgroundAlpha")
                 if (iconPackPackageName.isNotEmpty()) append(":pack=$iconPackPackageName")
                 if (themedIconsEnabled) {
                     append(":themed")
@@ -248,6 +258,7 @@ class AppListRepository private constructor(
                     context, packageName, iconSize,
                     themedIconsEnabled, themeAllIcons, iconPackPackageName,
                     userSerialNumber,
+                    backgroundAlpha = backgroundAlpha,
                 )
             }
 

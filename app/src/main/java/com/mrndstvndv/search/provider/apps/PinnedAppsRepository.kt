@@ -2,6 +2,8 @@ package com.mrndstvndv.search.provider.apps
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Process
+import android.os.UserManager
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +17,10 @@ class PinnedAppsRepository(
     private val appListRepository: AppListRepository,
 ) {
     private val packageManager = context.packageManager
+    private val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
+    private val mySerialNumber: Long by lazy {
+        userManager.getSerialNumberForUser(Process.myUserHandle())
+    }
 
     fun getPinnedApps(): Flow<List<RecentApp>> =
         settingsRepository.flow
@@ -29,8 +35,9 @@ class PinnedAppsRepository(
                         RecentApp(
                             packageName = packageName,
                             label = label,
-                            iconLoader = { appListRepository.getIcon(packageName) },
+                            iconLoader = { appListRepository.getIcon(packageName, mySerialNumber) },
                             launchIntent = launchIntent,
+                            userSerialNumber = mySerialNumber,
                         )
                     } catch (e: PackageManager.NameNotFoundException) {
                         null // App uninstalled

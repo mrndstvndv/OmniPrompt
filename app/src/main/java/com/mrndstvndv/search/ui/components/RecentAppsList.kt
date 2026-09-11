@@ -1,8 +1,10 @@
 package com.mrndstvndv.search.ui.components
 
+import android.content.Context
 import android.content.Intent
+import android.os.Process
+import android.os.UserManager
 import android.provider.Settings
-import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -77,6 +79,7 @@ fun RecentAppsList(
     shouldCenter: Boolean = false,
     visible: Boolean = true,
     excludePackages: Set<String> = emptySet(),
+    appIconBackgroundTransparency: Float = 0f,
 ) {
     val context = LocalContext.current
     var hasPermission by remember(repository) { mutableStateOf(repository.hasPermission()) }
@@ -110,9 +113,10 @@ fun RecentAppsList(
             val width = maxWidth
             val iconSizeDp = 40.dp
             val paddingDp = 8.dp
-            val itemWidth = iconSizeDp + paddingDp
+            val itemWidth = if (shouldCenter) iconSizeDp + paddingDp else iconSizeDp
+            val contentWidth = if (shouldCenter) width else width - (paddingDp * 2f)
 
-            val maxItems = (width / itemWidth).toInt().coerceAtLeast(0)
+            val maxItems = (contentWidth / itemWidth).toInt().coerceAtLeast(0)
 
             if (maxItems > 0) {
                 val fetchLimit =
@@ -150,14 +154,14 @@ fun RecentAppsList(
                         },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    displayApps.forEachIndexed { index, app ->
-                        key(app.packageName) {
+                    displayApps.forEach { app ->
+                        key(app.profileKey) {
                             AppIconItem(
                                 app = app,
                                 iconSizeDp = iconSizeDp,
-                                index = index,
+                                appIconBackgroundTransparency = appIconBackgroundTransparency,
                                 onClick = {
-                                    safeLaunchApp(context, app.launchIntent)
+                                    repository.launchApp(context, app)
                                 },
                                 visible = visible,
                             )
@@ -168,16 +172,19 @@ fun RecentAppsList(
         }
     }
 }
-
 @Composable
 fun AppIconItem(
     app: RecentApp,
     iconSizeDp: androidx.compose.ui.unit.Dp,
-    index: Int,
+    appIconBackgroundTransparency: Float = 0f,
     onClick: () -> Unit,
     visible: Boolean = true,
 ) {
     val context = LocalContext.current
+    val currentUserSerial = remember(context) {
+        val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
+        userManager.getSerialNumberForUser(Process.myUserHandle())
+    }
     val settingsRepo = remember(context) {
         (context.applicationContext as com.mrndstvndv.search.SearchApplication).container.appSearchSettingsRepo
     }
@@ -189,22 +196,20 @@ fun AppIconItem(
         settings.themedIconsEnabled,
         settings.themeAllIcons,
         settings.iconPackPackageName,
+        appIconBackgroundTransparency,
     ) {
         value = app.iconLoader()
     }
 
     val iconLoaded = icon != null
-    val animationDelay = (index * 30).coerceAtMost(150)
     val alpha by rememberMotionAwareFloat(
         targetValue = if (visible && iconLoaded) 1f else 0f,
         durationMillis = 300,
-        delayMillis = animationDelay,
         label = "appIconAlpha_${app.packageName}",
     )
     val scale by rememberMotionAwareFloat(
         targetValue = if (visible && iconLoaded) 1f else 0f,
         durationMillis = 300,
-        delayMillis = animationDelay,
         label = "appIconScale_${app.packageName}",
     )
 
@@ -212,7 +217,14 @@ fun AppIconItem(
         modifier =
             Modifier
                 .size(iconSizeDp)
-                .clip(CircleShape)
+                // Work-profile badges occupy the lower-right edge of the icon.
+                .then(
+                    if (app.userSerialNumber == currentUserSerial) {
+                        Modifier.clip(CircleShape)
+                    } else {
+                        Modifier
+                    },
+                )
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -230,9 +242,11 @@ fun AppIconItem(
 fun AppListRow(
     apps: List<RecentApp>,
     isReversed: Boolean,
+    repository: RecentAppsRepository,
     modifier: Modifier = Modifier,
     shouldCenter: Boolean = false,
     visible: Boolean = true,
+    appIconBackgroundTransparency: Float = 0f,
 ) {
     val context = LocalContext.current
     val displayApps = remember(apps, isReversed) {
@@ -240,7 +254,7 @@ fun AppListRow(
     }
     val iconSizeDp = 40.dp
     val scrollState = rememberScrollState()
-    val listKey = remember(apps) { apps.joinToString("|") { it.packageName } }
+    val listKey = remember(apps) { apps.joinToString("|") { it.profileKey } }
 
     LaunchedEffect(listKey, isReversed) {
         if (isReversed) {
@@ -269,14 +283,14 @@ fun AppListRow(
             ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        displayApps.forEachIndexed { index, app ->
-            key(app.packageName) {
+        displayApps.forEach { app ->
+            key(app.profileKey) {
                 AppIconItem(
                     app = app,
                     iconSizeDp = iconSizeDp,
-                    index = index,
+                    appIconBackgroundTransparency = appIconBackgroundTransparency,
                     onClick = {
-                        safeLaunchApp(context, app.launchIntent)
+                        repository.launchApp(context, app)
                     },
                     visible = visible,
                 )
@@ -411,6 +425,7 @@ fun AppListSection(
     shouldCenter: Boolean,
     modifier: Modifier = Modifier,
     visible: Boolean = true,
+    appIconBackgroundTransparency: Float = 0f,
 ) {
     when (appListType) {
         AppListType.RECENT -> {
@@ -420,6 +435,7 @@ fun AppListSection(
                 shouldCenter = shouldCenter,
                 modifier = modifier,
                 visible = visible,
+                appIconBackgroundTransparency = appIconBackgroundTransparency,
             )
         }
 
@@ -439,9 +455,11 @@ fun AppListSection(
                         AppListRow(
                             apps = pinnedApps,
                             isReversed = isReversedPinned,
+                            repository = recentAppsRepository,
                             shouldCenter = allowCenter,
                             modifier = Modifier.fillMaxWidth(),
                             visible = visible,
+                            appIconBackgroundTransparency = appIconBackgroundTransparency,
                         )
                     }
                 }
@@ -492,6 +510,7 @@ fun AppListSection(
                             ).padding(start = recentPaddingStart, end = recentPaddingEnd),
                         visible = visible,
                         excludePackages = excludePackages,
+                        appIconBackgroundTransparency = appIconBackgroundTransparency,
                     )
                 }
                 val pinnedContent: @Composable RowScope.() -> Unit = {
@@ -509,9 +528,11 @@ fun AppListSection(
                             AppListRow(
                                 apps = pinnedApps,
                                 isReversed = isReversedPinned,
+                                repository = recentAppsRepository,
                                 shouldCenter = false,
                                 modifier = Modifier.fillMaxWidth(),
                                 visible = visible,
+                                appIconBackgroundTransparency = appIconBackgroundTransparency,
                             )
                         }
                     } else {
@@ -556,25 +577,5 @@ fun AppListSection(
                 }
             }
         }
-    }
-}
-
-private fun safeLaunchApp(
-    context: android.content.Context,
-    launchIntent: android.content.Intent,
-) {
-    try {
-        context.startActivity(launchIntent)
-        (context as? ComponentActivity)?.finish()
-    } catch (_: android.content.ActivityNotFoundException) {
-        android.widget.Toast
-            .makeText(
-                context,
-                context.getString(R.string.app_list_app_unavailable),
-                android.widget.Toast.LENGTH_SHORT,
-            )
-            .show()
-    } catch (e: Exception) {
-        android.util.Log.w("AppList", "Failed to launch app", e)
     }
 }

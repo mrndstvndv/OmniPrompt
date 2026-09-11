@@ -105,6 +105,9 @@ fun GeneralSettingsScreen(
     settingsRepository.enabledProviders.collectAsState()
     settingsRepository.translucentResultsEnabled.collectAsState()
     settingsRepository.backgroundOpacity.collectAsState()
+    settingsRepository.searchBarTransparency.collectAsState()
+    settingsRepository.searchBarBorderThickness.collectAsState()
+    settingsRepository.appListIconBackgroundTransparency.collectAsState()
     settingsRepository.backgroundBlurStrength.collectAsState()
     settingsRepository.motionPreferences.collectAsState()
     settingsRepository.activityIndicatorDelayMs.collectAsState()
@@ -449,6 +452,9 @@ fun AppearanceSettingsScreen(
 ) {
     val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
     val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
+    val searchBarTransparency by settingsRepository.searchBarTransparency.collectAsState()
+    val searchBarBorderThickness by settingsRepository.searchBarBorderThickness.collectAsState()
+    val appListIconBackgroundTransparency by settingsRepository.appListIconBackgroundTransparency.collectAsState()
     val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
     val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
     val searchBarPosition by settingsRepository.searchBarPosition.collectAsState()
@@ -474,6 +480,60 @@ fun AppearanceSettingsScreen(
                         subtitle = stringResource(R.string.appearance_translucent_results_subtitle),
                         checked = translucentResultsEnabled,
                         onCheckedChange = { settingsRepository.setTranslucentResultsEnabled(it) },
+                    )
+                }
+            }
+        }
+
+        item {
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_search_bar),
+                subtitle = stringResource(R.string.appearance_section_search_bar_subtitle),
+            ) {
+                SettingsGroup {
+                    SettingsSliderRow(
+                        title = stringResource(R.string.appearance_search_bar_transparency),
+                        subtitle = stringResource(R.string.appearance_search_bar_transparency_subtitle),
+                        valueText =
+                            stringResource(
+                                R.string.appearance_transparency_value,
+                                (searchBarTransparency * 100).roundToInt(),
+                            ),
+                        value = searchBarTransparency,
+                        onValueChange = settingsRepository::setSearchBarTransparency,
+                        steps = 19,
+                    )
+                    SettingsDivider()
+                    SettingsSliderRow(
+                        title = stringResource(R.string.appearance_search_bar_border),
+                        subtitle = stringResource(R.string.appearance_search_bar_border_subtitle),
+                        valueText = stringResource(R.string.value_dp, searchBarBorderThickness),
+                        value = searchBarBorderThickness,
+                        onValueChange = settingsRepository::setSearchBarBorderThickness,
+                        valueRange = 0f..3f,
+                        steps = 5,
+                    )
+                }
+            }
+        }
+
+        item {
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_app_list),
+                subtitle = stringResource(R.string.appearance_section_app_list_subtitle),
+            ) {
+                SettingsGroup {
+                    SettingsSliderRow(
+                        title = stringResource(R.string.appearance_app_icon_background_transparency),
+                        subtitle = stringResource(R.string.appearance_app_icon_background_transparency_subtitle),
+                        valueText =
+                            stringResource(
+                                R.string.appearance_transparency_value,
+                                (appListIconBackgroundTransparency * 100).roundToInt(),
+                            ),
+                        value = appListIconBackgroundTransparency,
+                        onValueChange = settingsRepository::setAppListIconBackgroundTransparency,
+                        steps = 19,
                     )
                 }
             }
@@ -518,8 +578,8 @@ fun AppearanceSettingsScreen(
                                 ),
                             value = firstResultBorderThickness,
                             onValueChange = settingsRepository::setFirstResultBorderThickness,
-                            valueRange = 0.5f..3f,
-                            steps = 9,
+                            valueRange = 0f..3f,
+                            steps = 11,
                             valueText =
                                 stringResource(
                                     R.string.value_dp,

@@ -77,6 +77,16 @@
     <!-- Appearance settings -->
     <string name="appearance_section_results">Results</string>
     <string name="appearance_section_results_subtitle">Adjust how search results look.</string>
+    <string name="appearance_section_search_bar">Search bar</string>
+    <string name="appearance_section_search_bar_subtitle">Adjust the search bar appearance.</string>
+    <string name="appearance_section_app_list">App list</string>
+    <string name="appearance_section_app_list_subtitle">Adjust the app icon appearance.</string>
+    <string name="appearance_app_icon_background_transparency">App icon background opacity</string>
+    <string name="appearance_app_icon_background_transparency_subtitle">Control how opaque app icon backgrounds appear.</string>
+    <string name="appearance_search_bar_transparency">Search bar opacity</string>
+    <string name="appearance_search_bar_transparency_subtitle">Control how opaque the search bar appears.</string>
+    <string name="appearance_search_bar_border">Search bar border thickness</string>
+    <string name="appearance_search_bar_border_subtitle">Set to 0 dp to hide the border.</string>
     <string name="appearance_section_default_action">Default action</string>
     <string name="appearance_section_default_action_subtitle">Tune the first result and the Enter key hint.</string>
     <string name="appearance_section_background">Background</string>
@@ -664,6 +674,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="contact_type_number">%1$s: %2$s</string>
     <string name="web_search_preview">Preview: %s</string>
     <string name="appearance_opacity_value">%d%%</string>
+    <string name="appearance_transparency_value">%d%%</string>
 
     <!-- Content descriptions -->
     <string name="cd_settings">Settings</string>

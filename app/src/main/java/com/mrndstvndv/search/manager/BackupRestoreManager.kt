@@ -48,6 +48,9 @@ class BackupRestoreManager(
         // Appearance Keys
         private const val KEY_TRANSLUCENT_RESULTS = "translucentResults"
         private const val KEY_BACKGROUND_OPACITY = "backgroundOpacity"
+        private const val KEY_SEARCH_BAR_TRANSPARENCY = "searchBarTransparency"
+        private const val KEY_SEARCH_BAR_BORDER_THICKNESS = "searchBarBorderThickness"
+        private const val KEY_APP_LIST_ICON_BACKGROUND_TRANSPARENCY = "appListIconBackgroundTransparency"
         private const val KEY_SEARCH_BAR_POSITION = "searchBarPosition"
         private const val KEY_BACKGROUND_BLUR_STRENGTH = "backgroundBlurStrength"
         private const val KEY_FIRST_RESULT_HIGHLIGHT_ENABLED = "firstResultHighlightEnabled"
@@ -149,6 +152,18 @@ class BackupRestoreManager(
             appearance.put(
                 KEY_BACKGROUND_OPACITY,
                 settingsRepository.backgroundOpacity.value.toDouble(),
+            )
+            appearance.put(
+                KEY_SEARCH_BAR_TRANSPARENCY,
+                settingsRepository.searchBarTransparency.value.toDouble(),
+            )
+            appearance.put(
+                KEY_SEARCH_BAR_BORDER_THICKNESS,
+                settingsRepository.searchBarBorderThickness.value.toDouble(),
+            )
+            appearance.put(
+                KEY_APP_LIST_ICON_BACKGROUND_TRANSPARENCY,
+                settingsRepository.appListIconBackgroundTransparency.value.toDouble(),
             )
             appearance.put(
                 KEY_BACKGROUND_BLUR_STRENGTH,
@@ -408,6 +423,15 @@ class BackupRestoreManager(
                         )
                         settingsRepository.setBackgroundOpacity(
                             appearanceJson.optDouble(KEY_BACKGROUND_OPACITY, 0.35).toFloat(),
+                        )
+                        settingsRepository.setSearchBarTransparency(
+                            appearanceJson.optDouble(KEY_SEARCH_BAR_TRANSPARENCY, 0.0).toFloat(),
+                        )
+                        settingsRepository.setSearchBarBorderThickness(
+                            appearanceJson.optDouble(KEY_SEARCH_BAR_BORDER_THICKNESS, 0.0).toFloat(),
+                        )
+                        settingsRepository.setAppListIconBackgroundTransparency(
+                            appearanceJson.optDouble(KEY_APP_LIST_ICON_BACKGROUND_TRANSPARENCY, 0.0).toFloat(),
                         )
                         settingsRepository.setBackgroundBlurStrength(
                             appearanceJson.optDouble(KEY_BACKGROUND_BLUR_STRENGTH, 0.5).toFloat(),
