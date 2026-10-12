@@ -70,7 +70,7 @@ class AppContainer(val context: Context) {
 
     val providers: List<Provider> by lazy {
         buildList {
-            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository))
+            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository, aliasRepository))
             add(SettingsProvider(context.applicationContext, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
             add(CalculatorProvider(context.applicationContext))
             add(TextUtilitiesProvider(context.applicationContext, textUtilitiesSettingsRepo))

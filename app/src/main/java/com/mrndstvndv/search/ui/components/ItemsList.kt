@@ -602,15 +602,13 @@ fun ItemsList(
                             }
                         }
 
-                        if ((showEnterBadge && isPrimaryActionItem) || item.id.startsWith("alias:")) {
+                        if ((showEnterBadge && isPrimaryActionItem) || item.isAlias) {
                             Spacer(Modifier.width(12.dp))
                             Column(
                                 horizontalAlignment = Alignment.End,
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                // TODO: using the id prefix is still fragile.
-                                // Add an explicit isAlias flag to ProviderResult.
-                                if (item.id.startsWith("alias:")) {
+                                if (item.isAlias) {
                                     Icon(
                                         imageVector = Icons.Filled.Bookmark,
                                         contentDescription =

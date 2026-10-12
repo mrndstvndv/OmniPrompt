@@ -1,7 +1,12 @@
 package com.mrndstvndv.search.provider.apps
 
+import com.mrndstvndv.search.alias.AliasEntry
+import com.mrndstvndv.search.alias.AppLaunchAliasTarget
+import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.apps.models.AppInfo
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
 
@@ -99,6 +104,72 @@ class AppSearchScoringTest {
             narrowedExtended.sortedForAppSearch(),
         )
     }
+
+    @Test
+    fun aliasMatchesFuzzilyWhenLabelDoesNot() {
+        val app = app("Forkgram Classic", "org.forkgram.classic")
+
+        assertNull(scoreApp(app, "tlgrm", false))
+        val scored = scoreApp(app, "tlgrm", false, listOf("telegram"))
+
+        assertNotNull(scored)
+        assertEquals(emptyList<Int>(), scored!!.matchedTitleIndices)
+        assertEquals(emptyList<Int>(), scored.matchedSubtitleIndices)
+        assertEquals("telegram", scored.matchedAlias)
+    }
+
+    @Test
+    fun labelWinsTieAgainstAlias() {
+        val app = app("Telegram", "org.telegram.messenger")
+
+        val scored = scoreApp(app, "telegram", false, listOf("telegram"))
+
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 6, 7), scored!!.matchedTitleIndices)
+        assertNull(scored.matchedAlias)
+    }
+
+    @Test
+    fun aliasChangeInvalidatesNarrowingCache() {
+        val forkgram = app("Forkgram Classic", "org.forkgram.classic")
+        val catalog = catalog(generation = 1, forkgram)
+        val cache =
+            AppQueryCacheState(
+                generation = 1,
+                includePackageName = false,
+                queryLower = "t",
+                matches = emptyList(),
+            )
+        val aliasNames = buildAppAliasNames(listOf(aliasEntry("telegram", forkgram)))
+
+        assertSame(
+            catalog.apps,
+            selectAppSearchCandidates("tl", false, catalog, cache, aliasNames),
+        )
+    }
+
+    @Test
+    fun buildAppAliasNamesKeysAppAliasesByPackageAndUser() {
+        val forkgram = app("Forkgram Classic", "org.forkgram.classic", userSerialNumber = 10)
+        val aliases =
+            listOf(
+                aliasEntry("Telegram", forkgram),
+                aliasEntry("tg", forkgram),
+                AliasEntry("gh", WebSearchAliasTarget("github", "GitHub")),
+            )
+
+        assertEquals(
+            mapOf(("org.forkgram.classic" to 10L) to listOf("telegram", "tg")),
+            buildAppAliasNames(aliases),
+        )
+    }
+
+    private fun aliasEntry(
+        alias: String,
+        app: AppInfo,
+    ) = AliasEntry(
+        alias,
+        AppLaunchAliasTarget(app.packageName, app.label, app.userSerialNumber),
+    )
 
     private fun app(
         label: String,

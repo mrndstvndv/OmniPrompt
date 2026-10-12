@@ -1160,7 +1160,6 @@ class SearchActivity : ComponentActivity() {
     }
 
     // TODO: The alias feature needs a proper refactor:
-    // - Add an explicit "isAlias" field to ProviderResult instead of relying on id prefix
     // - Consider creating a dedicated AliasResult class that wraps ProviderResult
     // - The icon loading should be handled more elegantly (maybe a separate IconResolver)
     // - Consider caching loaded icons to avoid repeated loading
@@ -1189,6 +1188,7 @@ class SearchActivity : ComponentActivity() {
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,
+                    isAlias = true,
                     keepOverlayUntilExit = true,
                     // Aggregate frequency by site rather than per-query
                     frequencyKey = "web-search:${resolvedSite.id}",
@@ -1232,6 +1232,7 @@ class SearchActivity : ComponentActivity() {
                     providerId = target.providerId,
                     onSelect = action,
                     aliasTarget = target,
+                    isAlias = true,
                     keepOverlayUntilExit = true,
                     // Load app icon from PackageManager with profile badging and theming/icon pack support
                     iconLoader = {

@@ -7,6 +7,7 @@ import android.os.UserManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Android
 import com.mrndstvndv.search.R
+import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.provider.Provider
 import com.mrndstvndv.search.provider.apps.models.AppInfo
@@ -32,6 +33,7 @@ class AppListProvider(
     private val appListRepository: AppListRepository,
     private val scope: CoroutineScope,
     private val recentAppsRepository: RecentAppsRepository,
+    private val aliasRepository: AliasRepository,
 ) : Provider {
     override val id: String = "app-list"
     override val displayName: String = context.getString(R.string.provider_applications)
@@ -128,7 +130,9 @@ class AppListProvider(
             } else {
                 // Normal app launch (or "ask gemini" with no query)
                 title = entry.label
-                subtitle = entry.packageName
+                subtitle =
+                    scoredApp.matchedAlias?.let { context.getString(R.string.alias_app_subtitle, it) }
+                        ?: entry.packageName
                 action = {
                     recentAppsRepository.recordLaunch(entry.packageName, entry.userSerialNumber)
                     withContext(Dispatchers.Main) {
@@ -183,6 +187,7 @@ class AppListProvider(
                             entry.label,
                             entry.userSerialNumber,
                         ),
+                    isAlias = scoredApp.matchedAlias != null,
                     keepOverlayUntilExit = true,
                     matchedTitleIndices =
                         if (isAiQueryResult) {
@@ -206,6 +211,7 @@ class AppListProvider(
         includePackageName: Boolean,
         catalog: AppCatalog,
     ): List<ScoredApp> {
+        val aliasNames = buildAppAliasNames(aliasRepository.aliases.value)
         val previousCache = synchronized(queryCacheLock) { queryCache }
         val candidateApps =
             selectAppSearchCandidates(
@@ -213,10 +219,11 @@ class AppListProvider(
                 includePackageName = includePackageName,
                 catalog = catalog,
                 previousCache = previousCache,
+                aliasNames = aliasNames,
             )
 
         // Subsequence matching is prefix-monotonic: extending a query cannot revive a prior miss.
-        val matches = scoreApps(candidateApps, queryLower, includePackageName)
+        val matches = scoreApps(candidateApps, queryLower, includePackageName, aliasNames)
 
         synchronized(queryCacheLock) {
             queryCache =
@@ -225,6 +232,7 @@ class AppListProvider(
                     includePackageName = includePackageName,
                     queryLower = queryLower,
                     matches = matches,
+                    aliasNames = aliasNames,
                 )
         }
 
@@ -235,12 +243,18 @@ class AppListProvider(
         apps: List<AppInfo>,
         queryLower: String,
         includePackageName: Boolean,
+        aliasNames: AppAliasNames,
     ): List<ScoredApp> {
         val coroutineContext = currentCoroutineContext()
         return apps
             .mapNotNull { app ->
                 coroutineContext.ensureActive()
-                scoreApp(app, queryLower, includePackageName)
+                scoreApp(
+                    app,
+                    queryLower,
+                    includePackageName,
+                    aliasNames[app.packageName to app.userSerialNumber].orEmpty(),
+                )
             }
             .sortedForAppSearch()
     }
