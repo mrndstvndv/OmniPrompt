@@ -1,11 +1,9 @@
 package com.mrndstvndv.search.alias
 
 // TODO: Alias feature needs broader refactoring:
-// - The aliasTarget field on ProviderResult is used for two purposes:
-//   1. To enable alias creation from long-press (web search results, apps)
-//   2. To identify results that ARE aliases (from buildAliasResult)
-//   This is confusing and leads to fragile code (see ItemsList.kt id prefix check)
-// - Consider adding an explicit isAlias field to ProviderResult
+// - ProviderResult.aliasTarget enables alias creation from long-press and lets the search view
+//   model hide the duplicate provider row for an alias. ProviderResult.isAlias marks results
+//   that are shown through an alias (badge and "Alias" subtitle).
 // - Could support more target types (contacts, files, settings actions)
 // - Consider adding alias-specific settings (e.g., custom icon, description)
 import org.json.JSONObject

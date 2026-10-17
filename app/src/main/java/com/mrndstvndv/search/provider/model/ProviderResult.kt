@@ -28,4 +28,6 @@ data class ProviderResult(
     val frequencyQuery: String? = null,
     /** When true, this result will not be tracked for frequency-based ranking */
     val excludeFromFrequencyRanking: Boolean = false,
+    /** True when this result is shown through an alias, so the UI marks it with the alias badge */
+    val isAlias: Boolean = false,
 )
