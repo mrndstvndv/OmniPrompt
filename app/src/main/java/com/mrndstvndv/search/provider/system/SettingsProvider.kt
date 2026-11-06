@@ -14,10 +14,14 @@ import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
+import com.mrndstvndv.search.util.FuzzyMatchResult
 import com.mrndstvndv.search.util.FuzzyMatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class SettingsProvider(
@@ -25,12 +29,34 @@ class SettingsProvider(
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<SystemSettingsSettings>,
     private val developerSettingsManager: DeveloperSettingsManager,
+    private val settingsCatalogRepository: SettingsCatalogRepository,
+    private val scope: CoroutineScope,
 ) : Provider {
     override val id: String = "system-settings"
     override val displayName: String = context.getString(R.string.provider_system_settings)
 
     private val _refreshSignal = MutableSharedFlow<Unit>()
     override val refreshSignal: SharedFlow<Unit> = _refreshSignal
+
+    init {
+        // Re-run the active search whenever the discovered-screens catalog
+        // changes (initial scan finishing, a manual/automatic rescan, or a
+        // stale entry being self-healed away).
+        scope.launch {
+            settingsCatalogRepository.catalog.drop(1).collect { _refreshSignal.emit(Unit) }
+        }
+    }
+
+    override fun initialize() {
+        scope.launch {
+            settingsCatalogRepository.initialize(settingsActions.map { it.action })
+        }
+    }
+
+    /** Bypasses the version-change gate — for a manual "refresh" action in settings. */
+    suspend fun forceRescanSettingsCatalog() {
+        settingsCatalogRepository.forceRescan(settingsActions.map { it.action })
+    }
 
     private data class SettingsActionItem(
         val title: String,
@@ -346,52 +372,138 @@ class SettingsProvider(
         }
 
         val currentPermissionStatus = developerSettingsManager.permissionStatus.value
+        val settingsCatalog = settingsCatalogRepository.catalog.value
 
-        // Add regular settings results with fuzzy matching
-        results.addAll(
-            settingsActions.mapNotNull { item ->
+        // Manifest-discovered activities with their own label always take
+        // priority over a hardcoded entry resolving to the same target — an
+        // OEM's own name for a screen is more useful than a generic curated
+        // one. Precomputed once per catalog publish (not per keystroke) in
+        // SettingsCatalogRepository.publishLocked().
+        val overriddenComponents = settingsCatalog.overriddenComponents
+
+        // Add regular settings results with fuzzy matching. Hardcoded entries
+        // are filtered to ones that actually resolve on this device (via the
+        // catalog's cheap resolvability check) and aren't overridden above.
+        val eligibleHardcoded =
+            settingsActions.filter { item ->
                 if (item.requiresElevatedPermission && currentPermissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.NONE) {
-                    null // Skip this action if neither root nor shizuku is available
-                } else {
-                    val matchResult = FuzzyMatcher.match(normalized, item.title)
-                    if (matchResult != null) {
-                        Pair(item, matchResult)
-                    } else {
-                        null
+                    return@filter false
+                }
+                if (item.onLaunch == null) {
+                    val resolvedComponent = settingsCatalog.hardcodedActionToComponent[item.action]
+                    if (resolvedComponent == null || resolvedComponent in overriddenComponents) {
+                        return@filter false
                     }
                 }
+                true
+            }
+        val hardcodedResults =
+            eligibleHardcoded.mapNotNull { item ->
+                val matchResult = FuzzyMatcher.match(normalized, item.title)
+                if (matchResult != null) Pair(item, matchResult) else null
             }.sortedByDescending { it.second.score }
-                .map { (item, matchResult) ->
-                    ProviderResult(
-                        id = "$id:${item.action}",
-                        title = item.title,
-                        subtitle = context.getString(R.string.provider_system_settings),
-                        defaultVectorIcon = Icons.Outlined.Settings,
-                        providerId = id,
-                        onSelect = {
-                            withContext(Dispatchers.Main) {
-                                try {
-                                    if (item.onLaunch != null) {
-                                        item.onLaunch.invoke()
-                                    } else {
-                                        val intent = Intent(item.action).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                                        if (intent.resolveActivity(context.packageManager) != null) {
-                                            context.startActivity(intent)
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                        },
-                        keepOverlayUntilExit = true,
-                        matchedTitleIndices = matchResult.matchedIndices,
-                    )
-                },
-        )
+                .map { (item, matchResult) -> buildHardcodedResult(item, matchResult) }
+
+        // Add manifest-discovered settings screens with their own label.
+        val discoveredResults =
+            settingsCatalog.labeledDiscovered.mapNotNull { activity ->
+                val matchResult = FuzzyMatcher.match(normalized, activity.label)
+                matchResult?.let { activity to it }
+            }.sortedByDescending { it.second.score }
+                .map { (activity, matchResult) -> buildDiscoveredResult(activity, matchResult) }
+
+        // A canonical-target dedup already collapses activity aliases in the
+        // explorer, but distinct components can still end up with visually
+        // identical titles (a curated hardcoded label matching a discovered
+        // OEM label word-for-word, or two separate screens an OEM names the
+        // same thing). De-dupe on the visible title as a final safety net —
+        // discovered (manifest/skin-specific) entries win ties, since that's
+        // the whole point of preferring them in the first place.
+        val deduped = linkedMapOf<String, ProviderResult>()
+        (discoveredResults + hardcodedResults).forEach { result ->
+            deduped.putIfAbsent(result.title.trim().lowercase(), result)
+        }
+        results.addAll(deduped.values)
 
         return results
     }
+
+    private fun buildHardcodedResult(
+        item: SettingsActionItem,
+        matchResult: FuzzyMatchResult,
+    ): ProviderResult =
+        ProviderResult(
+            id = "$id:${item.action}",
+            title = item.title,
+            subtitle = context.getString(R.string.provider_system_settings),
+            defaultVectorIcon = Icons.Outlined.Settings,
+            providerId = id,
+            onSelect = {
+                withContext(Dispatchers.Main) {
+                    try {
+                        if (item.onLaunch != null) {
+                            item.onLaunch.invoke()
+                        } else {
+                            val intent = Intent(item.action).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                            if (intent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(intent)
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.settings_screen_no_longer_available, item.title),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.settings_screen_no_longer_available, item.title),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            },
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = matchResult.matchedIndices,
+        )
+
+    private fun buildDiscoveredResult(
+        activity: DiscoveredActivity,
+        matchResult: FuzzyMatchResult,
+    ): ProviderResult =
+        ProviderResult(
+            id = "$id:${activity.componentName.flattenToString()}",
+            title = activity.label,
+            subtitle = context.getString(R.string.provider_system_settings),
+            defaultVectorIcon = Icons.Outlined.Settings,
+            providerId = id,
+            onSelect = {
+                withContext(Dispatchers.Main) {
+                    try {
+                        val intent =
+                            Intent().apply {
+                                component = activity.componentName
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Discovered via the manifest but not actually
+                        // launchable anymore (removed/permission-gated since
+                        // the last scan) — self-heal instead of leaving a
+                        // silent dead entry in search.
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.settings_screen_no_longer_available, activity.label),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        settingsCatalogRepository.removeStaleDiscoveredEntry(activity.componentName)
+                    }
+                }
+            },
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = matchResult.matchedIndices,
+        )
 
     private fun openDevOptionsFallback() {
         val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }

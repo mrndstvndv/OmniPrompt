@@ -404,6 +404,11 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="system_grant_adb_shizuku">Grant via ADB or install Shizuku</string>
     <string name="system_adb_command">Run this command via ADB:</string>
     <string name="system_install_shizuku">Or install Shizuku from Play Store for a permanent solution without a computer.</string>
+    <string name="settings_screen_no_longer_available">%1$s couldn\'t be opened</string>
+    <string name="system_rescan_settings_title">Rescan settings screens</string>
+    <string name="system_rescan_settings_subtitle">Re-scans your device\'s settings app for screens to search, including ones added by OS or skin updates.</string>
+    <string name="system_rescan_settings_action">Rescan now</string>
+    <string name="system_rescan_settings_in_progress">Rescanning…</string>
 
     <!-- Contacts settings -->
     <string name="contacts_search_phone_numbers">Search phone numbers</string>
