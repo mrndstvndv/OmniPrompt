@@ -662,6 +662,7 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
 
     <!-- Toasts -->
     <string name="toast_no_app_open">No app can open this item</string>
+    <string name="app_no_longer_installed">%1$s is no longer installed</string>
     <string name="toast_permission_denied">Permission denied for this file</string>
     <string name="toast_cant_open">Can\'t open this item</string>
     <string name="toast_developer_options">Opening Developer Options</string>

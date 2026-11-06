@@ -51,6 +51,9 @@ class AppListRepository private constructor(
         val userSerialNumber: Long,
     )
 
+    private val diskCache = AppCatalogDiskCache(context)
+    private var provisionalLoadAttempted = false
+
     private var appsByKey: MutableMap<AppKey, AppInfo> = linkedMapOf()
     private var catalogGeneration: Long = 0L
     private var isInitialized = false
@@ -189,7 +192,25 @@ class AppListRepository private constructor(
     }
 
     suspend fun initialize() {
+        loadProvisionalCacheIfNeeded()
         reloadAllApps(onlyIfUninitialized = true)
+    }
+
+    /**
+     * Seeds the catalog from disk on cold start so the first search has
+     * *something* correct to show while the real LauncherApps scan runs.
+     * No-ops once the real scan has already published (isInitialized) or if
+     * this has already been attempted this process lifetime.
+     */
+    private suspend fun loadProvisionalCacheIfNeeded() {
+        cacheMutex.withLock {
+            if (isInitialized || provisionalLoadAttempted) return
+            provisionalLoadAttempted = true
+            val cached = withContext(Dispatchers.IO) { diskCache.read() } ?: return
+            appsByKey =
+                cached.associateBy { AppKey(it.packageName, it.userSerialNumber) }.toMutableMap()
+            publishCatalogLocked()
+        }
     }
 
     /** Loads icon for the given package using current theme settings. */
@@ -474,6 +495,33 @@ class AppListRepository private constructor(
                 apps = sortedApps,
                 packageNames = sortedApps.map { it.packageName }.toSet(),
             )
+        persistCatalogAsync(sortedApps)
+    }
+
+    /**
+     * Fire-and-forget disk write, kept off [cacheMutex] since [sortedApps] is
+     * already an immutable snapshot — writing it doesn't need the lock, and
+     * not holding the lock during file I/O keeps queries/upserts unblocked.
+     */
+    private fun persistCatalogAsync(sortedApps: List<AppInfo>) {
+        scope.launch(Dispatchers.IO) { diskCache.write(sortedApps) }
+    }
+
+    /**
+     * Immediately drops one entry — used when a search result turns out to be
+     * stale (the user tapped an app that's no longer installed) so the list
+     * self-heals without waiting for the next full reconciliation pass.
+     */
+    suspend fun removeStaleEntry(
+        packageName: String,
+        userSerialNumber: Long,
+    ) {
+        cacheMutex.withLock {
+            val removed = appsByKey.remove(AppKey(packageName, userSerialNumber)) != null
+            if (!removed) return
+            evictIconCacheForPackage(packageName)
+            publishCatalogLocked()
+        }
     }
 
     private fun evictIconCacheForPackage(packageName: String) {
