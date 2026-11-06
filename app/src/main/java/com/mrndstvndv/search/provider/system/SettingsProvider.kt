@@ -9,12 +9,14 @@ import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Settings
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.TypoFallbackMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -25,6 +27,7 @@ class SettingsProvider(
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<SystemSettingsSettings>,
     private val developerSettingsManager: DeveloperSettingsManager,
+    private val rankingRepository: ProviderRankingRepository,
 ) : Provider {
     override val id: String = "system-settings"
     override val displayName: String = context.getString(R.string.provider_system_settings)
@@ -348,50 +351,63 @@ class SettingsProvider(
         val currentPermissionStatus = developerSettingsManager.permissionStatus.value
 
         // Add regular settings results with fuzzy matching
+        val eligibleActions =
+            settingsActions.filter { item ->
+                // Skip this action if neither root nor shizuku is available
+                !item.requiresElevatedPermission ||
+                    currentPermissionStatus.availableMethod != DeveloperSettingsManager.PermissionMethod.NONE
+            }
         results.addAll(
-            settingsActions.mapNotNull { item ->
-                if (item.requiresElevatedPermission && currentPermissionStatus.availableMethod == DeveloperSettingsManager.PermissionMethod.NONE) {
-                    null // Skip this action if neither root nor shizuku is available
-                } else {
-                    val matchResult = FuzzyMatcher.match(normalized, item.title)
-                    if (matchResult != null) {
-                        Pair(item, matchResult)
-                    } else {
-                        null
-                    }
-                }
+            eligibleActions.mapNotNull { item ->
+                FuzzyMatcher.match(normalized, item.title)?.let { matchResult -> Pair(item, matchResult) }
             }.sortedByDescending { it.second.score }
-                .map { (item, matchResult) ->
-                    ProviderResult(
-                        id = "$id:${item.action}",
-                        title = item.title,
-                        subtitle = context.getString(R.string.provider_system_settings),
-                        defaultVectorIcon = Icons.Outlined.Settings,
-                        providerId = id,
-                        onSelect = {
-                            withContext(Dispatchers.Main) {
-                                try {
-                                    if (item.onLaunch != null) {
-                                        item.onLaunch.invoke()
-                                    } else {
-                                        val intent = Intent(item.action).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                                        if (intent.resolveActivity(context.packageManager) != null) {
-                                            context.startActivity(intent)
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                        },
-                        keepOverlayUntilExit = true,
-                        matchedTitleIndices = matchResult.matchedIndices,
-                    )
-                },
+                .map { (item, matchResult) -> buildActionResult(item, matchResult.matchedIndices) },
         )
+
+        if (results.isEmpty()) {
+            // Nothing matched at all — try a typo-tolerant fallback.
+            results.addAll(
+                TypoFallbackMatcher.match(
+                    queryLower = normalized.lowercase(),
+                    candidates = eligibleActions,
+                    labelOf = { it.title.lowercase() },
+                    frequencyOf = { item -> rankingRepository.getGlobalResultFrequency("$id:${item.action}") },
+                ).map { match -> buildActionResult(match.item, emptyList()) },
+            )
+        }
 
         return results
     }
+
+    private fun buildActionResult(
+        item: SettingsActionItem,
+        matchedIndices: List<Int>,
+    ): ProviderResult =
+        ProviderResult(
+            id = "$id:${item.action}",
+            title = item.title,
+            subtitle = context.getString(R.string.provider_system_settings),
+            defaultVectorIcon = Icons.Outlined.Settings,
+            providerId = id,
+            onSelect = {
+                withContext(Dispatchers.Main) {
+                    try {
+                        if (item.onLaunch != null) {
+                            item.onLaunch.invoke()
+                        } else {
+                            val intent = Intent(item.action).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                            if (intent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(intent)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = matchedIndices,
+        )
 
     private fun openDevOptionsFallback() {
         val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }

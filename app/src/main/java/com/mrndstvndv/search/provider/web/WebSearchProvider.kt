@@ -11,6 +11,7 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.QuicklinkAliasTarget
 import com.mrndstvndv.search.alias.WebSearchAliasTarget
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
@@ -24,6 +25,7 @@ import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.WebSearchSettings
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.TypoFallbackMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -31,6 +33,7 @@ import kotlinx.coroutines.withContext
 class WebSearchProvider(
     private val context: Context,
     private val settingsRepository: ProviderSettingsRepository<WebSearchSettings>,
+    private val rankingRepository: ProviderRankingRepository,
 ) : Provider {
     override val id: String = "web-search"
     override val displayName: String = context.getString(R.string.provider_web_search)
@@ -158,32 +161,52 @@ class WebSearchProvider(
                 }.sortedByDescending { it.score }
 
         return scored.map { (quicklink, _, matchedTitleIndices, matchedSubtitleIndices) ->
-            val action: suspend () -> Unit = {
-                withContext(Dispatchers.Main) {
-                    val intent = Intent(Intent.ACTION_VIEW, quicklink.url.toUri()).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                    context.startActivity(intent)
-                }
+            buildQuicklinkResult(quicklink, matchedTitleIndices, matchedSubtitleIndices)
+        }.ifEmpty {
+            // Nothing matched at all — try a typo-tolerant fallback over
+            // quicklink titles only (not domains, where "edit distance"
+            // isn't a meaningful notion of a typo).
+            TypoFallbackMatcher.match(
+                queryLower = queryText.lowercase(),
+                candidates = quicklinks,
+                labelOf = { it.title.lowercase() },
+                frequencyOf = { quicklink -> rankingRepository.getGlobalResultFrequency("$id:quicklink:${quicklink.id}") },
+            ).map { match ->
+                buildQuicklinkResult(match.item, emptyList(), emptyList())
             }
-
-            ProviderResult(
-                id = "$id:quicklink:${quicklink.id}",
-                title = quicklink.title,
-                subtitle = quicklink.displayUrl(),
-                defaultVectorIcon = Icons.Outlined.Link,
-                iconLoader =
-                    if (quicklink.hasFavicon) {
-                        { FaviconLoader.loadFavicon(context, quicklink.id) }
-                    } else {
-                        null
-                    },
-                providerId = id,
-                onSelect = action,
-                aliasTarget = QuicklinkAliasTarget(quicklink.id, quicklink.title),
-                keepOverlayUntilExit = true,
-                matchedTitleIndices = matchedTitleIndices,
-                matchedSubtitleIndices = matchedSubtitleIndices,
-            )
         }
+    }
+
+    private fun buildQuicklinkResult(
+        quicklink: Quicklink,
+        matchedTitleIndices: List<Int>,
+        matchedSubtitleIndices: List<Int>,
+    ): ProviderResult {
+        val action: suspend () -> Unit = {
+            withContext(Dispatchers.Main) {
+                val intent = Intent(Intent.ACTION_VIEW, quicklink.url.toUri()).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                context.startActivity(intent)
+            }
+        }
+
+        return ProviderResult(
+            id = "$id:quicklink:${quicklink.id}",
+            title = quicklink.title,
+            subtitle = quicklink.displayUrl(),
+            defaultVectorIcon = Icons.Outlined.Link,
+            iconLoader =
+                if (quicklink.hasFavicon) {
+                    { FaviconLoader.loadFavicon(context, quicklink.id) }
+                } else {
+                    null
+                },
+            providerId = id,
+            onSelect = action,
+            aliasTarget = QuicklinkAliasTarget(quicklink.id, quicklink.title),
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = matchedTitleIndices,
+            matchedSubtitleIndices = matchedSubtitleIndices,
+        )
     }
 
     private fun matchSearchEngines(
