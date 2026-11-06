@@ -1,5 +1,6 @@
 package com.mrndstvndv.search.ui.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ fun SystemSettingsScreen(
 ) {
     val systemSettings by repository.flow.collectAsState()
     val permissionStatus by developerSettingsManager.permissionStatus.collectAsState()
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isRescanning by remember { mutableStateOf(false) }
 
@@ -120,7 +122,14 @@ fun SystemSettingsScreen(
                 PermissionStatusCard(
                     permissionStatus = permissionStatus,
                     onRequestShizukuPermission = {
-                        developerSettingsManager.requestShizukuPermission()
+                        val requested = developerSettingsManager.requestShizukuPermission()
+                        if (!requested) {
+                            Toast.makeText(
+                                context,
+                                "Shizuku permission request failed — check logcat for \"DeveloperSettingsManager\"",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     },
                 )
             }
