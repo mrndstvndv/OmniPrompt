@@ -5,12 +5,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Person
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.ContactsSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.TypoFallbackMatcher
 
 /**
  * Provider for searching device contacts.
@@ -20,6 +22,7 @@ class ContactsProvider(
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<ContactsSettings>,
     private val contactsRepository: ContactsRepository,
+    private val rankingRepository: ProviderRankingRepository,
 ) : Provider {
     override val id: String = "contacts"
     override val displayName: String = context.getString(R.string.provider_contacts)
@@ -146,6 +149,27 @@ class ContactsProvider(
                 buildSimNumberResult(scored)
             } else {
                 buildContactResult(scored)
+            }
+        }.ifEmpty {
+            if (normalized.isBlank()) return@ifEmpty emptyList()
+            // Nothing matched at all — try a typo-tolerant fallback over
+            // contact names only (not phone numbers/SIMs, where "edit
+            // distance" isn't a meaningful notion of a typo).
+            TypoFallbackMatcher.match(
+                queryLower = normalized.lowercase(),
+                candidates = contacts,
+                labelOf = { it.displayName.lowercase() },
+                frequencyOf = { contact -> rankingRepository.getGlobalResultFrequency("$id:${contact.id}") },
+            ).map { match ->
+                buildContactResult(
+                    ScoredContact(
+                        contact = match.item,
+                        simNumber = null,
+                        score = 0,
+                        matchedTitleIndices = emptyList(),
+                        matchedSubtitleIndices = emptyList(),
+                    ),
+                )
             }
         }
     }

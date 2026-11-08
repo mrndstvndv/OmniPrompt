@@ -5,10 +5,12 @@ import android.net.Uri
 import com.mrndstvndv.search.alias.AliasEntry
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.settings.ColorPalette
 import com.mrndstvndv.search.provider.settings.FileSearchSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRegistry
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
+import com.mrndstvndv.search.provider.settings.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -59,6 +61,9 @@ class BackupRestoreManager(
         private const val KEY_FIRST_RESULT_CHANGE_ANIMATION_ENABLED = "firstResultChangeAnimationEnabled"
         private const val KEY_FIRST_RESULT_COLOR_ANIMATION_ENABLED = "firstResultColorAnimationEnabled"
         private const val KEY_ALWAYS_SHOW_ENTER_BADGE = "alwaysShowEnterBadge"
+        private const val KEY_THEME_MODE = "themeMode"
+        private const val KEY_COLOR_PALETTE = "colorPalette"
+        private const val KEY_PURE_BLACK = "pureBlack"
 
         // Behavior Keys
         private const val KEY_ANIMATIONS_ENABLED = "animationsEnabled"
@@ -194,6 +199,9 @@ class BackupRestoreManager(
                 KEY_ALWAYS_SHOW_ENTER_BADGE,
                 settingsRepository.alwaysShowEnterBadge.value,
             )
+            appearance.put(KEY_THEME_MODE, settingsRepository.themePreferences.value.mode.name)
+            appearance.put(KEY_COLOR_PALETTE, settingsRepository.themePreferences.value.palette.name)
+            appearance.put(KEY_PURE_BLACK, settingsRepository.themePreferences.value.pureBlack)
             providerSettings.put(KEY_APPEARANCE, appearance)
 
             // Behavior settings
@@ -480,6 +488,19 @@ class BackupRestoreManager(
                             } catch (e: IllegalArgumentException) {
                                 warnings.add("Invalid search bar position in backup")
                             }
+                        }
+                        if (appearanceJson.has(KEY_THEME_MODE)) {
+                            settingsRepository.setThemeMode(
+                                ThemeMode.fromStorageValue(appearanceJson.optString(KEY_THEME_MODE)),
+                            )
+                        }
+                        if (appearanceJson.has(KEY_COLOR_PALETTE)) {
+                            settingsRepository.setColorPalette(
+                                ColorPalette.fromStorageValue(appearanceJson.optString(KEY_COLOR_PALETTE)),
+                            )
+                        }
+                        if (appearanceJson.has(KEY_PURE_BLACK)) {
+                            settingsRepository.setPureBlack(appearanceJson.optBoolean(KEY_PURE_BLACK, false))
                         }
                         settingsRestored++
                     } catch (e: Exception) {

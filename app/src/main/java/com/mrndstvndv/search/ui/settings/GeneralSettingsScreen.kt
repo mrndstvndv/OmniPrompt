@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,13 +23,20 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.CloudUpload
@@ -57,6 +65,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -64,10 +73,13 @@ import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.provider.ProviderRankingRepository
+import com.mrndstvndv.search.provider.settings.ColorPalette
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
 import com.mrndstvndv.search.provider.settings.SettingsIconPosition
+import com.mrndstvndv.search.provider.settings.ThemeMode
+import com.mrndstvndv.search.provider.settings.ThemePreferences
 import com.mrndstvndv.search.provider.termux.TermuxProvider
 import com.mrndstvndv.search.ui.components.TermuxPermissionDialog
 import com.mrndstvndv.search.ui.components.settings.SettingsDivider
@@ -78,6 +90,11 @@ import com.mrndstvndv.search.ui.components.settings.SettingsSection
 import com.mrndstvndv.search.ui.components.settings.SettingsSingleChoiceSegmentedButtons
 import com.mrndstvndv.search.ui.components.settings.SettingsSliderRow
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
+import com.mrndstvndv.search.ui.theme.LocalIsDarkTheme
+import com.mrndstvndv.search.ui.theme.LocalIsPureBlack
+import com.mrndstvndv.search.ui.theme.availableColorPalettes
+import com.mrndstvndv.search.ui.theme.effectiveColorPalette
+import com.mrndstvndv.search.ui.theme.resolveColorScheme
 import com.mrndstvndv.search.util.GitHubUpdateChecker
 import kotlin.math.roundToInt
 
@@ -450,6 +467,7 @@ fun AppearanceSettingsScreen(
     settingsRepository: SettingsRepository,
     onBack: () -> Unit,
 ) {
+    val themePreferences by settingsRepository.themePreferences.collectAsState()
     val translucentResultsEnabled by settingsRepository.translucentResultsEnabled.collectAsState()
     val backgroundOpacity by settingsRepository.backgroundOpacity.collectAsState()
     val searchBarTransparency by settingsRepository.searchBarTransparency.collectAsState()
@@ -469,6 +487,28 @@ fun AppearanceSettingsScreen(
         title = stringResource(R.string.settings_appearance),
         onBack = onBack,
     ) {
+        item {
+            SettingsSection(
+                title = stringResource(R.string.appearance_section_theme),
+                subtitle = stringResource(R.string.appearance_section_theme_subtitle),
+            ) {
+                SettingsGroup {
+                    ThemeModeAndPaletteChooser(
+                        themePreferences = themePreferences,
+                        onModeSelected = { settingsRepository.setThemeMode(it) },
+                        onPaletteSelected = { settingsRepository.setColorPalette(it) },
+                    )
+                    SettingsDivider()
+                    SettingsSwitch(
+                        title = stringResource(R.string.appearance_pure_black),
+                        subtitle = stringResource(R.string.appearance_pure_black_subtitle),
+                        checked = themePreferences.pureBlack,
+                        onCheckedChange = settingsRepository::setPureBlack,
+                    )
+                }
+            }
+        }
+
         item {
             SettingsSection(
                 title = stringResource(R.string.appearance_section_results),
@@ -692,6 +732,196 @@ fun AppearanceSettingsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeModeAndPaletteChooser(
+    themePreferences: ThemePreferences,
+    onModeSelected: (ThemeMode) -> Unit,
+    onPaletteSelected: (ColorPalette) -> Unit,
+) {
+    val context = LocalContext.current
+    val selectedPalette = effectiveColorPalette(themePreferences.palette)
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 18.dp),
+    ) {
+        SettingsSingleChoiceSegmentedButtons(
+            options = ThemeMode.entries,
+            selectedOption = themePreferences.mode,
+            enabled = true,
+            label = { mode -> context.getString(mode.labelResId) },
+            onOptionSelected = onModeSelected,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+            showSelectedIcon = true,
+        )
+
+        LazyRow(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(
+                items = availableColorPalettes,
+                key = { it.name },
+            ) { palette ->
+                PaletteCard(
+                    palette = palette,
+                    selected = palette == selectedPalette,
+                    onClick = { onPaletteSelected(palette) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaletteCard(
+    palette: ColorPalette,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val isDark = LocalIsDarkTheme.current
+    val pureBlack = LocalIsPureBlack.current
+    val scheme = remember(palette, isDark, pureBlack, context) { resolveColorScheme(context, palette, isDark, pureBlack) }
+    val previewShape = RoundedCornerShape(16.dp)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(88.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(width = 88.dp, height = 140.dp)
+                    .clip(previewShape)
+                    .background(scheme.background)
+                    .border(
+                        width = if (selected) 3.dp else 1.dp,
+                        color = if (selected) scheme.primary else scheme.outlineVariant,
+                        shape = previewShape,
+                    )
+                    .selectable(
+                        selected = selected,
+                        role = Role.RadioButton,
+                        onClick = onClick,
+                    )
+                    .padding(8.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(top = 4.dp)
+                        .size(width = 40.dp, height = 12.dp)
+                        .clip(CircleShape)
+                        .background(scheme.onSurface.copy(alpha = 0.85f)),
+            )
+            Column(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                repeat(3) { index ->
+                    val isFirstRow = index == 0
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(18.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isFirstRow) scheme.primaryContainer else scheme.surfaceContainerHigh)
+                                .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isFirstRow) scheme.primary else scheme.secondary),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Box(
+                            modifier =
+                                Modifier
+                                    .height(4.dp)
+                                    .fillMaxWidth(0.7f)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isFirstRow) {
+                                            scheme.onPrimaryContainer
+                                        } else {
+                                            scheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        },
+                                    ),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(18.dp)
+                            .clip(CircleShape)
+                            .background(scheme.surfaceContainerHighest)
+                            .padding(horizontal = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(scheme.primary),
+                    )
+                }
+            }
+
+            if (selected) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(scheme.primary),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = scheme.onPrimary,
+                        modifier =
+                            Modifier
+                                .size(14.dp)
+                                .align(Alignment.Center),
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = stringResource(palette.labelResId),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

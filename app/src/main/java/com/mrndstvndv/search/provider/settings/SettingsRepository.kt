@@ -6,8 +6,10 @@ import android.net.Uri
 import android.os.Environment
 import androidx.annotation.StringRes
 import androidx.core.content.edit
+import com.mrndstvndv.search.BuildConfig
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.util.GitHubUpdateChecker
+import com.mrndstvndv.search.util.VersionComparator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +44,9 @@ class SettingsRepository(
         private const val KEY_ENABLED_PROVIDERS = "enabled_providers"
         private const val KEY_SETTINGS_ICON_POSITION = "settings_icon_position"
         private const val KEY_SEARCH_BAR_POSITION = "search_bar_position"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_COLOR_PALETTE = "color_palette"
+        private const val KEY_PURE_BLACK = "pure_black"
         private const val KEY_FIRST_RESULT_HIGHLIGHT_ENABLED = "first_result_highlight_enabled"
         private const val KEY_FIRST_RESULT_HIGHLIGHT_MODE = "first_result_highlight_mode"
         private const val KEY_FIRST_RESULT_BORDER_THICKNESS = "first_result_border_thickness"
@@ -128,6 +133,9 @@ class SettingsRepository(
     private val _searchBarPosition = MutableStateFlow(SearchBarPosition.BOTTOM)
     val searchBarPosition: StateFlow<SearchBarPosition> = _searchBarPosition
 
+    private val _themePreferences = MutableStateFlow(ThemePreferences.Default)
+    val themePreferences: StateFlow<ThemePreferences> = _themePreferences
+
     private val _firstResultHighlightEnabled = MutableStateFlow(loadFirstResultHighlightEnabled())
     val firstResultHighlightEnabled: StateFlow<Boolean> = _firstResultHighlightEnabled
 
@@ -187,6 +195,7 @@ class SettingsRepository(
                 _enabledProviders.value = loadEnabledProviders()
                 _settingsIconPosition.value = loadSettingsIconPosition()
                 _searchBarPosition.value = loadSearchBarPosition()
+                _themePreferences.value = loadThemePreferences()
                 _firstResultHighlightEnabled.value = loadFirstResultHighlightEnabled()
                 _firstResultHighlightMode.value = loadFirstResultHighlightMode()
                 _firstResultBorderThickness.value = loadFirstResultBorderThickness()
@@ -215,6 +224,7 @@ class SettingsRepository(
             _enabledProviders.value = loadEnabledProviders()
             _settingsIconPosition.value = loadSettingsIconPosition()
             _searchBarPosition.value = loadSearchBarPosition()
+            _themePreferences.value = loadThemePreferences()
             _firstResultHighlightEnabled.value = loadFirstResultHighlightEnabled()
             _firstResultHighlightMode.value = loadFirstResultHighlightMode()
             _firstResultBorderThickness.value = loadFirstResultBorderThickness()
@@ -411,6 +421,21 @@ class SettingsRepository(
         _searchBarPosition.value = position
     }
 
+    fun setThemeMode(mode: ThemeMode) {
+        preferences.edit { putString(KEY_THEME_MODE, mode.name) }
+        _themePreferences.value = _themePreferences.value.copy(mode = mode)
+    }
+
+    fun setColorPalette(palette: ColorPalette) {
+        preferences.edit { putString(KEY_COLOR_PALETTE, palette.name) }
+        _themePreferences.value = _themePreferences.value.copy(palette = palette)
+    }
+
+    fun setPureBlack(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_PURE_BLACK, enabled) }
+        _themePreferences.value = _themePreferences.value.copy(pureBlack = enabled)
+    }
+
     fun setFirstResultHighlightEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, enabled) }
         _firstResultHighlightEnabled.value = enabled
@@ -456,6 +481,13 @@ class SettingsRepository(
         val positionName = preferences.getString(KEY_SEARCH_BAR_POSITION, null)
         return SearchBarPosition.fromStorageValue(positionName)
     }
+
+    private fun loadThemePreferences(): ThemePreferences =
+        ThemePreferences(
+            mode = ThemeMode.fromStorageValue(preferences.getString(KEY_THEME_MODE, null)),
+            palette = ColorPalette.fromStorageValue(preferences.getString(KEY_COLOR_PALETTE, null)),
+            pureBlack = preferences.getBoolean(KEY_PURE_BLACK, false),
+        )
 
     private fun loadFirstResultHighlightEnabled(): Boolean =
         preferences.getBoolean(KEY_FIRST_RESULT_HIGHLIGHT_ENABLED, true)
@@ -542,6 +574,8 @@ class SettingsRepository(
 
     private fun loadLatestUpdate(): GitHubUpdateChecker.UpdateResult? {
         val version = preferences.getString(KEY_LATEST_UPDATE_VERSION, null) ?: return null
+        // The saved result can predate the installed version, since checks only run on an interval.
+        if (!VersionComparator.isNewer(BuildConfig.VERSION_NAME, version)) return null
         val changelog = preferences.getString(KEY_LATEST_UPDATE_CHANGELOG, "") ?: ""
         val downloadUrl = preferences.getString(KEY_LATEST_UPDATE_DOWNLOAD_URL, "") ?: ""
         val isPrerelease = preferences.getBoolean(KEY_LATEST_UPDATE_PRERELEASE, false)

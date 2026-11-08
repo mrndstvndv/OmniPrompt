@@ -7,11 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
-
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -77,7 +72,9 @@ import com.mrndstvndv.search.ui.settings.UpdatesSettingsScreen
 import com.mrndstvndv.search.ui.settings.WebSearch
 import com.mrndstvndv.search.ui.settings.WebSearchSettingsScreen
 import com.mrndstvndv.search.ui.debug.DebugRecompositionOverlay
+import com.mrndstvndv.search.ui.theme.MotionSpeed
 import com.mrndstvndv.search.ui.theme.SearchTheme
+import com.mrndstvndv.search.ui.theme.spatial
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -111,6 +108,7 @@ class SettingsActivity : ComponentActivity() {
             val developerSettingsManager = container.developerSettingsManager
             val appListRepository = container.appListRepository
             val isDefaultAssistant by defaultAssistantState
+            val themePreferences by settingsRepository.themePreferences.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
 
@@ -124,7 +122,7 @@ class SettingsActivity : ComponentActivity() {
             val backStack = rememberNavBackStack(initialScreen)
 
             val appName = getString(R.string.app_name)
-            SearchTheme(motionPreferences = motionPreferences) {
+            SearchTheme(themePreferences = themePreferences, motionPreferences = motionPreferences) {
                 LaunchedEffect(Unit) {
                     refreshDefaultAssistantState()
                 }
@@ -132,6 +130,7 @@ class SettingsActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = androidx.compose.ui.graphics.Color.Black
                 ) {
+                    val motionScheme = MaterialTheme.motionScheme
                     NavDisplay(
                         backStack = backStack,
                         onBack = {
@@ -144,13 +143,10 @@ class SettingsActivity : ComponentActivity() {
                         transitionSpec = {
                             (slideInHorizontally(
                                 initialOffsetX = { it },
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
+                                animationSpec = motionScheme.spatial(MotionSpeed.Default)
                             ) togetherWith (slideOutHorizontally(
                                 targetOffsetX = { 0 },
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
-                            ) + fadeOut(
-                                targetAlpha = 0.5f,
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
+                                animationSpec = motionScheme.spatial(MotionSpeed.Default)
                             ))).apply {
                                 targetContentZIndex = 1f
                             }
@@ -158,13 +154,10 @@ class SettingsActivity : ComponentActivity() {
                         popTransitionSpec = {
                             ((slideInHorizontally(
                                 initialOffsetX = { 0 },
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
-                            ) + fadeIn(
-                                initialAlpha = 0.5f,
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
+                                animationSpec = motionScheme.spatial(MotionSpeed.Default)
                             )) togetherWith slideOutHorizontally(
                                 targetOffsetX = { it },
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
+                                animationSpec = motionScheme.spatial(MotionSpeed.Default)
                             )).apply {
                                 targetContentZIndex = -1f
                             }
@@ -172,13 +165,10 @@ class SettingsActivity : ComponentActivity() {
                         predictivePopTransitionSpec = {
                             ((slideInHorizontally(
                                 initialOffsetX = { 0 },
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
-                            ) + fadeIn(
-                                initialAlpha = 0.5f,
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
+                                animationSpec = motionScheme.spatial(MotionSpeed.Default)
                             )) togetherWith slideOutHorizontally(
                                 targetOffsetX = { it },
-                                animationSpec = tween(durationMillis = 500, easing = CubicBezierEasing(0.1f, 0.9f, 0.2f, 1.03f))
+                                animationSpec = motionScheme.spatial(MotionSpeed.Default)
                             )).apply {
                                 targetContentZIndex = -1f
                             }
