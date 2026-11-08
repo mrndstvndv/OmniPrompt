@@ -1,7 +1,6 @@
 package com.mrndstvndv.search.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -38,7 +37,10 @@ import androidx.compose.ui.window.DialogProperties
 import com.mrndstvndv.search.ui.theme.LocalIsDarkTheme
 import com.mrndstvndv.search.ui.theme.LocalIsPureBlack
 import com.mrndstvndv.search.ui.theme.LocalMotionPreferences
+import com.mrndstvndv.search.ui.theme.MotionSpeed
 import com.mrndstvndv.search.ui.theme.Typography
+import com.mrndstvndv.search.ui.theme.effectsSpec
+import com.mrndstvndv.search.ui.theme.spatialSpec
 import kotlin.math.roundToInt
 
 /**
@@ -62,6 +64,7 @@ fun BottomSheet(
     // Capture theme and motion preferences from parent composition before entering Dialog
     val motionPreferences = LocalMotionPreferences.current
     val outerColorScheme = MaterialTheme.colorScheme
+    val outerMotionScheme = MaterialTheme.motionScheme
     val outerIsDark = LocalIsDarkTheme.current
     val outerIsPureBlack = LocalIsPureBlack.current
 
@@ -79,14 +82,14 @@ fun BottomSheet(
 
     val animatedOffset by animateFloatAsState(
         targetValue = if (isVisible) 0f else sheetHeight,
-        animationSpec = tween(durationMillis = 250),
+        animationSpec = spatialSpec(MotionSpeed.Default),
         label = "sheetOffset",
     )
 
     // Scrim alpha animation
     val scrimAlpha by animateFloatAsState(
         targetValue = if (isVisible) 0.5f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = effectsSpec(MotionSpeed.Default),
         label = "scrimAlpha",
     )
 
@@ -105,7 +108,7 @@ fun BottomSheet(
             LocalIsDarkTheme provides outerIsDark,
             LocalIsPureBlack provides outerIsPureBlack,
         ) {
-            MaterialTheme(colorScheme = outerColorScheme, typography = Typography) {
+            MaterialTheme(colorScheme = outerColorScheme, motionScheme = outerMotionScheme, typography = Typography) {
                 Box(
                     modifier =
                         Modifier

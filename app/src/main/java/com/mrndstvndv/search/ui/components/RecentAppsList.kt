@@ -5,7 +5,7 @@ import android.content.Intent
 import android.os.Process
 import android.os.UserManager
 import android.provider.Settings
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -68,8 +68,10 @@ import com.mrndstvndv.search.provider.apps.PinnedAppsRepository
 import com.mrndstvndv.search.provider.apps.RecentApp
 import com.mrndstvndv.search.provider.apps.RecentAppsRepository
 import com.mrndstvndv.search.provider.settings.AppListType
+import com.mrndstvndv.search.ui.theme.MotionSpeed
+import com.mrndstvndv.search.ui.theme.effectsSpec
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
-import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
+import com.mrndstvndv.search.ui.theme.spatialSpec
 
 @Composable
 fun RecentAppsList(
@@ -202,14 +204,14 @@ fun AppIconItem(
     }
 
     val iconLoaded = icon != null
-    val alpha by rememberMotionAwareFloat(
+    val alpha by animateFloatAsState(
         targetValue = if (visible && iconLoaded) 1f else 0f,
-        durationMillis = 300,
+        animationSpec = effectsSpec(MotionSpeed.Default),
         label = "appIconAlpha_${app.packageName}",
     )
-    val scale by rememberMotionAwareFloat(
+    val scale by animateFloatAsState(
         targetValue = if (visible && iconLoaded) 1f else 0f,
-        durationMillis = 300,
+        animationSpec = spatialSpec(MotionSpeed.Default),
         label = "appIconScale_${app.packageName}",
     )
 
@@ -335,8 +337,6 @@ private fun Modifier.edgeFade(
 @Composable
 fun AppListContainer(
     visible: Boolean,
-    enterDuration: Int,
-    exitDuration: Int,
     shouldCenter: Boolean,
     showSettingsIcon: Boolean,
     onSettingsClick: () -> Unit,
@@ -348,16 +348,16 @@ fun AppListContainer(
         visible = visible,
         modifier = modifier.fillMaxWidth(),
         enter =
-            fadeIn(animationSpec = tween(durationMillis = enterDuration)) +
+            fadeIn(animationSpec = effectsSpec(MotionSpeed.Default)) +
                 expandVertically(
                     expandFrom = Alignment.Bottom,
-                    animationSpec = tween(durationMillis = enterDuration),
+                    animationSpec = spatialSpec(MotionSpeed.Default),
                 ),
         exit =
-            fadeOut(animationSpec = tween(durationMillis = exitDuration)) +
+            fadeOut(animationSpec = effectsSpec(MotionSpeed.Fast)) +
                 shrinkVertically(
                     shrinkTowards = Alignment.Bottom,
-                    animationSpec = tween(durationMillis = exitDuration),
+                    animationSpec = spatialSpec(MotionSpeed.Fast),
                 ),
     ) {
         Row(

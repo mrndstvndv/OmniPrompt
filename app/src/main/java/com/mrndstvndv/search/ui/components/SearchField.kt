@@ -2,7 +2,7 @@ package com.mrndstvndv.search.ui.components
 
 import android.graphics.Bitmap
 import android.view.inputmethod.InputConnectionWrapper
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,7 +56,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.mrndstvndv.search.provider.model.SearchTrigger
 import com.mrndstvndv.search.provider.model.TriggerMatch
-import com.mrndstvndv.search.ui.theme.motionAwareTween
+import com.mrndstvndv.search.ui.theme.MotionSpeed
+import com.mrndstvndv.search.ui.theme.effectsSpec
+import com.mrndstvndv.search.ui.theme.spatialSpec
 import android.view.KeyEvent as AndroidKeyEvent
 
 /**
@@ -230,32 +232,19 @@ fun SearchField(
 
                         val hasText = value.text.isNotEmpty()
                         val showClear = hasText && onClear != null
-                        val morphSpec = motionAwareTween<Float>(durationMillis = 180)
-                        val bounceExpandSpec = motionAwareTween<Float>(durationMillis = 100)
-                        val bounceSettleSpec = motionAwareTween<Float>(durationMillis = 180)
-                        val morphCue = remember { Animatable(0f) }
-                        val bounceCue = remember { Animatable(0f) }
-                        var prevShowClear by remember { mutableStateOf(showClear) }
-                        LaunchedEffect(showClear) {
-                            if (showClear != prevShowClear) {
-                                prevShowClear = showClear
-                                morphCue.snapTo(if (showClear) 0f else 1f)
-                                bounceCue.snapTo(0f)
-                                morphCue.animateTo(
-                                    if (showClear) 1f else 0f,
-                                    animationSpec = morphSpec,
-                                )
-                                bounceCue.animateTo(1f, animationSpec = bounceExpandSpec)
-                                bounceCue.animateTo(0f, animationSpec = bounceSettleSpec)
-                            }
-                        }
-                        val p = morphCue.value
-                        val trailingAlpha = 1f - p
-                        val clearAlpha = p
-                        val trailingScale = 0.6f + (trailingAlpha * 0.4f)
-                        val clearScale = 0.6f + (clearAlpha * 0.4f)
-                        val bounceScaleX = 1f + (bounceCue.value * 0.012f)
-                        val bounceScaleY = 1f + (bounceCue.value * 0.024f)
+                        val clearScaleProgress by animateFloatAsState(
+                            targetValue = if (showClear) 1f else 0f,
+                            animationSpec = spatialSpec(MotionSpeed.Fast),
+                            label = "clearIconScale",
+                        )
+                        val clearAlpha by animateFloatAsState(
+                            targetValue = if (showClear) 1f else 0f,
+                            animationSpec = effectsSpec(MotionSpeed.Fast),
+                            label = "clearIconAlpha",
+                        )
+                        val trailingAlpha = 1f - clearAlpha
+                        val trailingScale = 0.6f + ((1f - clearScaleProgress) * 0.4f)
+                        val clearScale = 0.6f + (clearScaleProgress * 0.4f)
                         Box(
                             modifier =
                                 Modifier
@@ -269,8 +258,8 @@ fun SearchField(
                                     modifier =
                                         Modifier
                                             .graphicsLayer {
-                                                scaleX = trailingScale * bounceScaleX
-                                                scaleY = trailingScale * bounceScaleY
+                                                scaleX = trailingScale
+                                                scaleY = trailingScale
                                                 alpha = trailingAlpha
                                             },
                                     contentAlignment = Alignment.Center,
@@ -285,8 +274,8 @@ fun SearchField(
                                     Modifier
                                         .size(18.dp)
                                         .graphicsLayer {
-                                            scaleX = clearScale * bounceScaleX
-                                            scaleY = clearScale * bounceScaleY
+                                            scaleX = clearScale
+                                            scaleY = clearScale
                                             alpha = clearAlpha
                                         },
                                 tint = MaterialTheme.colorScheme.primary,

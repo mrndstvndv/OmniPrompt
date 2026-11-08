@@ -115,6 +115,9 @@ fun SearchTheme(
             resolveColorScheme(context, themePreferences.palette, darkTheme, pureBlack)
         }
 
+    val motionScheme =
+        remember(motionPreferences.animationsEnabled) { motionSchemeFor(motionPreferences) }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -133,6 +136,7 @@ fun SearchTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
+            motionScheme = motionScheme,
             typography = Typography,
             content = content,
         )

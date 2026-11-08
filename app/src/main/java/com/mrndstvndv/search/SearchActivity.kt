@@ -27,7 +27,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -115,7 +114,6 @@ import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.TriggerParser
 import com.mrndstvndv.search.provider.model.TriggerResultPolicy
 import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
-import com.mrndstvndv.search.provider.settings.AppListType
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.SearchBarPosition
@@ -142,9 +140,12 @@ import com.mrndstvndv.search.ui.components.findTriggerMatch
 import com.mrndstvndv.search.ui.debug.DebugRecompositionOverlay
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
 import com.mrndstvndv.search.ui.theme.LocalIsPureBlack
+import com.mrndstvndv.search.ui.theme.MotionSpeed
 import com.mrndstvndv.search.ui.theme.SearchTheme
+import com.mrndstvndv.search.ui.theme.effectsSpec
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
 import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
+import com.mrndstvndv.search.ui.theme.spatialSpec
 import com.mrndstvndv.search.util.FaviconLoader
 import com.mrndstvndv.search.util.GitHubUpdateChecker
 import com.mrndstvndv.search.util.loadAppIconBitmap
@@ -709,8 +710,6 @@ class SearchActivity : ComponentActivity() {
                         }
 
                         if (searchBarPosition == SearchBarPosition.BOTTOM && hasVisibleResults) {
-                            val listEnterDuration = 250
-                            val listExitDuration = 200
                             motionAwareVisibility(
                                 visible = hasVisibleResults,
                                 modifier =
@@ -718,16 +717,16 @@ class SearchActivity : ComponentActivity() {
                                         .weight(1f)
                                         .padding(bottom = 8.dp),
                                 enter =
-                                    fadeIn(animationSpec = tween(durationMillis = listEnterDuration)) +
+                                    fadeIn(animationSpec = effectsSpec(MotionSpeed.Default)) +
                                         expandVertically(
                                             expandFrom = Alignment.Top,
-                                            animationSpec = tween(durationMillis = listEnterDuration),
+                                            animationSpec = spatialSpec(MotionSpeed.Default),
                                         ),
                                 exit =
-                                    fadeOut(animationSpec = tween(durationMillis = listExitDuration)) +
+                                    fadeOut(animationSpec = effectsSpec(MotionSpeed.Fast)) +
                                         shrinkVertically(
                                             shrinkTowards = Alignment.Top,
-                                            animationSpec = tween(durationMillis = listExitDuration),
+                                            animationSpec = spatialSpec(MotionSpeed.Fast),
                                         ),
                             ) {
                                 ItemsList(
@@ -802,7 +801,7 @@ class SearchActivity : ComponentActivity() {
 
                                 val animatedBottomPadding by animateDpAsState(
                                     targetValue = targetPadding,
-                                    animationSpec = tween(durationMillis = 250),
+                                    animationSpec = spatialSpec(MotionSpeed.Default),
                                     label = "keyboardPadding",
                                 )
 
@@ -854,18 +853,8 @@ class SearchActivity : ComponentActivity() {
                                     val showAppList =
                                         appSearchSettings.appListEnabled &&
                                             (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                    // App list enter duration (not tied to spacer animation anymore)
-                                    val appListEnterDuration =
-                                        when {
-                                            !appSearchSettings.hideAppListWhenResultsVisible -> 300
-                                            appSearchSettings.appListType == AppListType.BOTH -> 300
-                                            else -> 300
-                                        }
-                                    val appListExitDuration = 200
                                     AppListContainer(
                                         visible = showAppList,
-                                        enterDuration = appListEnterDuration,
-                                        exitDuration = appListExitDuration,
                                         shouldCenter = shouldCenterAppList,
                                         showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                         onSettingsClick = {
@@ -942,13 +931,8 @@ class SearchActivity : ComponentActivity() {
                                 val showAppList =
                                     appSearchSettings.appListEnabled &&
                                         (!appSearchSettings.hideAppListWhenResultsVisible || !hasVisibleResults)
-                                // App list enter duration (not tied to spacer animation anymore)
-                                val appListEnterDuration = 300
-                                val appListExitDuration = 200
                                 AppListContainer(
                                     visible = showAppList,
-                                    enterDuration = appListEnterDuration,
-                                    exitDuration = appListExitDuration,
                                     shouldCenter = shouldCenterAppList,
                                     showSettingsIcon = settingsIconPosition == SettingsIconPosition.BELOW,
                                     onSettingsClick = {
@@ -987,8 +971,6 @@ class SearchActivity : ComponentActivity() {
                                 Spacer(Modifier.weight(spacerWeight))
                             }
 
-                            val listEnterDuration = 250
-                            val listExitDuration = 200
                             motionAwareVisibility(
                                 visible = hasVisibleResults,
                                 modifier =
@@ -997,16 +979,16 @@ class SearchActivity : ComponentActivity() {
                                         .imePadding()
                                         .padding(bottom = 8.dp),
                                 enter =
-                                    fadeIn(animationSpec = tween(durationMillis = listEnterDuration)) +
+                                    fadeIn(animationSpec = effectsSpec(MotionSpeed.Default)) +
                                         expandVertically(
                                             expandFrom = Alignment.Top,
-                                            animationSpec = tween(durationMillis = listEnterDuration),
+                                            animationSpec = spatialSpec(MotionSpeed.Default),
                                         ),
                                 exit =
-                                    fadeOut(animationSpec = tween(durationMillis = listExitDuration)) +
+                                    fadeOut(animationSpec = effectsSpec(MotionSpeed.Fast)) +
                                         shrinkVertically(
                                             shrinkTowards = Alignment.Top,
-                                            animationSpec = tween(durationMillis = listExitDuration),
+                                            animationSpec = spatialSpec(MotionSpeed.Fast),
                                         ),
                             ) {
                                 ItemsList(
