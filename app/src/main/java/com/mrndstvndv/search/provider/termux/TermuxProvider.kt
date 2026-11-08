@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.Terminal
 import androidx.core.content.ContextCompat
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.model.SearchTrigger
@@ -21,6 +22,7 @@ import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.TypoFallbackMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -34,6 +36,7 @@ class TermuxProvider(
     private val context: Context,
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<TermuxSettings>,
+    private val rankingRepository: ProviderRankingRepository,
 ) : Provider {
     override val id: String = "termux"
     override val displayName: String = context.getString(R.string.provider_termux)
@@ -172,36 +175,76 @@ class TermuxProvider(
                     }
                 }.sortedByDescending { it.score }
 
-        return scored.map { (command, _, matchedTitleIndices, matchedSubtitleIndices, queryArgs, argsText) ->
-            val resolvedArgs = resolveArguments(command.arguments, queryArgs, argsText)
-            val preview = buildCommandPreview(command.executablePath, resolvedArgs)
-            ProviderResult(
-                id = "$id:${command.id}",
-                title =
-                    if (argsText.isBlank()) {
-                        command.displayName
-                    } else {
-                        context.getString(
-                            R.string.termux_result_title_with_args,
-                            command.displayName,
-                            argsText,
-                        )
-                    },
-                subtitle = preview,
-                vectorIcon = Icons.Outlined.Terminal,
-                providerId = id,
-                onSelect = { executeTermuxCommand(command, queryArgs, argsText) },
-                keepOverlayUntilExit = true,
+        return scored.map { (command, _, matchedTitleIndices, matchedSubtitleIndices, queryArgsForCommand, argsText) ->
+            buildCommandResult(
+                command = command,
                 matchedTitleIndices = matchedTitleIndices,
                 matchedSubtitleIndices = matchedSubtitleIndices,
-                frequencyQuery =
-                    if (command.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
-                        dynamicTriggerFrequencyQuery(commandPart)
-                    } else {
-                        commandPart
-                    },
+                queryArgs = queryArgsForCommand,
+                argsText = argsText,
+                commandPart = commandPart,
+                hasPayloadSeparator = parsedTrigger.hasPayloadSeparator,
             )
+        }.ifEmpty {
+            // Nothing matched at all — try a typo-tolerant fallback over
+            // command display names only (not executable paths, where "edit
+            // distance" isn't a meaningful notion of a typo).
+            TypoFallbackMatcher.match(
+                queryLower = commandPart.lowercase(),
+                candidates = commands,
+                labelOf = { it.displayName.lowercase() },
+                frequencyOf = { command -> rankingRepository.getGlobalResultFrequency("$id:${command.id}") },
+            ).map { match ->
+                buildCommandResult(
+                    command = match.item,
+                    matchedTitleIndices = emptyList(),
+                    matchedSubtitleIndices = emptyList(),
+                    queryArgs = queryArgs,
+                    argsText = argsPart,
+                    commandPart = commandPart,
+                    hasPayloadSeparator = parsedTrigger.hasPayloadSeparator,
+                )
+            }
         }
+    }
+
+    private fun buildCommandResult(
+        command: TermuxCommand,
+        matchedTitleIndices: List<Int>,
+        matchedSubtitleIndices: List<Int>,
+        queryArgs: List<String>,
+        argsText: String,
+        commandPart: String,
+        hasPayloadSeparator: Boolean,
+    ): ProviderResult {
+        val resolvedArgs = resolveArguments(command.arguments, queryArgs, argsText)
+        val preview = buildCommandPreview(command.executablePath, resolvedArgs)
+        return ProviderResult(
+            id = "$id:${command.id}",
+            title =
+                if (argsText.isBlank()) {
+                    command.displayName
+                } else {
+                    context.getString(
+                        R.string.termux_result_title_with_args,
+                        command.displayName,
+                        argsText,
+                    )
+                },
+            subtitle = preview,
+            vectorIcon = Icons.Outlined.Terminal,
+            providerId = id,
+            onSelect = { executeTermuxCommand(command, queryArgs, argsText) },
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = matchedTitleIndices,
+            matchedSubtitleIndices = matchedSubtitleIndices,
+            frequencyQuery =
+                if (command.hasQuerySlot && hasPayloadSeparator) {
+                    dynamicTriggerFrequencyQuery(commandPart)
+                } else {
+                    commandPart
+                },
+        )
     }
 
     private fun splitArguments(input: String): List<String> {

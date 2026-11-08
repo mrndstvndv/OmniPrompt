@@ -70,15 +70,15 @@ class AppContainer(val context: Context) {
 
     val providers: List<Provider> by lazy {
         buildList {
-            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository, aliasRepository))
-            add(SettingsProvider(context.applicationContext, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
+            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository, aliasRepository, rankingRepository))
+            add(SettingsProvider(context.applicationContext, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager, rankingRepository))
             add(CalculatorProvider(context.applicationContext))
             add(TextUtilitiesProvider(context.applicationContext, textUtilitiesSettingsRepo))
             add(FileSearchProvider(context.applicationContext, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-            add(ContactsProvider(context.applicationContext, settingsRepository, contactsSettingsRepo, contactsRepository))
-            add(WebSearchProvider(context.applicationContext, webSearchSettingsRepo))
-            add(TermuxProvider(context.applicationContext, settingsRepository, termuxSettingsRepo))
-            add(IntentProvider(context.applicationContext, settingsRepository, intentSettingsRepo, appListRepository))
+            add(ContactsProvider(context.applicationContext, settingsRepository, contactsSettingsRepo, contactsRepository, rankingRepository))
+            add(WebSearchProvider(context.applicationContext, webSearchSettingsRepo, rankingRepository))
+            add(TermuxProvider(context.applicationContext, settingsRepository, termuxSettingsRepo, rankingRepository))
+            add(IntentProvider(context.applicationContext, settingsRepository, intentSettingsRepo, appListRepository, rankingRepository))
         }
     }
 }

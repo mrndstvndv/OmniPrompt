@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.AppListRepository
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
@@ -19,6 +20,7 @@ import com.mrndstvndv.search.provider.model.dynamicTriggerFrequencyQuery
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.TypoFallbackMatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -32,6 +34,7 @@ class IntentProvider(
     private val globalSettingsRepository: SettingsRepository,
     private val settingsRepository: ProviderSettingsRepository<IntentSettings>,
     private val appListRepository: AppListRepository,
+    private val rankingRepository: ProviderRankingRepository,
 ) : Provider {
     override val id: String = "intent"
     override val displayName: String = context.getString(R.string.provider_intent_launcher)
@@ -124,57 +127,96 @@ class IntentProvider(
                 }
             }.sortedByDescending { it.second }
 
-        if (scored.isEmpty()) return emptyList()
+        if (scored.isEmpty()) {
+            val rawPayload = parsedTrigger.payload.trim()
+            // Nothing matched at all — try a typo-tolerant fallback over
+            // configured shortcut titles.
+            return TypoFallbackMatcher.match(
+                queryLower = searchTerm.lowercase(),
+                candidates = configs,
+                labelOf = { it.title.lowercase() },
+                frequencyOf = { config -> rankingRepository.getGlobalResultFrequency("$id:${config.id}") },
+            ).mapIndexed { index, match ->
+                buildIntentResult(
+                    config = match.item,
+                    matchedIndices = emptyList(),
+                    isBestMatch = index == 0,
+                    rawPayload = rawPayload,
+                    searchTerm = searchTerm,
+                    hasPayloadSeparator = parsedTrigger.hasPayloadSeparator,
+                )
+            }
+        }
 
         val rawPayload = parsedTrigger.payload.trim()
 
+        return scored.mapIndexed { index, (config, _, matchedIndices) ->
+            buildIntentResult(
+                config = config,
+                matchedIndices = matchedIndices,
+                isBestMatch = index == 0,
+                rawPayload = rawPayload,
+                searchTerm = searchTerm,
+                hasPayloadSeparator = parsedTrigger.hasPayloadSeparator,
+            )
+        }
+    }
+
+    private fun buildIntentResult(
+        config: IntentConfig,
+        matchedIndices: List<Int>,
+        isBestMatch: Boolean,
+        rawPayload: String,
+        searchTerm: String,
+        hasPayloadSeparator: Boolean,
+    ): ProviderResult {
         val systemLabel = context.getString(R.string.intent_system)
         val payloadHint = context.getString(R.string.intent_payload_required_hint)
 
-        return scored.map { (config, _, matchedIndices) ->
-            // For the best match use actual payload, for others show hint if payload is needed
-            val displayPayload =
-                if (config == scored.first().first) {
-                    if (rawPayload.isNotEmpty()) {
-                        rawPayload
-                    } else if (config.hasQuerySlot) {
-                        payloadHint
-                    } else {
-                        ""
-                    }
+        // Only the single best match shows the actual payload text — the
+        // rest just show a hint, to avoid displaying a misleading
+        // substitution preview for a less-likely match.
+        val displayPayload =
+            if (isBestMatch) {
+                if (rawPayload.isNotEmpty()) {
+                    rawPayload
+                } else if (config.hasQuerySlot) {
+                    payloadHint
                 } else {
-                    if (config.hasQuerySlot) payloadHint else ""
+                    ""
                 }
+            } else {
+                if (config.hasQuerySlot) payloadHint else ""
+            }
 
-            val targetLabel = config.packageName.ifEmpty { systemLabel }
+        val targetLabel = config.packageName.ifEmpty { systemLabel }
 
-            ProviderResult(
-                id = "$id:${config.id}",
-                title = config.title,
-                subtitle =
-                    if (displayPayload.isNotEmpty()) {
-                        context.getString(
-                            R.string.intent_result_subtitle_with_payload,
-                            displayPayload,
-                            targetLabel,
-                        )
-                    } else {
-                        targetLabel
-                    },
-                vectorIcon = Icons.Outlined.Share,
-                iconLoader = getIconLoader(config),
-                providerId = id,
-                onSelect = { executeIntent(config, rawPayload) },
-                keepOverlayUntilExit = true,
-                matchedTitleIndices = matchedIndices,
-                frequencyQuery =
-                    if (config.hasQuerySlot && parsedTrigger.hasPayloadSeparator) {
-                        dynamicTriggerFrequencyQuery(searchTerm)
-                    } else {
-                        searchTerm
-                    },
-            )
-        }
+        return ProviderResult(
+            id = "$id:${config.id}",
+            title = config.title,
+            subtitle =
+                if (displayPayload.isNotEmpty()) {
+                    context.getString(
+                        R.string.intent_result_subtitle_with_payload,
+                        displayPayload,
+                        targetLabel,
+                    )
+                } else {
+                    targetLabel
+                },
+            vectorIcon = Icons.Outlined.Share,
+            iconLoader = getIconLoader(config),
+            providerId = id,
+            onSelect = { executeIntent(config, rawPayload) },
+            keepOverlayUntilExit = true,
+            matchedTitleIndices = matchedIndices,
+            frequencyQuery =
+                if (config.hasQuerySlot && hasPayloadSeparator) {
+                    dynamicTriggerFrequencyQuery(searchTerm)
+                } else {
+                    searchTerm
+                },
+        )
     }
 
     private suspend fun executeIntent(
