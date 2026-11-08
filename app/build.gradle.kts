@@ -3,6 +3,7 @@ import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 val appVersion =
@@ -17,7 +18,6 @@ val appVersionCode =
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.ktlint)
@@ -51,7 +51,7 @@ val syncReleaseOssLicensesForAssets by tasks.registering(SyncOssLicenseAssetsTas
 
 android {
     namespace = "com.mrndstvndv.search"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.mrndstvndv.search"
@@ -103,13 +103,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
     buildFeatures {
         compose = true
         buildConfig = true
         aidl = true
+        resValues = true
     }
 }
 
@@ -119,6 +120,12 @@ androidComponents {
             syncReleaseOssLicensesForAssets,
             SyncOssLicenseAssetsTask::outputDir,
         )
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 
