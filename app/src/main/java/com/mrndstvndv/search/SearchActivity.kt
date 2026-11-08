@@ -141,6 +141,7 @@ import com.mrndstvndv.search.ui.components.TriggerState
 import com.mrndstvndv.search.ui.components.findTriggerMatch
 import com.mrndstvndv.search.ui.debug.DebugRecompositionOverlay
 import com.mrndstvndv.search.ui.settings.AliasCreationDialog
+import com.mrndstvndv.search.ui.theme.LocalIsPureBlack
 import com.mrndstvndv.search.ui.theme.SearchTheme
 import com.mrndstvndv.search.ui.theme.motionAwareVisibility
 import com.mrndstvndv.search.ui.theme.rememberMotionAwareFloat
@@ -392,6 +393,7 @@ class SearchActivity : ComponentActivity() {
             val backgroundBlurStrength by settingsRepository.backgroundBlurStrength.collectAsState()
             val activityIndicatorDelayMs by settingsRepository.activityIndicatorDelayMs.collectAsState()
             val backgroundAnimationDelayMs by settingsRepository.backgroundAnimationDelayMs.collectAsState()
+            val themePreferences by settingsRepository.themePreferences.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val revealAnimationEnabled by settingsRepository.revealAnimationEnabled.collectAsState()
             val settingsIconPosition by settingsRepository.settingsIconPosition.collectAsState()
@@ -629,7 +631,7 @@ class SearchActivity : ComponentActivity() {
 
 
 
-            SearchTheme(motionPreferences = motionPreferences) {
+            SearchTheme(themePreferences = themePreferences, motionPreferences = motionPreferences) {
                 val hasVisibleResults = uiState.shouldShowResults && displayedResults.isNotEmpty()
 
                 // No spacer-weight animation — per-frame Animatable.value reads in composition
@@ -640,11 +642,15 @@ class SearchActivity : ComponentActivity() {
                 val spacerWeight = if (hasVisibleResults) 0.01f else 1f
 
                 val tintedPrimaryBackground =
-                    lerp(
-                        start = MaterialTheme.colorScheme.surfaceBright,
-                        stop = MaterialTheme.colorScheme.primaryContainer,
-                        fraction = 0.65f,
-                    )
+                    if (LocalIsPureBlack.current) {
+                        androidx.compose.ui.graphics.Color.Black
+                    } else {
+                        lerp(
+                            start = MaterialTheme.colorScheme.surfaceBright,
+                            stop = MaterialTheme.colorScheme.primaryContainer,
+                            fraction = 0.65f,
+                        )
+                    }
                 val backgroundColor = tintedPrimaryBackground.copy(alpha = animatedOpacity.coerceIn(0f, 1f))
                 Box(
                     Modifier

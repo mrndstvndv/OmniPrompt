@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -34,8 +35,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.mrndstvndv.search.ui.theme.LocalIsDarkTheme
+import com.mrndstvndv.search.ui.theme.LocalIsPureBlack
 import com.mrndstvndv.search.ui.theme.LocalMotionPreferences
-import com.mrndstvndv.search.ui.theme.SearchTheme
+import com.mrndstvndv.search.ui.theme.Typography
 import kotlin.math.roundToInt
 
 /**
@@ -44,8 +47,8 @@ import kotlin.math.roundToInt
  * This is used instead of Material3's ModalBottomSheet which has issues
  * with theme inheritance in certain scenarios (Dialog creates a new window).
  *
- * The component captures the current motion preferences and re-applies
- * SearchTheme inside the dialog to ensure proper theming.
+ * The component captures the current theme and motion preferences and re-provides
+ * them inside the dialog to ensure proper theming.
  *
  * @param onDismiss Called when the sheet should be dismissed (scrim tap, swipe down, or back press)
  * @param content The composable content to display inside the bottom sheet
@@ -56,8 +59,11 @@ fun BottomSheet(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // Capture motion preferences from parent composition before entering Dialog
+    // Capture theme and motion preferences from parent composition before entering Dialog
     val motionPreferences = LocalMotionPreferences.current
+    val outerColorScheme = MaterialTheme.colorScheme
+    val outerIsDark = LocalIsDarkTheme.current
+    val outerIsPureBlack = LocalIsPureBlack.current
 
     var isVisible by remember { mutableStateOf(false) }
     var sheetHeight by remember { mutableFloatStateOf(0f) }
@@ -92,86 +98,93 @@ fun BottomSheet(
                 decorFitsSystemWindows = false,
             ),
     ) {
-        // Re-apply SearchTheme inside the dialog to inherit proper colors
-        SearchTheme(motionPreferences = motionPreferences) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .drawBehind {
-                            drawRect(Color.Black.copy(alpha = scrimAlpha))
-                        }
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick = onDismiss,
-                        ),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                Surface(
+        // Re-provide the captured theme inside the dialog rather than calling SearchTheme again,
+        // which would fall back to the default theme preferences.
+        CompositionLocalProvider(
+            LocalMotionPreferences provides motionPreferences,
+            LocalIsDarkTheme provides outerIsDark,
+            LocalIsPureBlack provides outerIsPureBlack,
+        ) {
+            MaterialTheme(colorScheme = outerColorScheme, typography = Typography) {
+                Box(
                     modifier =
-                        modifier
-                            .fillMaxWidth()
-                            .onSizeChanged { size ->
-                                sheetHeight = size.height.toFloat()
-                            }
-                            .offset {
-                                IntOffset(0, (animatedOffset + dragOffset).roundToInt())
-                            }
-                            .pointerInput(Unit) {
-                                detectVerticalDragGestures(
-                                    onDragEnd = {
-                                        if (dragOffset > dismissThreshold) {
-                                            onDismiss()
-                                        } else {
-                                            dragOffset = 0f
-                                        }
-                                    },
-                                    onDragCancel = {
-                                        dragOffset = 0f
-                                    },
-                                    onVerticalDrag = { _, dragAmount ->
-                                        // Only allow dragging down (positive dragAmount)
-                                        val newOffset = dragOffset + dragAmount
-                                        dragOffset = newOffset.coerceAtLeast(0f)
-                                    },
-                                )
+                        Modifier
+                            .fillMaxSize()
+                            .drawBehind {
+                                drawRect(Color.Black.copy(alpha = scrimAlpha))
                             }
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
-                                enabled = false,
-                            ) { },
-                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp,
+                                onClick = onDismiss,
+                            ),
+                    contentAlignment = Alignment.BottomCenter,
                 ) {
-                    Column(
+                    Surface(
                         modifier =
-                            Modifier
+                            modifier
                                 .fillMaxWidth()
-                                .navigationBarsPadding(),
+                                .onSizeChanged { size ->
+                                    sheetHeight = size.height.toFloat()
+                                }
+                                .offset {
+                                    IntOffset(0, (animatedOffset + dragOffset).roundToInt())
+                                }
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragEnd = {
+                                            if (dragOffset > dismissThreshold) {
+                                                onDismiss()
+                                            } else {
+                                                dragOffset = 0f
+                                            }
+                                        },
+                                        onDragCancel = {
+                                            dragOffset = 0f
+                                        },
+                                        onVerticalDrag = { _, dragAmount ->
+                                            // Only allow dragging down (positive dragAmount)
+                                            val newOffset = dragOffset + dragAmount
+                                            dragOffset = newOffset.coerceAtLeast(0f)
+                                        },
+                                    )
+                                }
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    enabled = false,
+                                ) { },
+                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp,
                     ) {
-                        // Drag handle
-                        Box(
+                        Column(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center,
+                                    .navigationBarsPadding(),
                         ) {
-                            Surface(
-                                modifier = Modifier.size(width = 32.dp, height = 4.dp),
-                                color =
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                        alpha = 0.4f,
-                                    ),
-                                shape = MaterialTheme.shapes.extraLarge,
-                            ) {}
-                        }
+                            // Drag handle
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(width = 32.dp, height = 4.dp),
+                                    color =
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.4f,
+                                        ),
+                                    shape = MaterialTheme.shapes.extraLarge,
+                                ) {}
+                            }
 
-                        // Sheet content
-                        content()
+                            // Sheet content
+                            content()
+                        }
                     }
                 }
             }

@@ -21,6 +21,7 @@ ktlint = "12.1.2"
 stabilityAnalyzer = "0.4.2"
 nav3Core = "1.1.4"
 kotlinxSerialization = "1.7.3"
+materialKolor = "4.0.5"
 
 
 
@@ -54,6 +55,7 @@ shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "nav3Core" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "nav3Core" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

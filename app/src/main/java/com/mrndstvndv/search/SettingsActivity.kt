@@ -111,6 +111,7 @@ class SettingsActivity : ComponentActivity() {
             val developerSettingsManager = container.developerSettingsManager
             val appListRepository = container.appListRepository
             val isDefaultAssistant by defaultAssistantState
+            val themePreferences by settingsRepository.themePreferences.collectAsState()
             val motionPreferences by settingsRepository.motionPreferences.collectAsState()
             val webSearchSettings by webSearchSettingsRepo.flow.collectAsState()
 
@@ -124,7 +125,7 @@ class SettingsActivity : ComponentActivity() {
             val backStack = rememberNavBackStack(initialScreen)
 
             val appName = getString(R.string.app_name)
-            SearchTheme(motionPreferences = motionPreferences) {
+            SearchTheme(themePreferences = themePreferences, motionPreferences = motionPreferences) {
                 LaunchedEffect(Unit) {
                     refreshDefaultAssistantState()
                 }

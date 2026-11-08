@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.graphics.drawable.toBitmap
 
@@ -344,33 +345,50 @@ fun saveCustomIcon(
     }
 }
 
+private data class ThemeColorsKey(
+    val palette: com.mrndstvndv.search.provider.settings.ColorPalette,
+    val isDark: Boolean,
+    val pureBlack: Boolean,
+)
+
+@Volatile
+private var cachedThemeColors: Pair<ThemeColorsKey, Triple<Int, Int, Int>>? = null
+
+/**
+ * Returns (primary, onPrimary, surface) for themed icons and badges, resolved from the app's
+ * theme preferences (palette, light/dark mode, pure black) rather than the system wallpaper.
+ */
 fun getThemeColors(context: android.content.Context): Triple<Int, Int, Int> {
-    val uiMode = context.resources.configuration.uiMode
-    val isDark = (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    val prefs =
+        (context.applicationContext as? com.mrndstvndv.search.SearchApplication)
+            ?.container
+            ?.settingsRepository
+            ?.themePreferences
+            ?.value
+            ?: com.mrndstvndv.search.provider.settings.ThemePreferences.Default
+    val systemDark =
+        (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+    val isDark =
+        when (prefs.mode) {
+            com.mrndstvndv.search.provider.settings.ThemeMode.SYSTEM -> systemDark
+            com.mrndstvndv.search.provider.settings.ThemeMode.LIGHT -> false
+            com.mrndstvndv.search.provider.settings.ThemeMode.DARK -> true
+        }
+    val pureBlack = isDark && prefs.pureBlack
+    val palette = com.mrndstvndv.search.ui.theme.effectiveColorPalette(prefs.palette)
+    val key = ThemeColorsKey(palette, isDark, pureBlack)
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        try {
-            val primary =
-                context.getColor(
-                    if (isDark) android.R.color.system_accent1_200 else android.R.color.system_accent1_600,
-                )
-            val onPrimary =
-                context.getColor(
-                    if (isDark) android.R.color.system_accent1_800 else android.R.color.system_accent1_100,
-                )
-            val surface =
-                context.getColor(
-                    if (isDark) android.R.color.system_neutral1_900 else android.R.color.system_neutral1_100,
-                )
-            return Triple(primary, onPrimary, surface)
-        } catch (_: Exception) { }
+    // Dynamic colors follow the wallpaper and are cheap to read, so only cache seed palettes.
+    if (palette != com.mrndstvndv.search.provider.settings.ColorPalette.DYNAMIC) {
+        cachedThemeColors?.let { (cachedKey, colors) -> if (cachedKey == key) return colors }
     }
 
-    return if (isDark) {
-        Triple(0xFFD0BCFF.toInt(), 0xFF381E72.toInt(), 0xFF1C1B1F.toInt())
-    } else {
-        Triple(0xFF6650A4.toInt(), 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt())
-    }
+    val scheme = com.mrndstvndv.search.ui.theme.resolveColorScheme(context, palette, isDark, pureBlack)
+    val surface = if (isDark) scheme.surfaceContainerLow else scheme.surfaceContainer
+    val colors = Triple(scheme.primary.toArgb(), scheme.onPrimary.toArgb(), surface.toArgb())
+    cachedThemeColors = key to colors
+    return colors
 }
 
 fun createBadgedIcon(

@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +73,7 @@ import com.mrndstvndv.search.ui.debug.TraceRecomposition
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
+import com.mrndstvndv.search.ui.theme.LocalIsDarkTheme
 import com.mrndstvndv.search.ui.theme.motionAwareTween
 /**
  * Renders text with highlighted characters at specified indices.
@@ -465,7 +465,7 @@ fun ItemsList(
                         showPrimaryActionHighlight -> 3.dp
                         else -> 1.dp
                     }
-                val isDarkTheme = isSystemInDarkTheme()
+                val isDarkTheme = LocalIsDarkTheme.current
                 val primaryTextColor =
                     if (translucentItems) {
                         MaterialTheme.colorScheme.onSurface
