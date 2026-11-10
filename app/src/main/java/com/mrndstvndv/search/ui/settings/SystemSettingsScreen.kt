@@ -1,5 +1,6 @@
 package com.mrndstvndv.search.ui.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,11 +30,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.provider.settings.SystemSettingsSettings
@@ -41,15 +47,21 @@ import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
 import com.mrndstvndv.search.ui.components.settings.SettingsGroup
 import com.mrndstvndv.search.ui.components.settings.SettingsHeader
 import com.mrndstvndv.search.ui.components.settings.SettingsSwitch
+import com.mrndstvndv.search.ui.debug.DebugExcludedSettingsEntry
 
 @Composable
 fun SystemSettingsScreen(
     repository: ProviderSettingsRepository<SystemSettingsSettings>,
     developerSettingsManager: DeveloperSettingsManager,
     onBack: () -> Unit,
+    onOpenExcludedSettingsDebug: () -> Unit = {},
+    onForceRescanSettings: suspend () -> Unit = {},
 ) {
     val systemSettings by repository.flow.collectAsState()
     val permissionStatus by developerSettingsManager.permissionStatus.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isRescanning by remember { mutableStateOf(false) }
 
     // Register/unregister Shizuku listeners based on feature toggle
     DisposableEffect(systemSettings.developerToggleEnabled) {
@@ -110,10 +122,61 @@ fun SystemSettingsScreen(
                 PermissionStatusCard(
                     permissionStatus = permissionStatus,
                     onRequestShizukuPermission = {
-                        developerSettingsManager.requestShizukuPermission()
+                        val requested = developerSettingsManager.requestShizukuPermission()
+                        if (!requested) {
+                            Toast.makeText(
+                                context,
+                                "Shizuku permission request failed — check logcat for \"DeveloperSettingsManager\"",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     },
                 )
             }
+        }
+
+        item {
+            SettingsGroup {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.system_rescan_settings_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringResource(R.string.system_rescan_settings_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(
+                        enabled = !isRescanning,
+                        onClick = {
+                            isRescanning = true
+                            coroutineScope.launch {
+                                onForceRescanSettings()
+                                isRescanning = false
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            stringResource(
+                                if (isRescanning) {
+                                    R.string.system_rescan_settings_in_progress
+                                } else {
+                                    R.string.system_rescan_settings_action
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            DebugExcludedSettingsEntry(onOpen = onOpenExcludedSettingsDebug)
         }
     }
 }

@@ -60,9 +60,11 @@ import com.mrndstvndv.search.ui.settings.Providers
 import com.mrndstvndv.search.ui.settings.ProvidersSettingsScreen
 import com.mrndstvndv.search.ui.settings.Ranking
 import com.mrndstvndv.search.ui.settings.ResultRankingSettingsScreen
+import com.mrndstvndv.search.ui.settings.ExcludedSettingsDebug
 import com.mrndstvndv.search.ui.settings.SettingsKey
 import com.mrndstvndv.search.ui.settings.SystemSettings
 import com.mrndstvndv.search.ui.settings.SystemSettingsScreen
+import com.mrndstvndv.search.ui.debug.ExcludedSettingsScreen
 import com.mrndstvndv.search.ui.settings.TermuxSettings
 import com.mrndstvndv.search.ui.settings.TermuxSettingsScreen
 import com.mrndstvndv.search.ui.settings.TextUtilities
@@ -305,6 +307,17 @@ class SettingsActivity : ComponentActivity() {
                                 SystemSettingsScreen(
                                     repository = systemSettingsSettingsRepo,
                                     developerSettingsManager = developerSettingsManager,
+                                    onBack = { backStack.removeLastOrNull() },
+                                    onOpenExcludedSettingsDebug = dropUnlessResumed { backStack.add(ExcludedSettingsDebug) },
+                                    onForceRescanSettings = { container.settingsProvider.forceRescanSettingsCatalog() },
+                                )
+                            }
+                        }
+
+                        entry<ExcludedSettingsDebug> {
+                            RoundedScreen {
+                                ExcludedSettingsScreen(
+                                    settingsCatalogRepository = container.settingsCatalogRepository,
                                     onBack = { backStack.removeLastOrNull() },
                                 )
                             }

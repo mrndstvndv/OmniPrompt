@@ -40,6 +40,15 @@
         </intent>
         <!-- Query for Termux to check if installed -->
         <package android:name="com.termux" />
+        <!-- Visibility into the Settings app so we can enumerate its exported
+             activities (covers OEM-specific screens not exposed via public
+             Settings.ACTION_* constants). Covers the vast majority of devices
+             directly; the ACTION_SETTINGS intent below is the fallback for
+             ROMs that ship the settings app under a different package name. -->
+        <package android:name="com.android.settings" />
+        <intent>
+            <action android:name="android.settings.SETTINGS" />
+        </intent>
     </queries>
 
     <application

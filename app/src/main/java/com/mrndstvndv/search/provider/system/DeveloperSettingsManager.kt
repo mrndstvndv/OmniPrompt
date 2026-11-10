@@ -160,15 +160,32 @@ class DeveloperSettingsManager(private val context: Context) {
      */
     fun requestShizukuPermission(): Boolean {
         try {
-            if (Shizuku.isPreV11()) {
+            val isAvailable = isShizukuAvailable()
+            val preV11 = Shizuku.isPreV11()
+            Log.d(TAG, "requestShizukuPermission: isShizukuAvailable=$isAvailable, isPreV11=$preV11")
+            if (!isAvailable) {
+                Log.w(TAG, "requestShizukuPermission: Shizuku binder not available, aborting")
                 return false
             }
-            if (Shizuku.shouldShowRequestPermissionRationale()) {
+            if (preV11) {
+                Log.w(TAG, "requestShizukuPermission: manager reports pre-v11 protocol, aborting")
                 return false
             }
+            // shouldShowRequestPermissionRationale() only signals "the user
+            // declined before, consider explaining why you're asking again" —
+            // it is not a reason to skip the request. Different manager
+            // implementations (Shizuku, Sui, forks) can report this more or
+            // less eagerly, but the actual grant dialog only appears once
+            // requestPermission() below is actually called, so we always
+            // call it regardless of this flag.
             Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
+            Log.d(TAG, "requestShizukuPermission: requestPermission() call completed without throwing")
             return true
         } catch (e: Exception) {
+            Log.e(TAG, "requestShizukuPermission failed with exception", e)
+            return false
+        } catch (t: Throwable) {
+            Log.e(TAG, "requestShizukuPermission failed with throwable", t)
             return false
         }
     }
