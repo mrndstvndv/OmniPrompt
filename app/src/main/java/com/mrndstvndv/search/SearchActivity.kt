@@ -616,7 +616,10 @@ class SearchActivity : ComponentActivity() {
             fun submitSearch() {
                 val primaryResult = displayedResults.firstOrNull()
                 val query = textState.text.trim()
-                val hasSubmissionTarget = primaryResult != null || query.isNotEmpty()
+                val canSubmitQuery =
+                    query.isNotEmpty() &&
+                        (enabledProviders["web-search"] != false || Patterns.WEB_URL.matcher(query).matches())
+                val hasSubmissionTarget = primaryResult != null || canSubmitQuery
 
                 if (hasSubmissionTarget) {
                     settingsRepository.markEnterUsed()
@@ -625,7 +628,7 @@ class SearchActivity : ComponentActivity() {
                 val handled = handleResultSelection(primaryResult)
                 if (handled) return
 
-                if (query.isNotEmpty()) {
+                if (canSubmitQuery) {
                     handleQuerySubmission(query)
                 }
             }
