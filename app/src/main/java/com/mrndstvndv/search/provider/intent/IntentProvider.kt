@@ -110,7 +110,7 @@ class IntentProvider(
         if (cleaned.isBlank()) return emptyList()
 
         val settings = settingsRepository.value
-        val configs = settings.configs
+        val configs = settings.configs.filterNot { it.id in query.suppressedTriggerIds }
         if (configs.isEmpty()) return emptyList()
 
         val parsedTrigger = TriggerParser.parse(cleaned)

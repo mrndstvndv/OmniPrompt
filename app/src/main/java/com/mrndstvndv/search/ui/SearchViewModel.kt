@@ -134,6 +134,11 @@ class SearchViewModel(
         pendingQueryJob?.cancel()
 
         val currentQueryText = _textState.value.text
+        val suppressedTriggerIds =
+            suppressedTriggerMatch
+                ?.takeIf { TriggerParser.parse(currentQueryText).firstToken.equals(it.matchedToken, ignoreCase = true) }
+                ?.let { setOf(it.triggerId) }
+                ?: emptySet()
         val currentTriggerState = _uiState.value.triggerState
         val enabledProviders = settingsRepository.enabledProviders.value
         val activeProviders = providers.filter { enabledProviders[it.id] ?: true }
@@ -201,7 +206,7 @@ class SearchViewModel(
                 val normalizedText = match?.remainingQuery ?: currentQueryText
                 _uiState.update { it.copy(currentNormalizedQuery = normalizedText) }
 
-                val query = Query(normalizedText, originalText = currentQueryText)
+                val query = Query(normalizedText, originalText = currentQueryText, suppressedTriggerIds = suppressedTriggerIds)
                 val matchingProviders =
                     activeProviders.filter {
                             provider ->

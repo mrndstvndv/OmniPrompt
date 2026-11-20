@@ -214,7 +214,7 @@ class WebSearchProvider(
         cleaned: String,
         settings: WebSearchSettings,
     ): List<ProviderResult> {
-        val sites = settings.sites.filter { it.enabled }
+        val sites = settings.sites.filter { it.enabled && it.id !in query.suppressedTriggerIds }
         if (sites.isEmpty()) return emptyList()
 
         val defaultSite = settings.effectiveDefaultSite() ?: return emptyList()

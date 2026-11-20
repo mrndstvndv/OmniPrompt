@@ -113,7 +113,7 @@ class TermuxProvider(
         if (cleaned.isBlank()) return emptyList()
 
         val settings = settingsRepository.value
-        val commands = settings.commands
+        val commands = settings.commands.filterNot { it.id in query.suppressedTriggerIds }
         if (commands.isEmpty()) return emptyList()
 
         val parsedTrigger = TriggerParser.parse(cleaned)
