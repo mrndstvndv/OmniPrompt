@@ -33,3 +33,4 @@ sealed interface SettingsKey : NavKey
 @Serializable data object ContactsSettings : SettingsKey
 @Serializable data object TermuxSettings : SettingsKey
 @Serializable data object IntentSettings : SettingsKey
+@Serializable data object ExcludedSettingsDebug : SettingsKey

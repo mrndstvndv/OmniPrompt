@@ -89,6 +89,20 @@
     <string name="appearance_search_bar_border_subtitle">Set to 0 dp to hide the border.</string>
     <string name="appearance_section_default_action">Default action</string>
     <string name="appearance_section_default_action_subtitle">Tune the first result and the Enter key hint.</string>
+    <string name="appearance_section_theme">Theme</string>
+    <string name="appearance_section_theme_subtitle">Light or dark mode and the app\'s color palette.</string>
+    <string name="appearance_theme_mode_system">System</string>
+    <string name="appearance_theme_mode_light">Light</string>
+    <string name="appearance_theme_mode_dark">Dark</string>
+    <string name="appearance_palette_dynamic">Dynamic</string>
+    <string name="appearance_palette_default">Default</string>
+    <string name="appearance_palette_ocean">Ocean</string>
+    <string name="appearance_palette_forest">Forest</string>
+    <string name="appearance_palette_sunset">Sunset</string>
+    <string name="appearance_palette_rose">Rose</string>
+    <string name="appearance_palette_monochrome">Monochrome</string>
+    <string name="appearance_pure_black">Pure black dark mode</string>
+    <string name="appearance_pure_black_subtitle">Uses black backgrounds in dark mode. Saves power on AMOLED screens.</string>
     <string name="appearance_section_background">Background</string>
     <string name="appearance_section_background_subtitle">Control the wallpaper behind search.</string>
     <string name="appearance_section_layout">Layout</string>
@@ -404,6 +418,11 @@ Example: -f, ba+bv, $1 → resolves to -f, ba+bv, url</string>
     <string name="system_grant_adb_shizuku">Grant via ADB or install Shizuku</string>
     <string name="system_adb_command">Run this command via ADB:</string>
     <string name="system_install_shizuku">Or install Shizuku from Play Store for a permanent solution without a computer.</string>
+    <string name="settings_screen_no_longer_available">%1$s couldn\'t be opened</string>
+    <string name="system_rescan_settings_title">Rescan settings screens</string>
+    <string name="system_rescan_settings_subtitle">Re-scans your device\'s settings app for screens to search, including ones added by OS or skin updates.</string>
+    <string name="system_rescan_settings_action">Rescan now</string>
+    <string name="system_rescan_settings_in_progress">Rescanning…</string>
 
     <!-- Contacts settings -->
     <string name="contacts_search_phone_numbers">Search phone numbers</string>

@@ -160,6 +160,16 @@ class ProviderRankingRepository private constructor(
         }
 
     /**
+     * Cross-query usage frequency for [resultId], regardless of the
+     * query-based-vs-global ranking preference. Used by typo-tolerant
+     * fallback matching: a fallback only ever runs for a query whose primary
+     * match found nothing, so there's essentially never any learned
+     * per-exact-query history for the literal typo string — the only
+     * meaningful signal available is "how often is this picked overall."
+     */
+    fun getGlobalResultFrequency(resultId: String): Float = _globalFrequencyMap[resultId] ?: 0f
+
+    /**
      * Update the provider order
      */
     fun setProviderOrder(order: List<String>) {

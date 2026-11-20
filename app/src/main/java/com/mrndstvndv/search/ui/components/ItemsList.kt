@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,7 +73,10 @@ import com.mrndstvndv.search.ui.debug.TraceRecomposition
 import com.mrndstvndv.search.R
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.settings.FirstResultHighlightMode
-import com.mrndstvndv.search.ui.theme.motionAwareTween
+import com.mrndstvndv.search.ui.theme.LocalIsDarkTheme
+import com.mrndstvndv.search.ui.theme.MotionSpeed
+import com.mrndstvndv.search.ui.theme.effectsSpec
+import com.mrndstvndv.search.ui.theme.spatialSpec
 /**
  * Renders text with highlighted characters at specified indices.
  * Used for displaying fuzzy search matches with visual feedback.
@@ -294,8 +296,9 @@ fun ItemsList(
     val primaryActionResultId = results.firstOrNull()?.id
     val primaryActionCue = remember { Animatable(0f) }
     var previousPrimaryActionResultId by remember { mutableStateOf(primaryActionResultId) }
-    val cueExpandSpec = motionAwareTween<Float>(durationMillis = 120)
-    val cueSettleSpec = motionAwareTween<Float>(durationMillis = 220)
+    // Rise without overshoot, then spring back to rest; the spatial spring's undershoot gives the settle wobble.
+    val cueExpandSpec = effectsSpec<Float>(MotionSpeed.Fast)
+    val cueSettleSpec = spatialSpec<Float>(MotionSpeed.Default)
 
     // When the first result key changes, LazyColumn tries to preserve the previous
     // visible item by key for the next remeasure. In reverse layout that can flash
@@ -382,7 +385,7 @@ fun ItemsList(
                     }
                 val colorPulseProgress =
                     if (animateFirstResultColorPulse && showPrimaryActionHighlight && item.id == primaryActionResultId) {
-                        primaryActionCue.value
+                        primaryActionCue.value.coerceIn(0f, 1f)
                     } else {
                         0f
                     }
@@ -465,7 +468,7 @@ fun ItemsList(
                         showPrimaryActionHighlight -> 3.dp
                         else -> 1.dp
                     }
-                val isDarkTheme = isSystemInDarkTheme()
+                val isDarkTheme = LocalIsDarkTheme.current
                 val primaryTextColor =
                     if (translucentItems) {
                         MaterialTheme.colorScheme.onSurface
@@ -624,7 +627,7 @@ fun ItemsList(
                                     TopResultBadge(
                                         cueProgress = {
                                             if (isPrimaryActionItem && item.id == primaryActionResultId) {
-                                                primaryActionCue.value
+                                                primaryActionCue.value.coerceIn(0f, 1f)
                                             } else {
                                                 0f
                                             }

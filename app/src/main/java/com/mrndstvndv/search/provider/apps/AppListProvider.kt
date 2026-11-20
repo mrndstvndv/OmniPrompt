@@ -10,12 +10,14 @@ import com.mrndstvndv.search.R
 import com.mrndstvndv.search.alias.AliasRepository
 import com.mrndstvndv.search.alias.AppLaunchAliasTarget
 import com.mrndstvndv.search.provider.Provider
+import com.mrndstvndv.search.provider.ProviderRankingRepository
 import com.mrndstvndv.search.provider.apps.models.AppInfo
 import com.mrndstvndv.search.provider.model.ProviderResult
 import com.mrndstvndv.search.provider.model.Query
 import com.mrndstvndv.search.provider.settings.AppSearchSettings
 import com.mrndstvndv.search.provider.settings.ProviderSettingsRepository
 import com.mrndstvndv.search.util.FuzzyMatcher
+import com.mrndstvndv.search.util.TypoFallbackMatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -34,6 +36,7 @@ class AppListProvider(
     private val scope: CoroutineScope,
     private val recentAppsRepository: RecentAppsRepository,
     private val aliasRepository: AliasRepository,
+    private val rankingRepository: ProviderRankingRepository,
 ) : Provider {
     override val id: String = "app-list"
     override val displayName: String = context.getString(R.string.provider_applications)
@@ -236,8 +239,33 @@ class AppListProvider(
                 )
         }
 
-        return matches
+        if (matches.isNotEmpty()) return matches
+
+        // Nothing at all from the fast, strict-subsequence path — try a
+        // typo-tolerant fallback over the full catalog before giving up.
+        // Only runs when there's nothing else to show, so it never slows
+        // down the common case.
+        return TypoFallbackMatcher.match(
+            queryLower = queryLower,
+            candidates = catalog.apps,
+            labelOf = { it.labelLower },
+            frequencyOf = { app -> rankingRepository.getGlobalResultFrequency(appFrequencyId(app)) },
+        ).map { candidate ->
+            ScoredApp(
+                app = candidate.item,
+                // Only ever sorted/displayed as a standalone fallback list
+                // (never merged with real FuzzyMatcher scores), so the exact
+                // scale doesn't matter — only relative ordering, which
+                // TypoFallbackMatcher already computed correctly.
+                score = -candidate.distance,
+                matchedTitleIndices = emptyList(),
+                matchedSubtitleIndices = emptyList(),
+            )
+        }
     }
+
+    /** Must match the id format used for the real ProviderResult built for this app, below. */
+    private fun appFrequencyId(app: AppInfo): String = "$id:${app.packageName}:${app.userSerialNumber}"
 
     private suspend fun scoreApps(
         apps: List<AppInfo>,

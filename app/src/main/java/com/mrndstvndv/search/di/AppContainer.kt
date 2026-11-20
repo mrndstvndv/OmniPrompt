@@ -21,6 +21,7 @@ import com.mrndstvndv.search.provider.intent.IntentProvider
 import com.mrndstvndv.search.provider.intent.createIntentSettingsRepository
 import com.mrndstvndv.search.provider.settings.SettingsRepository
 import com.mrndstvndv.search.provider.system.DeveloperSettingsManager
+import com.mrndstvndv.search.provider.system.SettingsCatalogRepository
 import com.mrndstvndv.search.provider.system.SettingsProvider
 import com.mrndstvndv.search.provider.system.createSystemSettingsSettingsRepository
 import com.mrndstvndv.search.provider.termux.TermuxProvider
@@ -67,18 +68,30 @@ class AppContainer(val context: Context) {
         PinnedAppsRepository(context, appSearchSettingsRepo, appListRepository)
     }
     val developerSettingsManager by lazy { DeveloperSettingsManager.getInstance(context) }
+    val settingsCatalogRepository by lazy { SettingsCatalogRepository.getInstance(context) }
+    val settingsProvider by lazy {
+        SettingsProvider(
+            context.applicationContext,
+            settingsRepository,
+            systemSettingsSettingsRepo,
+            developerSettingsManager,
+            rankingRepository,
+            settingsCatalogRepository,
+            applicationScope,
+        )
+    }
 
     val providers: List<Provider> by lazy {
         buildList {
-            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository, aliasRepository))
-            add(SettingsProvider(context.applicationContext, settingsRepository, systemSettingsSettingsRepo, developerSettingsManager))
+            add(AppListProvider(context.applicationContext, appSearchSettingsRepo, appListRepository, applicationScope, recentAppsRepository, aliasRepository, rankingRepository))
+            add(settingsProvider)
             add(CalculatorProvider(context.applicationContext))
             add(TextUtilitiesProvider(context.applicationContext, textUtilitiesSettingsRepo))
             add(FileSearchProvider(context.applicationContext, fileSearchSettingsRepo, fileSearchRepository, fileThumbnailRepository))
-            add(ContactsProvider(context.applicationContext, settingsRepository, contactsSettingsRepo, contactsRepository))
-            add(WebSearchProvider(context.applicationContext, webSearchSettingsRepo))
-            add(TermuxProvider(context.applicationContext, settingsRepository, termuxSettingsRepo))
-            add(IntentProvider(context.applicationContext, settingsRepository, intentSettingsRepo, appListRepository))
+            add(ContactsProvider(context.applicationContext, settingsRepository, contactsSettingsRepo, contactsRepository, rankingRepository))
+            add(WebSearchProvider(context.applicationContext, webSearchSettingsRepo, rankingRepository))
+            add(TermuxProvider(context.applicationContext, settingsRepository, termuxSettingsRepo, rankingRepository))
+            add(IntentProvider(context.applicationContext, settingsRepository, intentSettingsRepo, appListRepository, rankingRepository))
         }
     }
 }
