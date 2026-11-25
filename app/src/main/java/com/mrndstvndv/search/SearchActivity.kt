@@ -784,7 +784,7 @@ class SearchActivity : ComponentActivity() {
 
                                 val centeringPadding =
                                     if (!hasVisibleResults) {
-                                        (containerHeight - totalContentHeight) / 2
+                                        ((containerHeight - totalContentHeight) / 2).coerceAtLeast(0.dp)
                                     } else {
                                         0.dp
                                     }
@@ -813,7 +813,7 @@ class SearchActivity : ComponentActivity() {
                                         Modifier
                                             .fillMaxWidth()
                                             .align(Alignment.BottomCenter)
-                                            .padding(bottom = animatedBottomPadding),
+                                            .padding(bottom = animatedBottomPadding.coerceAtLeast(0.dp)),
                                     verticalArrangement = Arrangement.Center,
                                 ) {
                                     if (showUpdateBanner && !hasVisibleResults) {
